@@ -6,6 +6,10 @@ Published release notes are retained below; new versions are added without remov
 
 ## Unreleased
 
+## 1.0.17 - 2026-10-12
+
+- Support DSH `0.2.1-alpha.2` while retaining all existing supported versions.
+
 ## 1.0.16 - 2026-10-08
 
 - Session list cache is written to the plugin's safe folder again. It no longer falls back to the kernel folder without notice.
