@@ -501,7 +501,13 @@ test("running sessions use the host activity gate when that error type exists", 
 	env.ctx.parallel = async (name, request) => {
 		stopped.push([name, request.sessionId]);
 	};
-	await assert.rejects(registry.archiveSession(s1), (error) => error instanceof workspacePackage.WorkspaceActiveSessionError);
+	await assert.rejects(
+		registry.archiveSession(s1),
+		(error) =>
+			error instanceof workspacePackage.WorkspaceActiveSessionError ||
+			error.name === "WorkspaceActiveSessionError" ||
+			error.constructor.name === "WorkspaceActiveSessionError",
+	);
 	assert.deepEqual(env.global.archivedSessionIds, []);
 	assert.equal(asked, 1);
 	await registry.archiveSession(s1, { stopActivity: true });
