@@ -6,6 +6,11 @@ Published release notes are retained below; new versions are added without remov
 
 ## Unreleased
 
+## 1.0.18 - 2026-10-13
+
+- Add full Russian (`ru`) locale support across the archive manager workspace, tools, and update dialogues.
+- Adjust settings section order to prevent navigation collisions.
+
 ## 1.0.17 - 2026-10-12
 
 - Support DSH `0.2.1-alpha.2` while retaining all existing supported versions.
