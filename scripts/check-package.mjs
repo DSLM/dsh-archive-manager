@@ -23,6 +23,7 @@ const required = [
   "lib/session-repair.js",
   "LICENSE",
   "README.md",
+  "README.ru.md",
   "README.zh-CN.md",
   "CHANGELOG.md",
   "CHANGELOG.zh-CN.md"
