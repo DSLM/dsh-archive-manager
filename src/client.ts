@@ -3,14 +3,14 @@ import type { BrowserProps, TreeProps, FlatProps, SearchProps, WorkspacePickProp
 import { record, errorMessage, errorCode } from "./contracts.js";
 import type { Schema } from "./contracts.js";
 import type { ClientSession, ClientList, ClientWorkspace, WorkspaceSnapshot, Observable, WorkspaceView, UiFacts, PendingHook, StatusHook, StatusMap, BatchTarget, DeletedBatch, ArchivedGroup, ArchiveProps, ArchiveBatchResult, ArchiveRetry, Translate, BatchProgress, OrganizeKind, SessionDetail } from "./client-types.js";
-import { createSessionHealthPanel, healthZh, healthEn } from "./session-health-ui.js";
-import { createDiscoveryTools, discoveryCss, discoveryZh, discoveryEn } from "./archive-discovery-ui.js";
+import { createSessionHealthPanel, healthZh, healthEn, healthRu } from "./session-health-ui.js";
+import { createDiscoveryTools, discoveryCss, discoveryZh, discoveryEn, discoveryRu } from "./archive-discovery-ui.js";
 import { compareTurnCounts, copySessionText, discoveryInvocations, matchesUpdatedRange, validUpdatedRange, sessionDetailCandidates } from "./archive-discovery.js";
 import { allowArchivedNavigation, openArchivedConversation, formatArchiveNavigationError, ArchiveNavigationError, currentSessionId } from "./archive-experience.js";
 import { mirrorDirectoryFlow } from "./directory-flow-slot.js";
 import { observePluginUpdate } from "./plugin-update-ui.js";
 import { favoriteInvocations, idleArchiveCandidate, createSessionOrganizer } from "./archive-organizer.js";
-import { createOrganizerPanel, organizerZh, organizerEn } from "./archive-organizer-ui.js";
+import { createOrganizerPanel, organizerZh, organizerEn, organizerRu } from "./archive-organizer-ui.js";
 import { AntdProvider, Button as AntdButton, Checkbox as AntdCheckbox, Dropdown as AntdDropdown, Input as AntdInput, List as AntdList, Modal as AntdModal, Segmented as AntdSegmented, Select as AntdSelect } from "./antd-ui.js";
 type HostRequire = Parameters<Window["__ModuleLoader__"]["load"]>[0]["factory"] extends (require: infer Require) => unknown ? Require : never;
 export function startArchiveClient(require: HostRequire) {
@@ -3953,6 +3953,162 @@ export function startArchiveClient(require: HostRequire) {
 			"time.years": "{n}y",
 			"time.ago": "{t} ago"
 		};
+		const ru = {
+			...organizerRu, ...discoveryRu, ...healthRu,
+            "locale.language": "ru", "service.unavailable": "Сервис ещё не готов. Повторите.",
+			"archives.moreActions": "Дополнительно",
+			"archives.archiveProject": "Заархивировать все чаты этого проекта",
+			"archives.archiveUngrouped": "Заархивировать все несгруппированные чаты",
+			"archives.archiveProjectDesc": "Заархивировать все {n} незаархивированных сессий в «{name}», независимо от текущего фильтра поиска. Их можно восстановить в разделе «Архив».",
+			"archives.archiveUngroupedDesc": "Заархивировать все {n} несгруппированных незаархивированных сессий, независимо от текущего фильтра поиска. Их можно восстановить в разделе «Архив».",
+
+			"archives.tab.archived": "Архив",
+			"archives.tab.unarchived": "Незаархивированные",
+			"archives.searchUnarchived": "Поиск по незаархивированным чатам",
+			"archives.emptyUnarchived": "Нет незаархивированных сессий.",
+			"archives.archiveSelected": "Архивировать",
+			"archives.openSession": "Открыть сессию",
+			"archives.archiveSelectedDesc": "Архивировать выбранные сессии, включая скрытые текущим фильтром. Их можно просмотреть и восстановить в разделе «Архив».",
+			"archives.archiveSuccess": "Заархивировано сессий: {n}.",
+			"archives.archiveBatchFailed": "Пакетная архивация не удалась: {detail}",
+
+			"archives.navigationUnavailable": "Этот хост не может держать разговор в архиве при открытии. Вместо этого используйте «Восстановить и открыть».",
+			"archives.sessionNotRetained": "Хост не сохранил запрошенный разговор открытым. Повторите или восстановите его перед открытием.",
+			"archives.restoreOpen": "Восстановить и открыть",
+			"archives.selectedCount": "Выбрано: {n}",
+			"archives.selectionHiddenHint": "Включает {hidden}, скрытых текущим фильтром; действия применяются и к ним.",
+			"archives.clearSelectionShort": "Сбросить",
+			"archives.restore": "Восстановить",
+			"archives.archiveTitle": "Архивировать {n} чатов?",
+			"archives.deleteSelectionShort": "Удалить",
+			"archives.clearSelection": "Сбросить выбор",
+
+			"group.ungrouped": "Без группы",
+			"session.new": "Новая сессия",
+			"section.workspaces": "Рабочие пространства",
+			"section.sessions": "Сессии",
+			"viewOptions.label": "Параметры просмотра",
+			"groupBy.label": "Группировать по",
+			"groupBy.workspace": "Рабочее пространство",
+			"groupBy.flat": "В одном списке",
+			"orderBy.label": "Порядок",
+			"orderBy.manual": "Вручную",
+			"orderBy.updated": "Последнее обновление",
+			"sessions.expand": "Показать ещё {n} сессий",
+			"sessions.collapse": "Показать меньше",
+			"empty.none": "Пока нет сессий",
+			"workspace.add": "Добавить рабочее пространство",
+			"search.sessions.aria": "Поиск сессий",
+			"search.placeholder": "Поиск сессий...",
+			"search.clear": "Сбросить поиск",
+			"search.results.aria": "Результаты поиска",
+			"search.pending": "Поиск по истории сессий…",
+			"search.unavailable": "Поиск по содержимому временно недоступен. Показываются совпадения по названиям.",
+			"search.noMatches": "Нет подходящих сессий",
+			"search.hasMore": "Показаны первые {n} результатов. Сузьте поиск.",
+			"menu.addWorkspace": "Добавить рабочее пространство…",
+			"menu.unarchive": "Вернуть из архива",
+			"menu.deleteSession": "Удалить сессию",
+			"archived.badge": "Архив сессий",
+			"archived.notOpenable": "Эта сессия в архиве. Верните её из архива, чтобы продолжить разговор.",
+			"archives.title": "Архив сессий",
+			"archives.description": "Управление заархивированными сессиями или выбор незаархивированных для пакетной архивации.",
+			"archives.viewProject": "GitHub",
+			"archives.feedback": "Проблемы",
+			"archives.empty": "Нет заархивированных сессий.",
+			"archives.emptyFiltered": "Ни один чат не соответствует вашим фильтрам.",
+			"archives.searchPlaceholder": "Поиск по заархивированным чатам",
+			"archives.sortBy": "Сортировка заархивированных чатов",
+			"archives.sortLabel": "Сортировка",
+			"archives.sortUpdated": "Последнее обновление",
+			"archives.sortCreated": "Дата создания",
+			"archives.sortAlphabetical": "По алфавиту",
+			"archives.projectFilter": "Фильтр по проекту",
+			"archives.allProjects": "Все проекты",
+			"archives.sessionCount": "{n} чатов",
+			"archives.selectAllFiltered": "Выбрать все результаты",
+			"archives.selectSession": "Выбрать чат {name}",
+			"archives.restoreSelected": "Восстановить выбранные",
+			"archives.deleteSelected": "Удалить выбранные",
+			"archives.timestamp": "{date}, {time}",
+			"archives.restoreProject": "Восстановить все чаты этого проекта",
+			"archives.restoreUngrouped": "Восстановить все",
+			"archives.deleteProject": "Удалить все чаты этого проекта",
+			"archives.deleteUngrouped": "Удалить все",
+			"archives.projectActions": "Действия архивации для проекта {name}",
+			"archives.ungroupedActions": "Действия архивации для несгруппированных чатов",
+			"archives.restoreSuccess": "Восстановлено заархивированных чатов: {n}.",
+			"archives.restoreBatchFailed": "Не удалось восстановить заархивированные чаты: {detail}",
+			"archives.deleteSelectedTitle": "Удалить выбранные заархивированные чаты",
+			"archives.deleteSelectedDesc": "Это окончательно удалит выбранные {n} заархивированных чатов, их дочерние агенты (включая ещё работающие) и их записи. Другие чаты не затрагиваются. Это действие необратимо.",
+			"archives.deleteSelectedConfirm": "Удалить выбранные чаты",
+			"archives.deleteProjectTitle": "Удалить заархивированные чаты в {name}",
+			"archives.deleteProjectDesc": "Это окончательно удалит {n} заархивированных чатов в {name}, их дочерние агенты и записи. Каталог проекта и незаархивированные чаты не затрагиваются. Это действие необратимо.",
+			"archives.deleteProjectConfirm": "Удалить все чаты проекта",
+			"archives.deleteUngroupedTitle": "Удалить несгруппированные заархивированные чаты",
+			"archives.deleteUngroupedDesc": "Это окончательно удалит {n} несгруппированных заархивированных чатов, их дочерние агенты и записи. Другие проекты и незаархивированные чаты не затрагиваются. Это действие необратимо.",
+			"archives.deleteUngroupedConfirm": "Удалить все несгруппированные чаты",
+			"archives.deleteBatchPending": "Удаление заархивированных чатов…",
+			"archives.deleteSuccess": "Удалено заархивированных чатов: {n}.",
+			"archives.deleteSuccessWithSkipped": "Удалено {deleted} заархивированных чатов и очищено {skipped} устаревших записей архива для несуществующих сессий.",
+			"archives.deleteSkipped": "Очищено {n} устаревших записей архива для несуществующих сессий.",
+			"archives.deletePartial": "Удалено {deleted} чатов и очищено {skipped} устаревших записей архива; {failed} не удалось удалить: {detail}",
+			"archives.unarchiveUnknown": "Эта сессия больше не существует, поэтому её нельзя вернуть из архива.",
+			"archives.unarchiveFailed": "Не удалось вернуть сессию из архива: {detail}",
+			"archives.archiveUnknown": "Эта сессия больше не существует, поэтому её нельзя заархивировать.",
+			"archives.archiveFailed": "Не удалось заархивировать сессию: {detail}",
+			"archives.archiveActive": "Этот разговор всё ещё выполняется ({kinds}).",
+			"archiveActive.title": "Остановить и заархивировать",
+			"archiveActive.desc": "В «{name}» ещё идёт работа: {kinds}. Архивация сначала остановит её.",
+			"archiveActive.confirm": "Остановить и заархивировать",
+			"archiveActive.pending": "Остановка и архивация…",
+			"archives.forkFailed": "Не удалось создать ветку сессии: {detail}",
+			"deleteSession.title": "Удалить сессию",
+			"deleteSession.desc": "Это окончательно удалит сессию «{name}», её дочерние агенты (включая ещё работающие) и все её записи (разговор, статистику, кэш). Это действие необратимо.",
+			"deleteSession.pending": "Удаление сессии…",
+			"deleteSession.unknown": "Эта сессия больше не существует или уже удалена.",
+			"deleteSession.failed": "Не удалось удалить сессию: {detail}",
+			"picker.loading": "Загрузка рабочих пространств…",
+			"conflict.named": "Рабочее пространство с именем «{name}» уже существует.",
+			"folderError.title": "Не удалось открыть папку",
+			"folderError.retry": "Выбрать снова",
+			"rename": "Переименовать",
+			"rename.workspace.title": "Переименовать рабочее пространство",
+			"rename.session.title": "Переименовать сессию",
+			"field.workspaceName": "Имя рабочего пространства",
+			"field.sessionName": "Имя сессии",
+			"delete.workspace": "Удалить рабочее пространство",
+			"delete.desc": "Это удалит «{name}» из списка рабочих пространств. Папка и журналы сессий останутся. Его сессии появятся в разделе «Без группы».",
+			"delete.pending": "Удаление рабочего пространства…",
+			"menu.fork": "Создать ветку сессии",
+			"menu.archiveSession": "Заархивировать сессию",
+			"menu.archiveWorkspace": "Заархивировать все чаты",
+			"archiveWorkspace.title": "Архивировать {n} чатов?",
+			"archiveWorkspace.desc": "Это заархивирует чаты в «{name}». Их можно найти позже в заархивированных чатах.",
+			"archiveWorkspace.confirm": "Архивировать все",
+			"archiveWorkspace.pending": "Архивация чатов…",
+			"actions.workspace.aria": "Действия рабочего пространства для {name}",
+			"actions.session.aria": "Действия сессии для {name}",
+			"actions.newSession.aria": "Новая сессия в {name}",
+			"status.running": "Выполняется",
+			"status.subagentsRunning.one": "{n} подагент работает",
+			"status.subagentsRunning.other": "{n} подагентов работают",
+			"status.idle": "Ожидание",
+			"status.waitingApproval": "Ожидание подтверждения",
+			"status.planReview": "План ожидает проверки",
+			"status.waitingAnswer": "Ожидание ответа",
+			"status.completed": "Завершено",
+			"hover.created": "Создано {time}",
+			"hover.copied": "Скопировано",
+			"date.ymd": "{y}-{m}-{d}",
+			"time.now": "сейчас",
+			"time.minutes": "{n}мин",
+			"time.hours": "{n}ч",
+			"time.days": "{n}д",
+			"time.months": "{n}мес",
+			"time.years": "{n}г",
+			"time.ago": "{t} назад"
+		};
 		//#endregion
 		//#region lib/types/client/index.js
 		/** Dictionary namespace owned by this plugin. */
@@ -4060,7 +4216,8 @@ export function startArchiveClient(require: HostRequire) {
 		function applyWorkspaceBrowser(ctx: ClientContext) {
 			ctx.effect(() => ctx.locale.register(NS, {
 				zh,
-				en
+				en,
+				ru
 			}), "dsh-archive-manager: dictionaries");
 			ctx.effect(() => observePluginUpdate({
 				endpoint: "/api/michengai/dsh-archive-manager/update",
@@ -4069,6 +4226,7 @@ export function startArchiveClient(require: HostRequire) {
 				linksSelector: ".dsham_settingsLinks",
 				zhName: "归档会话",
 				enName: "Archived sessions",
+				ruName: "Архив сессий",
 				createIcon: createPluginUpdateIcon
 			}), "dsh-archive-manager: plugin update ui");
 			// 侧栏先注册；导航适配等官方 uiWorkspace 出现再绑，否则打开归档会被官方清掉。

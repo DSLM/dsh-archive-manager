@@ -72,3 +72,19 @@ export const organizerEn = {
   "organizer.idleConfirm": "Review and deselect candidates. Favorites and active sessions are checked again before archiving.",
   "organizer.manualConfirm": "Only checked sessions below will be archived. You can undo this batch afterward."
 };
+
+export const organizerRu = {
+  "organizer.feedback": "Отзыв об операции",
+  "organizer.allSessions": "Все сессии", "organizer.favoriteFilter": "Фильтр избранного",
+  "organizer.archiveResult": "Результаты архивации", "organizer.restoreResult": "Результаты восстановления", "organizer.deleteResult": "Результаты удаления", "organizer.undoResult": "Результаты отмены",
+  "organizer.favorite": "В избранное", "organizer.unfavorite": "Убрать из избранного", "organizer.favoritesOnly": "Только избранное",
+  "organizer.reloadFavorites": "Перезагрузить избранное", "organizer.idleDays": "Дни простоя", "organizer.preview": "Предпросмотр архива простоя ({n})",
+  "organizer.rules": "Использует последнюю активность и текущие фильтры списка. Исключает избранное, открытые, запущенные и ожидающие сессии.",
+  "organizer.progress": "Ход пакетной операции", "organizer.progressCount": "Обработано {done} / {total}",
+  "organizer.result": "Успешно {succeeded} · Пропущено {skipped} · Ошибок {failed} · Не обработано {remaining}",
+  "organizer.failureDetails": "Подробности ошибок", "organizer.refreshError": "Результаты сохранены, но обновление списка не удалось: {detail}",
+  "organizer.retry": "Повторить оставшиеся {n}", "organizer.undo": "Отменить эту архивацию ({n})",
+  "organizer.undoHint": "Сохраняется только последняя пакетная архивация, пока открыта эта страница. Закрытие или обновление сбрасывает отмену. Удалённые сессии восстановить нельзя.",
+  "organizer.idleConfirm": "Проверьте кандидатов, можно снять отметку. Перед архивацией избранное и активные сессии проверяются повторно.",
+  "organizer.manualConfirm": "Будут заархивированы только отмеченные ниже сессии. Эту пакетную операцию можно отменить позже."
+};

@@ -3,7 +3,7 @@ import { antdLocaleFromDocument } from "./antd-locale.js";
 import { AntdProvider, Button, Modal, Progress } from "./antd-ui.js";
 import { createUpdateFlow, handlePluginUpdateEscape, manualPluginUpdateCommand, pluginUpdateCopy, ZH, EN, type UpdatePayload } from "./plugin-update-model.js";
 
-interface UpdateUiOptions { endpoint: string; packageName: string; titleRowSelector: string; linksSelector: string; zhName: string; enName: string; createIcon: (name: "refresh" | "download" | "copy" | "close") => HTMLElement }
+interface UpdateUiOptions { endpoint: string; packageName: string; titleRowSelector: string; linksSelector: string; zhName: string; enName: string; ruName: string; createIcon: (name: "refresh" | "download" | "copy" | "close") => HTMLElement }
 
 type UpdateRoot = { render(node: React.ReactNode): void; unmount(): void };
 function mountRoot(container: Element): UpdateRoot {
@@ -54,7 +54,7 @@ function HostIcon(props: { node: HTMLElement }) {
 	return React.createElement("span", { ref, className: "mpi-icon", "aria-hidden": true });
 }
 
-function UpdateDialog(props: { flow: ReturnType<typeof createUpdateFlow>; packageName: string; zhName: string; enName: string; onClose: () => void }) {
+function UpdateDialog(props: { flow: ReturnType<typeof createUpdateFlow>; packageName: string; zhName: string; enName: string; ruName: string; onClose: () => void }) {
 	const bodyRef = React.useRef<HTMLDivElement>(null);
 	const [, setRev] = React.useState(0);
 	const [copyState, setCopyState] = React.useState<"idle" | "copied" | "failed">("idle");
@@ -73,7 +73,7 @@ function UpdateDialog(props: { flow: ReturnType<typeof createUpdateFlow>; packag
 	}, [props.onClose]);
 	const lang = document.documentElement.lang;
 	const view = props.flow.view(lang);
-	const name = lang.toLowerCase().startsWith("zh") ? props.zhName : props.enName;
+	const name = lang.toLowerCase().startsWith("zh") ? props.zhName : lang.toLowerCase().startsWith("ru") ? props.ruName : props.enName;
 	const command = manualPluginUpdateCommand(view.profileRaw, props.packageName, view.latestRaw);
 	const copyLabel = copyState === "copied" ? view.copy.copied : copyState === "failed" ? view.copy.copyFailed : view.copy.copy;
 	return React.createElement(AntdProvider, { locale: antdLocaleFromDocument() }, React.createElement(Modal, {
@@ -133,7 +133,7 @@ function observePluginUpdate(options: UpdateUiOptions) {
 		dialogRoot = mountRoot(host);
 		dialogRoot.render(React.createElement(UpdateDialog, {
 			flow: createUpdateFlow((method) => requestStatus(options.endpoint, method, controller.signal), payload, (next) => { payload = next; applyControls(); }),
-			packageName: options.packageName, zhName: options.zhName, enName: options.enName, onClose: closeDialog,
+			packageName: options.packageName, zhName: options.zhName, enName: options.enName, ruName: options.ruName, onClose: closeDialog,
 		}));
 	}
 	function applyControls() {
