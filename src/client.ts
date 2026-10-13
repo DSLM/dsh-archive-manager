@@ -4385,7 +4385,7 @@ export function startArchiveClient(require: HostRequire) {
 			ctx.slots.inject("settings.section", () => ctx.slots.register({
 				name: "settings.section",
 				id: "archived-sessions",
-				order: 18,
+				order: 45,
 				label: () => ctx.locale.bind(NS)("archived.badge"),
 				icon: "archive",
 				locale: NS,
