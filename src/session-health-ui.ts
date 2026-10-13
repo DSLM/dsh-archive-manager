@@ -8,8 +8,8 @@ interface HealthProps {
  repairSession?: (input: {sessionId: string; token?: string}) => Promise<HealthResult>;
  retry(): void; pending: boolean;
 }
-import { healthZh, healthEn } from "./session-health-locales.js";
-export { healthZh, healthEn };
+import { healthZh, healthEn, healthRu } from "./session-health-locales.js";
+export { healthZh, healthEn, healthRu };
 const defaultT: Translate = (key, args = {}) => Object.entries(args).reduce((text, [name, value]) => text.replaceAll("{" + name + "}", String(value)), (healthZh as Record<string, string>)[key] ?? key);
 
 import { classifySessionError } from "./archive-discovery.js";

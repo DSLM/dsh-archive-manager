@@ -161,7 +161,7 @@ export const hostAliasComponents = {
 /** 按钮不插汉字空格，亮暗跟随宿主的 data-ds-dark-theme。 */
 export function AntdProvider(props: { locale?: Locale; children?: React.ReactNode }): React.ReactElement {
 	const dark = useHostDark();
-	const lang = typeof document !== "undefined" && document.documentElement.lang.toLowerCase().startsWith("en") ? "en" : "zh";
+	const lang = typeof document !== "undefined" ? (document.documentElement.lang.toLowerCase().startsWith("en") ? "en" : document.documentElement.lang.toLowerCase().startsWith("ru") ? "ru" : "zh") : "zh";
 	return React.createElement(ConfigProvider, {
 		locale: props.locale ?? antdLocale(lang),
 		button: { autoInsertSpace: false },
