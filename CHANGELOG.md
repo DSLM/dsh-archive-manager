@@ -8,6 +8,7 @@ Published release notes are retained below; new versions are added without remov
 
 ## 1.0.19 - 2026-10-15
 
+- Keep JSONL latest-host mounting compatible with both Cordis `apply` (alpha.3+) and the older default constructor export; restore archived-path protection without rebinding the original `sessionPath`/`candidateMatches` references.
 - Update latest-host fixture for JSONL persistence Cordis `apply` (class no longer exported) on DSH `0.2.1-alpha.3`.
 - Adapt archived-session membership protection to DSH `0.2.1-alpha.3` `host.candidateMatches` (replaces the removed `host.sessionPath` filter) so mutate no longer drops archived rows that lack a path index.
 - Support DSH `0.2.1-alpha.3` while retaining all existing supported versions; pin development `@deepseek-ai/dsh*` dependencies to host `0.2.1-alpha.3` and Cordis to `4.0.5-alpha.2`.

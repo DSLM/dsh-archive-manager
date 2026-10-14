@@ -8,6 +8,7 @@
 
 ## 1.0.19 - 2026-10-15
 
+- 最新宿主 JSONL 夹具同时兼容 Cordis `apply`（alpha.3+）与旧版 default 构造导出；归档路径保护卸下时还原原始 `sessionPath`/`candidateMatches` 引用。
 - 最新宿主夹具改为走 JSONL 持久化的 Cordis `apply`（`0.2.1-alpha.3` 不再导出可直接 new 的类）。
 - 适配 DSH `0.2.1-alpha.3` 的 `host.candidateMatches`（取代已移除的 `host.sessionPath` 过滤），避免无路径索引的归档记账在 mutate 时被丢掉。
 - 支持 DSH `0.2.1-alpha.3`，继续兼容既有已支持版本；开发依赖中的 `@deepseek-ai/dsh*` 钉到宿主 `0.2.1-alpha.3`，Cordis 钉到 `4.0.5-alpha.2`。

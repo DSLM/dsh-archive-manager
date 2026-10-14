@@ -1392,9 +1392,9 @@ function protectArchivedSessionPath(registry: WorkspaceOverlayHost): () => void 
 	const host = registry.host;
 	// DSH 0.2.1-alpha.3+：Workspace.sessionIds 经 host.candidateMatches 过滤（读 sessionPaths / missingSessionPaths）。
 	if (typeof host.candidateMatches === "function") {
-		const original = host.candidateMatches.bind(host);
+		const original = host.candidateMatches;
 		host.candidateMatches = (id, path) => {
-			if (original(id, path)) return true;
+			if (original.call(host, id, path)) return true;
 			if (registry.invalidSessionPaths.has(id)) return false;
 			try {
 				return registry.archivedWorkspacePath(id) === path;
@@ -1406,11 +1406,11 @@ function protectArchivedSessionPath(registry: WorkspaceOverlayHost): () => void 
 			host.candidateMatches = original;
 		};
 	}
-	// 更早宿主：经 host.sessionPath 决定成员可见性。
+	// 更早宿主：经 host.sessionPath 决定成员可见性。卸下时必须还原同一函数引用。
 	if (typeof host.sessionPath !== "function") return () => {};
-	const indexedPath = host.sessionPath.bind(host);
+	const indexedPath = host.sessionPath;
 	host.sessionPath = (id) => {
-		const path = indexedPath(id);
+		const path = indexedPath.call(host, id);
 		if (path !== undefined) return path;
 		// 未归档会话仍走官方过滤，不改工作区成员语义。
 		if (registry.invalidSessionPaths.has(id)) return undefined;

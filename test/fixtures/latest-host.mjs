@@ -48,12 +48,20 @@ try {
 	const jsonl = await import("@deepseek-ai/dsh-session-persistence-jsonl");
 	/** alpha.3+：JSONL 改为 Cordis apply 插件，不再导出可直接 new 的类。 */
 	mountJsonlPersistence = async (ctx, config) => {
-		await jsonl.apply(ctx, config);
-		const persistence = ctx.get("sessionPersistence");
-		if (persistence === undefined) {
-			throw new Error("session-persistence-jsonl apply did not provide sessionPersistence");
+		// alpha.3+：Cordis apply 插件；更早版本仍导出可 new 的 default 类。
+		if (typeof jsonl.apply === "function") {
+			await jsonl.apply(ctx, config);
+			const persistence = ctx.get("sessionPersistence");
+			if (persistence === undefined) {
+				throw new Error("session-persistence-jsonl apply did not provide sessionPersistence");
+			}
+			return persistence;
 		}
-		return persistence;
+		const Ctor = jsonl.default;
+		if (typeof Ctor !== "function") {
+			throw new Error("session-persistence-jsonl exports neither apply nor a default constructor");
+		}
+		return new Ctor(ctx, config);
 	};
 } finally {
 	hooks?.deregister();
