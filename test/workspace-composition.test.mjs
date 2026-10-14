@@ -44,8 +44,13 @@ const archive = await load("@michengai/dsh-archive-manager", fileURLToPath(new U
 const tick = () => new Promise((resolve) => setImmediate(resolve));
 const source = (state) => ({ getSnapshot: () => state, subscribe: () => () => {} });
 // 0.1.7-rc.2 起官方工作区与侧栏客户端在 cordis inject 里要求 shortcuts 服务；
-// 夹具不提供它，官方的 apply 根本不会运行，本文件就无法验证组合行为。
-const provideShortcuts = (root) => root.provide("shortcuts", { register: () => () => {}, catalog: source([]) });
+// 0.2.1-alpha.3 起还要求 remoteAccess（侧栏权限钩子），缺一则官方 apply 不跑。
+const provideShortcuts = (root) => {
+	root.provide("shortcuts", { register: () => () => {}, catalog: source([]) });
+	if (root.get("remoteAccess") === undefined) {
+		root.provide("remoteAccess", { source: () => undefined });
+	}
+};
 
 test("归档诊断读取没有列表摘要的 ID", async () => {
   const effects = [], calls = [];
@@ -217,9 +222,9 @@ test("安装补丁保持官方 ui-workspace 启用", async () => {
 	assert.doesNotMatch(patch, /id: ui-workspace\s+disabled: true/);
 });
 
-test("安装补丁关闭官方已归档设置页，但不关掉宿主 workspace", async () => {
+test("安装补丁不再禁用已消失的官方已归档设置页，也不关掉宿主 workspace", async () => {
 	const patch = await readFile(new URL("../cordis.patch.yml", import.meta.url), "utf8");
-	assert.match(patch, /id: ui-settings-unarchive-sessions\s+disabled: true/);
+	assert.doesNotMatch(patch, /id: ui-settings-unarchive-sessions/);
 	assert.doesNotMatch(patch, /id: workspace\s+disabled: true/);
 	assert.doesNotMatch(patch, /id: session-projection-cache\s+disabled: true/);
 	assert.doesNotMatch(patch, /id: archive-manager-host/);

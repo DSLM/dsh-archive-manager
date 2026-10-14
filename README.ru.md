@@ -14,7 +14,7 @@
   [![npm package](https://img.shields.io/npm/v/%40michengai%2Fdsh-archive-manager.svg?label=npm%20package)](https://www.npmjs.com/package/@michengai/dsh-archive-manager)
   [![npm downloads](https://img.shields.io/npm/dt/%40michengai%2Fdsh-archive-manager.svg?label=npm%20downloads)](https://www.npmjs.com/package/@michengai/dsh-archive-manager)
   [![DSH Web Plugin](https://img.shields.io/badge/DSH%20Web-Plugin-0f766e.svg)](https://github.com/MichengAI/dsh-archive-manager)
-  [![DSH supported through 0.2.1-alpha.2](https://img.shields.io/badge/DSH-up%20to%200.2.1--alpha.2-2563eb.svg)](#предварительные-требования)
+  [![DSH supported through 0.2.1-alpha.3](https://img.shields.io/badge/DSH-up%20to%200.2.1--alpha.3-2563eb.svg)](#предварительные-требования)
 </div>
 
 > DSH Archive Manager — это поддерживаемый сообществом плагин для DeepSeek Harness (DSH), а не официальный продукт DeepSeek AI.
@@ -67,7 +67,7 @@
 ## Предварительные требования
 
 - Рабочая установка [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) Web с доступным `dsh` в терминале.
-- Поддерживаемые версии DSH: `0.1.2-rc.1`, `0.1.5-rc.1`, `0.1.5-rc.2`, `0.1.5-rc.3`, `0.1.7-rc.1`, `0.1.7-rc.2`, `0.2.0-rc.1`, `0.2.0-rc.2`, `0.2.1-alpha.2`. Другие версии пока не поддерживаются.
+- Поддерживаемые версии DSH: `0.1.2-rc.1`, `0.1.5-rc.1`, `0.1.5-rc.2`, `0.1.5-rc.3`, `0.1.7-rc.1`, `0.1.7-rc.2`, `0.2.0-rc.1`, `0.2.0-rc.2`, `0.2.1-alpha.2` и `0.2.1-alpha.3`. Другие версии пока не поддерживаются.
 - Node.js версии `^22.19.0 || >=24.0.0`. Для установки из исходников также требуется pnpm.
 
 ## Установка
@@ -159,7 +159,7 @@ $OutputEncoding = [System.Text.Encoding]::UTF8
 dsh --profile web --dump-config
 ```
 
-В конфигурации должен присутствовать `ui-workspace-archive-manager`, и он не должен отключать официальные `workspace` или `session-projection-cache`. Оставшийся override `archive-manager-host` можно удалить. На DSH 0.1.6+ официальный `ui-settings-unarchive-sessions` должен быть `disabled: true`, чтобы в настройках оставалась только страница «Архив сессий» этого плагина. Если `cordis.patch.yml` вашего профиля всё ещё отключает `workspace`, `session-projection-cache` или `ui-workspace`, удалите эти override и перезапустите.
+В конфигурации должен присутствовать `ui-workspace-archive-manager`, и он не должен отключать официальные `workspace` или `session-projection-cache`. Оставшийся override `archive-manager-host` можно удалить. В текущих хостах DSH официальной записи `ui-settings-unarchive-sessions` уже нет, поэтому плагин больше её не отключает (иначе dump-config предупреждает, что запись патча не найдена). Если `cordis.patch.yml` вашего профиля всё ещё отключает `workspace`, `session-projection-cache` или `ui-workspace`, удалите эти override и перезапустите.
 
 ### Чем архивирование отличается от удаления?
 

@@ -1379,15 +1379,37 @@ var ArchiveWorkspaceRegistry = class extends (WorkspaceRegistry as unknown as Wo
 //#endregion
 const workspaceOverlay = Symbol.for("dsh-archive-manager.workspace-overlay");
 interface WorkspaceOverlayHost {
-	host: { sessionPath(id: string): string | undefined };
+	host: {
+		sessionPath?(id: string): string | undefined;
+		candidateMatches?(id: string, path: string): boolean;
+	};
 	invalidSessionPaths: { has(id: string): boolean };
 	archivedWorkspacePath(sessionId: string): string | undefined;
 	[workspaceOverlay]?: boolean;
 }
 /** 只保护仍在归档集合里、但路径索引还没编上的记账，避免官方 mutate 把归档会话写丢。 */
 function protectArchivedSessionPath(registry: WorkspaceOverlayHost): () => void {
-	const indexedPath = registry.host.sessionPath;
-	registry.host.sessionPath = (id) => {
+	const host = registry.host;
+	// DSH 0.2.1-alpha.3+：Workspace.sessionIds 经 host.candidateMatches 过滤（读 sessionPaths / missingSessionPaths）。
+	if (typeof host.candidateMatches === "function") {
+		const original = host.candidateMatches.bind(host);
+		host.candidateMatches = (id, path) => {
+			if (original(id, path)) return true;
+			if (registry.invalidSessionPaths.has(id)) return false;
+			try {
+				return registry.archivedWorkspacePath(id) === path;
+			} catch {
+				return false;
+			}
+		};
+		return () => {
+			host.candidateMatches = original;
+		};
+	}
+	// 更早宿主：经 host.sessionPath 决定成员可见性。
+	if (typeof host.sessionPath !== "function") return () => {};
+	const indexedPath = host.sessionPath.bind(host);
+	host.sessionPath = (id) => {
 		const path = indexedPath(id);
 		if (path !== undefined) return path;
 		// 未归档会话仍走官方过滤，不改工作区成员语义。
@@ -1399,7 +1421,7 @@ function protectArchivedSessionPath(registry: WorkspaceOverlayHost): () => void 
 		}
 	};
 	return () => {
-		registry.host.sessionPath = indexedPath;
+		host.sessionPath = indexedPath;
 	};
 }
 /**

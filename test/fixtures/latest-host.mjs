@@ -43,11 +43,18 @@ const hooks =
 				},
 			})
 		: void 0;
-let JsonlSessionPersistence;
+let mountJsonlPersistence;
 try {
-	({ default: JsonlSessionPersistence } = await import(
-		"@deepseek-ai/dsh-session-persistence-jsonl"
-	));
+	const jsonl = await import("@deepseek-ai/dsh-session-persistence-jsonl");
+	/** alpha.3+：JSONL 改为 Cordis apply 插件，不再导出可直接 new 的类。 */
+	mountJsonlPersistence = async (ctx, config) => {
+		await jsonl.apply(ctx, config);
+		const persistence = ctx.get("sessionPersistence");
+		if (persistence === undefined) {
+			throw new Error("session-persistence-jsonl apply did not provide sessionPersistence");
+		}
+		return persistence;
+	};
 } finally {
 	hooks?.deregister();
 }
@@ -59,7 +66,7 @@ async function setup(t, compression = "none") {
 	await mkdir(cwd);
 	const ctx = new Context();
 	const sessions = new SessionStore(ctx);
-	const persistence = new JsonlSessionPersistence(ctx, {
+	const persistence = await mountJsonlPersistence(ctx, {
 		root: join(root, "sessions"),
 		compression,
 	});
@@ -234,7 +241,7 @@ for (const compression of ["none", "zstd"]) {
 		assert.deepEqual(await env.query.listSessions(), []);
 		const fresh = new Context();
 		new SessionStore(fresh);
-		const reopened = new JsonlSessionPersistence(fresh, {
+		const reopened = await mountJsonlPersistence(fresh, {
 			root: join(env.root, "sessions"),
 			compression,
 		});
@@ -281,7 +288,7 @@ for (const compression of ["none", "zstd"]) {
 			(await env.query.listSessions()).map((item) => item.header.id),
 			["fork"],
 		);
-		const restarted = new JsonlSessionPersistence(new Context(), {
+		const restarted = await mountJsonlPersistence(new Context(), {
 			root: join(env.root, "sessions"),
 			compression,
 		});

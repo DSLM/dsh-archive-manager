@@ -52,8 +52,8 @@ export interface HostContext extends Omit<Context, "get" | "sessionPersistence" 
 /** 已有插件使用的上游内部扩展点；集中声明并由宿主版本矩阵保护。 */
 export interface WorkspaceCompat extends Omit<WorkspaceRegistry, "archiveSession" | "unarchiveSession"> {
   ctx: HostContext;
-  host: { sessionPath(id: string): string | undefined };
-  headers: Map<string, Header>; sessionPaths: Map<string, string>; invalidSessionPaths: Set<string>;
+  host: { sessionPath?(id: string): string | undefined; candidateMatches?(id: string, path: string): boolean };
+  headers: Map<string, Header>; sessionPaths: Map<string, string>; missingSessionPaths?: Set<string>; invalidSessionPaths: Set<string> | Map<string, string>;
   entities: Map<string, { record: WorkspaceRow; attachSession(id: string): Promise<unknown> }>;
   requireTable(): KvTable<string, WorkspaceRow>;
   requireState(): WorkspaceState;

@@ -21,6 +21,7 @@ import { createRequire, syncBuiltinESMExports } from "node:module";
 import { Context, Service } from "@deepseek-ai/cordis";
 import { TypertRegistry } from "@deepseek-ai/dsh-typert-registry";
 import { TypertGatewayService } from "@deepseek-ai/dsh-api-gateway";
+import { gatewayCall } from "./helpers/gateway-peer.mjs";
 import { remoteMethods } from "@deepseek-ai/dsh-typert-protocol";
 import { DomainFacility } from "@deepseek-ai/dsh-storage-domain";
 import { sessionDir } from "@deepseek-ai/dsh-spill-local";
@@ -2457,29 +2458,29 @@ test("typert gateway SRC: claims + dispatch single and batch archive methods end
 	);
 	assert.equal(captured.channel, "/api");
 	assert.equal(captured.matches("workspaceRegistry/setSessionFavorite"), true);
-	const favorite = await captured.handler("workspaceRegistry/setSessionFavorite", { args: { input: { sessionId: s1, favorite: true } } }, void 0);
+	const favorite = await gatewayCall(captured.handler, "workspaceRegistry/setSessionFavorite", { input: { sessionId: s1, favorite: true } });
 	assert.equal(favorite.ok, true);
 	assert.deepEqual(favorite.value.favoriteSessionIds, [s1]);
-	const favorites = await captured.handler("workspaceRegistry/favoriteSessions", { args: {} }, void 0);
+	const favorites = await gatewayCall(captured.handler, "workspaceRegistry/favoriteSessions", {});
 	assert.deepEqual(favorites.value.favoriteSessionIds, [s1]);
-	const malformedFavorite = await captured.handler("workspaceRegistry/setSessionFavorite", { args: { input: { sessionId: s1, favorite: "true" } } }, void 0);
+	const malformedFavorite = await gatewayCall(captured.handler, "workspaceRegistry/setSessionFavorite", { input: { sessionId: s1, favorite: "true" } });
 	assert.equal(malformedFavorite.ok, false);
 	// 通过真实网关验证新描述符的参数解析、只读调用及返回编解码。
     await registry.archiveSession(s1);
     env.persistence.readFrom = async () => ({ events: [{ seq: 1, type: "user/message", data: { content: "检索测试正文" } }] });
-    const searched = await captured.handler("workspaceRegistry/searchArchivedContent", { args: { input: { sessionIds: [s1], query: "正文" } } }, void 0);
+    const searched = await gatewayCall(captured.handler, "workspaceRegistry/searchArchivedContent", { input: { sessionIds: [s1], query: "正文" } });
     assert.equal(searched.ok, true);
     assert.equal(searched.value.items[0].sessionId, s1);
-    const previewed = await captured.handler("workspaceRegistry/previewArchivedSession", { args: { input: { sessionId: s1 } } }, void 0);
+    const previewed = await gatewayCall(captured.handler, "workspaceRegistry/previewArchivedSession", { input: { sessionId: s1 } });
     assert.equal(previewed.ok, true);
     assert.equal(previewed.value.messages[0].text, "检索测试正文");
-    const details = await captured.handler("workspaceRegistry/sessionDetails", { args: { input: { sessionIds: [s1] } } }, void 0);
+    const details = await gatewayCall(captured.handler, "workspaceRegistry/sessionDetails", { input: { sessionIds: [s1] } });
     assert.equal(details.ok, true);
     assert.equal(details.value.items[0].turnCount, 1);
     assert.equal(details.value.items[0].path, env.located.get(s1));
-    const invalidDetails = await captured.handler("workspaceRegistry/sessionDetails", { args: { input: { sessionIds: [] } } }, void 0);
+    const invalidDetails = await gatewayCall(captured.handler, "workspaceRegistry/sessionDetails", { input: { sessionIds: [] } });
     assert.equal(invalidDetails.ok, false);
-    const invalidSearch = await captured.handler("workspaceRegistry/searchArchivedContent", { args: { input: { sessionIds: [s1], query: "" } } }, void 0);
+    const invalidSearch = await gatewayCall(captured.handler, "workspaceRegistry/searchArchivedContent", { input: { sessionIds: [s1], query: "" } });
     assert.equal(invalidSearch.ok, false);
     // SRC claims for the new endpoints
 	assert.equal(captured.matches("workspaceRegistry/unarchiveSession"), true);
@@ -2496,19 +2497,11 @@ test("typert gateway SRC: claims + dispatch single and batch archive methods end
 	assert.equal(captured.matches("workspace.archiveSession"), false);
 	assert.equal(captured.matches("workspace.list"), false);
 	// dispatch: unarchiveSession
-	const unarchive = await captured.handler(
-		"workspaceRegistry/unarchiveSession",
-		{ args: { sessionId: s1 } },
-		void 0,
-	);
+	const unarchive = await gatewayCall(captured.handler, "workspaceRegistry/unarchiveSession", { sessionId: s1 });
 	assert.equal(unarchive.ok, true);
 	assert.deepEqual(unarchive.value, { archivedSessionIds: [] });
 	await registry.archiveSession(s1);
-	const metadata = await captured.handler(
-		"workspaceRegistry/archivedSessionMetadata",
-		{ args: {} },
-		void 0,
-	);
+	const metadata = await gatewayCall(captured.handler, "workspaceRegistry/archivedSessionMetadata", {});
 	assert.equal(metadata.ok, true);
 	assert.deepEqual(metadata.value, {
 		items: [{ sessionId: s1, createdAt: 1700000000000 }],
@@ -2516,21 +2509,13 @@ test("typert gateway SRC: claims + dispatch single and batch archive methods end
 	await registry.unarchiveSession(s1);
 	await registry.archiveSession(s1);
 	await registry.archiveSession(s2);
-	const deleteBatch = await captured.handler(
-		"workspaceRegistry/deleteArchivedSessions",
-		{ args: { target: { scope: "workspace", workspaceId: A } } },
-		void 0,
-	);
+	const deleteBatch = await gatewayCall(captured.handler, "workspaceRegistry/deleteArchivedSessions", { target: { scope: "workspace", workspaceId: A } });
 	assert.equal(deleteBatch.ok, true);
 	assert.deepEqual(deleteBatch.value.requestedSessionIds, [s1, s2]);
 	assert.deepEqual(deleteBatch.value.deletedSessionIds, [s1, s2]);
 	assert.deepEqual(deleteBatch.value.failures, []);
 	// dispatch: deleteSession
-	const del = await captured.handler(
-		"workspaceRegistry/deleteSession",
-		{ args: { sessionId: s3 } },
-		void 0,
-	);
+	const del = await gatewayCall(captured.handler, "workspaceRegistry/deleteSession", { sessionId: s3 });
 	assert.equal(del.ok, true);
 	assert.deepEqual(del.value, { deleted: true });
 	assert.deepEqual(env.table.get(B).sessionIds, []);
@@ -2540,19 +2525,11 @@ test("typert gateway SRC: claims + dispatch single and batch archive methods end
 		"transcript dir removed via gateway dispatch",
 	);
 	// dispatch: unknown session is cleaned without failing the rpc
-	const unknown = await captured.handler(
-		"workspaceRegistry/deleteSession",
-		{ args: { sessionId: sUnknown } },
-		void 0,
-	);
+	const unknown = await gatewayCall(captured.handler, "workspaceRegistry/deleteSession", { sessionId: sUnknown });
 	assert.equal(unknown.ok, true);
 	assert.deepEqual(unknown.value, { deleted: true });
 	// dispatch: missing args is rejected
-	const bad = await captured.handler(
-		"workspaceRegistry/unarchiveSession",
-		{ args: {} },
-		void 0,
-	);
+	const bad = await gatewayCall(captured.handler, "workspaceRegistry/unarchiveSession", {});
 	assert.equal(bad.ok, false);
 });
 

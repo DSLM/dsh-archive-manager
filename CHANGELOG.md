@@ -6,6 +6,15 @@ Published release notes are retained below; new versions are added without remov
 
 ## Unreleased
 
+## 1.0.19 - 2026-10-15
+
+- Update latest-host fixture for JSONL persistence Cordis `apply` (class no longer exported) on DSH `0.2.1-alpha.3`.
+- Adapt archived-session membership protection to DSH `0.2.1-alpha.3` `host.candidateMatches` (replaces the removed `host.sessionPath` filter) so mutate no longer drops archived rows that lack a path index.
+- Support DSH `0.2.1-alpha.3` while retaining all existing supported versions; pin development `@deepseek-ai/dsh*` dependencies to host `0.2.1-alpha.3` and Cordis to `4.0.5-alpha.2`.
+- Drop removed host package `@deepseek-ai/dsh-invariants` from development dependencies (gone since alpha.1).
+- Remove ghost optional peer `@deepseek-ai/dsh-client-runtime` (package ended on the 0.1.x line; runtime fallback in the client bundle remains for older hosts that still ship it).
+- Stop disabling missing `ui-settings-unarchive-sessions` in `cordis.patch.yml` so `dsh --dump-config` no longer warns that the patch entry was not found.
+
 ## 1.0.18 - 2026-10-13
 
 - Add full Russian (`ru`) locale support across the archive manager workspace, tools, and update dialogues.

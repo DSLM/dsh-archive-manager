@@ -6,6 +6,15 @@
 
 ## 未发布
 
+## 1.0.19 - 2026-10-15
+
+- 最新宿主夹具改为走 JSONL 持久化的 Cordis `apply`（`0.2.1-alpha.3` 不再导出可直接 new 的类）。
+- 适配 DSH `0.2.1-alpha.3` 的 `host.candidateMatches`（取代已移除的 `host.sessionPath` 过滤），避免无路径索引的归档记账在 mutate 时被丢掉。
+- 支持 DSH `0.2.1-alpha.3`，继续兼容既有已支持版本；开发依赖中的 `@deepseek-ai/dsh*` 钉到宿主 `0.2.1-alpha.3`，Cordis 钉到 `4.0.5-alpha.2`。
+- 从开发依赖移除宿主已删除的 `@deepseek-ai/dsh-invariants`（自 alpha.1 起不存在）。
+- 去掉幽灵可选 peer `@deepseek-ai/dsh-client-runtime`（该包停在 0.1.x；客户端打包里对仍提供该模块的旧宿主回退逻辑保留）。
+- `cordis.patch.yml` 不再 disable 已不存在的 `ui-settings-unarchive-sessions`，避免 `dsh --dump-config` 告警条目未找到。
+
 ## 1.0.18 - 2026-10-13
 
 - 完整支持俄语（`ru`）界面与本地化词典。
