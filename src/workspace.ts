@@ -714,11 +714,21 @@ var ArchiveWorkspaceRegistry = class extends (WorkspaceRegistry as unknown as Wo
 					if (await this.coldReuseKnown(sessionId)) kept.push(sessionId);
 					continue;
 				}
-				if (this.headers.has(sessionId) || listed.has(sessionId)) {
+				if (listed.has(sessionId)) {
 					kept.push(sessionId);
 					continue;
 				}
-				if (!(await this.sessionArtifactMissing(sessionId))) kept.push(sessionId);
+				// 宿主内存 this.headers 只增不减；磁盘不存在（stat 返回 undefined）时
+				// 必须从归档集合剪除并清理 headers 缓存，不再受陈旧 headers 阻碍。
+				if (await this.sessionArtifactMissing(sessionId)) {
+					this.headers.delete(sessionId);
+					continue;
+				}
+				if (this.headers.has(sessionId)) {
+					kept.push(sessionId);
+					continue;
+				}
+				kept.push(sessionId);
 			}
 			if (
 				kept.length === state.archivedSessionIds.length &&
@@ -1216,7 +1226,18 @@ var ArchiveWorkspaceRegistry = class extends (WorkspaceRegistry as unknown as Wo
 				`cannot delete session "${sessionId}": the session persistence backend does not expose locate() to resolve its transcript artifact`,
 			);
 		}
-		const header = await this.readSessionHeader(sessionId);
+		let header: Header | undefined = this.headers?.get(sessionId);
+		if (header === void 0) {
+			try {
+				header = await this.readSessionHeader(sessionId);
+			} catch (error) {
+				// 若 readSessionHeader 失败（如日志损坏或 list 读不出），尝试通过 id 构造最小降级头部以定位工件
+				this.ctx.logger.warn(
+					`archive-manager: could not read header for deleting session "${sessionId}": ${String(error)}; falling back to minimal header`,
+				);
+				header = { id: sessionId, createdAt: 0 } as Header;
+			}
+		}
 		const location = persistence.locate(header);
 		if (location === void 0 || typeof location.path !== "string") {
 			throw new Error(
@@ -1253,13 +1274,23 @@ var ArchiveWorkspaceRegistry = class extends (WorkspaceRegistry as unknown as Wo
 			await rm(target.path, { recursive: true, force: true });
 			// 新版 locate() 只是当前代际的诊断路径；以存储观察确认删除已生效，
 			// 避免不存在的目标被 force 忽略后，仍把可读会话记为已删除。
-			if (
-				typeof persistence.stat === "function" &&
-				(await persistence.stat(sessionId)) !== void 0
-			) {
-				throw new Error(
-					`session "${sessionId}" is still present in persistence after artifact removal`,
-				);
+			// 若工件已损坏，stat 可能抛出 SessionFormatError 或 SessionPersistenceCorruptionError，
+			// 不能因读取格式校验失败反向阻碍删除。
+			if (typeof persistence.stat === "function") {
+				let postStat;
+				try {
+					postStat = await persistence.stat(sessionId);
+				} catch (error) {
+					this.ctx.logger.warn(
+						`archive-manager: session "${sessionId}" stat check after artifact removal encountered corruption; treating as removed: ${String(error)}`,
+					);
+					postStat = undefined;
+				}
+				if (postStat !== void 0) {
+					throw new Error(
+						`session "${sessionId}" is still present in persistence after artifact removal`,
+					);
+				}
 			}
 		} catch (error) {
 			const message = `cannot delete session "${sessionId}": cleanup of ${target.kind} "${target.path}" failed; bookkeeping retained for retry`;

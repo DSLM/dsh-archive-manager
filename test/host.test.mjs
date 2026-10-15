@@ -910,6 +910,57 @@ for (const filename of [
 	});
 }
 
+test("deleteSession succeeds and cleans up when the transcript log is corrupt with SessionFormatError", async () => {
+	const env = buildRoot({ headers: [header(s1)], archived: [s1] });
+	const directory = installJsonlLayout(env, s1);
+	const registry = await mountWorkspaceRegistry(env);
+
+	// 模拟损坏会话：当持久层 stat 校验时抛出 SessionFormatError
+	const originalStat = env.persistence.stat;
+	env.persistence.stat = async (id) => {
+		// 在物理删除完成后（artifact 已不存在），stat 若抛出 SessionFormatError，不应阻碍删除
+		if (id === s1) {
+			throw new Error("SessionFormatError: format v4 tool/result at seq 1313 requires toolCallId matching its tool source");
+		}
+		return typeof originalStat === "function" ? originalStat(id) : undefined;
+	};
+
+	let errorCaught;
+	try {
+		const res = await registry.deleteSession(s1);
+		assert.deepEqual(res, { deleted: true });
+	} catch (e) {
+		errorCaught = e;
+	}
+	assert.equal(errorCaught, undefined);
+	assert.equal(existsSync(directory), false, "损坏会话的转录目录仍必须被删除");
+	assert.deepEqual(env.global.archivedSessionIds, [], "归档标记必须被清除");
+});
+
+test("pruneUnknownArchivedSessionIds removes ghost entries even if headers cache still contains the id", async () => {
+	const env = buildRoot({
+		headers: [header(s1, cwdA, { createdAt: 100 }), header(s2, cwdA, { createdAt: 200 })],
+		workspaces: { [A]: workspace("D:\\proj-a", [s1, s2]) },
+		archived: [s1, s2],
+	});
+	const registry = await mountWorkspaceRegistry(env);
+	// 磁盘上 s2 文件被手工移除，persistence.stat 返回 undefined
+	env.persistence.stat = async (id) => {
+		if (id === s2) return undefined;
+		const path = env.located.get(id);
+		return path === void 0 ? undefined : { path };
+	};
+	// persistence.list 也已经没有 s2 了
+	env.persistence.headers = env.persistence.headers.filter((item) => item.id !== s2);
+	// 但是宿主内存里的 registry.headers 仍保留 s2（模拟宿主 headers 内存只增不减）
+	assert.equal(registry.headers.has(s2), true);
+
+	// 执行剪枝
+	const pruned = await registry.pruneUnknownArchivedSessionIds();
+	assert.deepEqual(pruned, [s1], "已不存在于磁盘的幽灵会话必须被剪掉");
+	assert.deepEqual(env.global.archivedSessionIds, [s1], "持久化归档标记必须已清除幽灵会话");
+});
+
 test("新版快照列表中的冷子会话仍被级联删除，fork 保留", async () => {
 	const env = buildRoot({
 		headers: [

@@ -206,7 +206,7 @@ export function classifySessionError(error: unknown) {
     ['legacy-source', /unclassified message source/],
     ['missing', /ENOENT|不存在|not found/i],
     ['permission', /EACCES|EPERM|permission/i],
-    ['corrupt', /corrupt|JSON|incomplete|truncat|损坏/i]
+    ['corrupt', /corrupt|JSON|incomplete|truncat|损坏|SessionFormatError/i]
   ];
   const rawCode = errorCode(error);
   const explicit = typeof rawCode === "string" ? codes[rawCode] ?? rawCode : "";
