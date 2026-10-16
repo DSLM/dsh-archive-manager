@@ -9,7 +9,7 @@ interface OrganizerPanelProps {
 export function createOrganizerPanel(React: typeof import("react")) {
   const h = React.createElement;
   function textButton(label: string, props: { disabled?: boolean; onClick(): void }) {
-    return h(Button, { shape: "round", ...props }, label);
+    return h(Button, { ...props }, label);
   }
   function FailureDetails({ title, failures, separator }: { title: string; failures: { sessionId: string; message: string }[]; separator: string }) {
     const [open, setOpen] = React.useState(false);

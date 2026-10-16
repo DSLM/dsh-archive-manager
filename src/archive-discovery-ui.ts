@@ -106,7 +106,7 @@ export function createDiscoveryTools(React: typeof import("react")) {
     return h(Disclosure, { title, open, onToggle: () => setOpen(value => !value) }, list);
   }
   function textButton(label: string, props: { disabled?: boolean; onClick(): void }) {
-    return h(Button, { shape: "round", ...props }, label);
+    return h(Button, { ...props }, label);
   }
   function DiscoveryFilters({ t, from, to, onFrom, onTo, invalid, onClear }: { t: Translate; from: string; to: string; onFrom(value: string): void; onTo(value: string): void; invalid: boolean; onClear(): void }) {
     dayjs.locale(typeof document !== "undefined" && document.documentElement.lang.toLowerCase().startsWith("en") ? "en" : "zh-cn");
