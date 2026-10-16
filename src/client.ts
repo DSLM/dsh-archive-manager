@@ -3448,7 +3448,7 @@ export function startArchiveClient(require: HostRequire) {
 			".dsham_settingsSort{display:flex;align-items:center;gap:8px;margin-left:auto;flex:none}",
 			".dsham_settingsSortLabel{color:var(--dsw-alias-label-tertiary);font-size:13px;line-height:20px;white-space:nowrap}",
 			".dsham_selectWrap{display:inline-flex;position:relative}",
-			".dsham_menuSelectBtn{display:inline-flex;align-items:center;justify-content:space-between;gap:6px;width:100%;height:32px;padding:0 10px;box-sizing:border-box;font:inherit}",
+			".dsham_menuSelectBtn{display:inline-flex;align-items:center;justify-content:space-between;gap:6px;width:100%;height:32px;padding:0 10px;border:0.5px solid var(--dsw-alias-border-l2);border-radius:var(--dsw-radius-sm,8px);background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary);box-sizing:border-box;font:inherit}",
 			".dsham_selectLabel{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:160px;font-size:13px;font-weight:normal}",
 			".dsham_settingsSearch .dsham_selectWrap{flex:none;width:128px}",
 			".dsham_settingsFilters>.dsham_selectWrap{flex:1 1 112px;width:auto;min-width:96px;max-width:148px}",
@@ -3597,6 +3597,16 @@ export function startArchiveClient(require: HostRequire) {
 		function ArchiveSelectionCheckbox({ checked, indeterminate = false, disabled = false, label, onChange }: { checked: boolean; indeterminate?: boolean; disabled?: boolean; label: string; onChange: (event: { target: { checked: boolean } }) => void }) {
 			return (0, react_jsx_runtime.jsx)(AntdCheckbox, { checked, indeterminate, disabled, "aria-label": label, onChange });
 		}
+		function moreIcon() {
+			return (0, react_jsx_runtime.jsx)("svg", {
+				viewBox: "0 0 16 16",
+				width: 16,
+				height: 16,
+				"aria-hidden": true,
+				focusable: "false",
+				children: [3.5, 8, 12.5].map((cx) => (0, react_jsx_runtime.jsx)("circle", { cx, cy: 8, r: 1.15, fill: "none", stroke: "currentColor", strokeWidth: 1.5 }, cx))
+			});
+		}
 		/** 会话行上的更多操作，弹出层用 Ant Design 菜单。 */
 		function ArchivedSessionMenu({ busy, title, t, onPreview, onRestoreOpen, onDelete, onCopyId, onCopyPath }: { busy: boolean; title: string; t: Translate; onPreview?: () => void; onRestoreOpen?: () => void; onDelete?: () => void; onCopyId?: () => void; onCopyPath?: () => void }) {
 			const [open, setOpen] = (0, react.useState)(false);
@@ -3611,7 +3621,7 @@ export function startArchiveClient(require: HostRequire) {
 			return (0, react_jsx_runtime.jsx)(AntdDropdown, {
 				trigger: ["click"], placement: "bottomRight", open: busy ? false : open, onOpenChange: (next: boolean) => { if (!busy) setOpen(next); },
 				menu: { items: items.map((item) => ({ key: item.id, label: item.label, danger: item.danger, disabled: busy, onClick: () => choose(item.id) })) },
-				children: settingsButton({ variant: "ghost", disabled: busy, title: t("archives.moreActions"), "aria-label": t("archives.moreActions") + t("common.separator") + title, "aria-haspopup": "menu", "aria-expanded": open && !busy, icon: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconEllipsisOutline16, {}) })
+				children: settingsButton({ variant: "ghost", disabled: busy, title: t("archives.moreActions"), "aria-label": t("archives.moreActions") + t("common.separator") + title, "aria-haspopup": "menu", "aria-expanded": open && !busy, icon: moreIcon() })
 			});
 		}
 		/** 项目标题右侧的批量菜单，向左展开，归档项保持危险色。 */
@@ -3644,7 +3654,7 @@ export function startArchiveClient(require: HostRequire) {
 				menu: { items: items.map((item) => ({ key: item.id, label: item.label, danger: item.danger, disabled: busy, onClick: () => choose(item.id) })) },
 				children: settingsButton({
 					variant: "ghost", disabled: busy, "aria-label": menuLabel, "aria-haspopup": "menu", "aria-expanded": open && !busy,
-					icon: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconEllipsisOutline16, {})
+					icon: moreIcon()
 				})
 			});
 		}
