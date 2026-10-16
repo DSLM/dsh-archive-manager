@@ -51,8 +51,22 @@ export function startArchiveClient(require: HostRequire) {
 			] });
 		}
 		function settingsButton({ variant = "outline", icon, children, danger = false, className, disabled, title, onClick, "aria-label": ariaLabel, "aria-pressed": ariaPressed, "aria-expanded": ariaExpanded, "aria-haspopup": ariaHaspopup }: { variant?: "primary" | "ghost" | "outline" | "toolbar"; icon?: import("react").ReactNode; danger?: boolean; className?: string; disabled?: boolean; title?: string; onClick?: () => void; "aria-label"?: string; "aria-pressed"?: boolean; "aria-expanded"?: boolean; "aria-haspopup"?: import("react").AriaAttributes["aria-haspopup"]; children?: import("react").ReactNode }) {
-			const type = variant === "primary" ? "primary" : variant === "ghost" || variant === "toolbar" ? "text" : "default";
-			return (0, react_jsx_runtime.jsx)(AntdButton, { type, danger, shape: "default", icon, className, disabled, title, onClick, "aria-label": ariaLabel, "aria-pressed": ariaPressed, "aria-expanded": ariaExpanded, "aria-haspopup": ariaHaspopup, children });
+			const mappedVariant = variant === "primary" ? "primary" : variant === "ghost" || variant === "toolbar" ? "ghost" : "outline";
+			return (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Button, {
+				...danger ? { danger: true } : {},
+				variant: mappedVariant,
+				size: "sm",
+				className: clsx(className, danger && "is-danger"),
+				disabled,
+				title,
+				onClick,
+				"aria-label": ariaLabel,
+				"aria-pressed": ariaPressed,
+				"aria-expanded": ariaExpanded,
+				"aria-haspopup": ariaHaspopup,
+				icon,
+				children
+			});
 		}
 		function tabsShell(locked: boolean, children: import("react").ReactNode) {
 			const props: { className?: string; inert?: ""; children: import("react").ReactNode } = { className: locked ? "dsham_archiveTabsLocked" : undefined, children };
