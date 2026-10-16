@@ -224,7 +224,7 @@ export function classifySessionError(error: unknown) {
     };
   }
   const namedCorrupt = name === "SessionFormatError" || name === "SessionPersistenceCorruptionError" ? "corrupt" : undefined;
-  const code = Object.hasOwn(descriptions, explicit) ? explicit : namedCorrupt ?? patterns.find(([, pattern]) => pattern.test(message))?.[0] ?? "unknown";
+  const code = namedCorrupt ?? patterns.find(([, pattern]) => pattern.test(message))?.[0] ?? "unknown";
   const [reason, advice] = descriptions[code];
   return { code, reason, advice };
 }
