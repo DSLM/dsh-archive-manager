@@ -1,15 +1,16 @@
 import type { Translate, BatchProgress, BatchResult, OrganizeKind } from "./contracts.js";
-import { Button, Disclosure, InputNumber } from "./antd-ui.js";
+import { Disclosure, NumberField } from "./plugin-ui.js";
 interface OrganizerPanelProps {
  t: Translate; archived: boolean; busy: boolean; ready: boolean; days: string | number; onDays(value: string): void;
  count: number; onPreview(): void; progress?: BatchProgress | null; result?: (BatchResult & { kind?: OrganizeKind }) | null;
  onRetry(): void; undoCount: number; onUndo(): void; onReload(): void;
 }
 /** 整理控件沿用归档页按钮与颜色，避免复制完整设置页。 */
-export function createOrganizerPanel(React: typeof import("react")) {
+export function createOrganizerPanel(React: typeof import("react"), Button?: import("react").ComponentType<Record<string, unknown>>) {
   const h = React.createElement;
   function textButton(label: string, props: { disabled?: boolean; onClick(): void }) {
-    return h(Button, { ...props }, label);
+    const Control = Button ?? ((buttonProps: { disabled?: boolean; onClick?: () => void; children?: import("react").ReactNode }) => h("button", { type: "button", disabled: buttonProps.disabled, onClick: buttonProps.onClick }, buttonProps.children));
+    return h(Control, { variant: "outline", size: "sm", ...props }, label);
   }
   function FailureDetails({ title, failures, separator }: { title: string; failures: { sessionId: string; message: string }[]; separator: string }) {
     const [open, setOpen] = React.useState(false);
@@ -18,11 +19,11 @@ export function createOrganizerPanel(React: typeof import("react")) {
   }
   return function OrganizerPanel({ t, archived, busy, ready, days, onDays, count, onPreview, progress, result, onRetry, undoCount, onUndo, onReload }: OrganizerPanelProps) {
     return h(React.Fragment, null,
-      h("style", null, ".dsham_organizer,.dsham_batchFeedback{display:grid;gap:12px;margin:0 0 16px;padding:14px 16px;border:0.5px solid var(--dsw-alias-border-l2);border-radius:12px;background:var(--dsw-alias-bg-layer-2)}.dsham_organizerControls{display:flex;align-items:center;flex-wrap:wrap;gap:10px}.dsham_organizerControls .ant-btn{height:32px;border-radius:var(--dsw-radius-sm,8px)}.dsham_organizer label{display:inline-flex;align-items:center;gap:8px;font-size:13px;color:var(--dsw-alias-label-primary)}.dsham_organizer p,.dsham_batchFeedback p{margin:0;font-size:12px;color:var(--dsw-alias-label-secondary)}.dsham_batchFeedback progress{width:100%}.dsham_batchFeedback details{font-size:12px;overflow-wrap:anywhere}.dsham_archivePreview{max-height:260px;overflow:auto;display:grid;gap:8px;padding:8px 0}.dsham_archivePreview label{display:flex;gap:8px;align-items:center;overflow-wrap:anywhere}"),
+      h("style", null, ".dsham_organizer,.dsham_batchFeedback{display:grid;gap:12px;margin:0 0 16px;padding:14px 16px;border:0.5px solid var(--dsw-alias-border-l2);border-radius:12px;background:var(--dsw-alias-bg-layer-2)}.dsham_organizerControls{display:flex;align-items:center;flex-wrap:wrap;gap:10px}.dsham_organizer label{display:inline-flex;align-items:center;gap:8px;font-size:13px;color:var(--dsw-alias-label-primary)}.dsham_number{width:88px;height:32px;padding:0 10px;border:0.5px solid var(--dsw-alias-border-l2);border-radius:var(--dsw-radius-sm,8px);background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary);font:inherit;font-size:13px}.dsham_number:hover{border-color:var(--dsw-alias-border-l3)}.dsham_number:focus{outline:none;border-color:var(--dsw-alias-state-business-primary)}.dsham_disclosure{display:inline-flex;align-items:center;gap:6px;padding:0;border:0;background:transparent;color:var(--dsw-alias-label-secondary);font:inherit;font-size:12px;cursor:pointer}.dsham_foldChevron{transition:transform 150ms ease}.dsham_foldChevron.is-open{transform:rotate(180deg)}.dsham_organizer p,.dsham_batchFeedback p{margin:0;font-size:12px;color:var(--dsw-alias-label-secondary)}.dsham_batchFeedback progress{width:100%}.dsham_batchFeedback details{font-size:12px;overflow-wrap:anywhere}.dsham_archivePreview{max-height:260px;overflow:auto;display:grid;gap:8px;padding:8px 0}.dsham_archivePreview label{display:flex;gap:8px;align-items:center;overflow-wrap:anywhere}"),
       (!archived || !ready) && h("div", { className: "dsham_organizer" }, h("div", { className: "dsham_organizerControls" },
         !ready && textButton(t("organizer.reloadFavorites"), { disabled: busy, onClick: onReload }),
         !archived && h(React.Fragment, null,
-          h("label", null, t("organizer.idleDays"), h(InputNumber, { min: 1, max: 36500, value: days === "" ? null : Number(days), disabled: busy, "aria-label": t("organizer.idleDays"), onChange: value => onDays(value == null ? "" : String(value)) })),
+          h("label", null, t("organizer.idleDays"), h(NumberField, { min: 1, max: 36500, value: days === "" ? null : Number(days), disabled: busy, "aria-label": t("organizer.idleDays"), onChange: value => onDays(value == null ? "" : String(value)) })),
           textButton(t("organizer.preview", { n: count }), { disabled: busy || !ready || count === 0, onClick: onPreview }))),
       !archived && h("p", null, t("organizer.rules"))),
       (progress || result || undoCount > 0) && h("section", { className: "dsham_batchFeedback", "aria-label": t("organizer.feedback") },

@@ -116,7 +116,8 @@ test("归档设置页下拉菜单不强制宿主主题", async () => {
   const client = await readFile(clientPath, "utf8");
 
   assert.doesNotMatch(client, /\.dsham_settingsFilter\{color-scheme:/);
-  assert.match(client, /AntdProvider/);
+  assert.doesNotMatch(client, /AntdProvider/);
+  assert.match(client, /SegmentedTabs/);
 });
 
 test("单条删除与批量删除分别调用宿主单会话和作用域接口", async () => {

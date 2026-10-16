@@ -1,8 +1,6 @@
 import { errorMessage } from "./contracts.js";
 import type { Translate, SearchInput, SearchHit, Failure, SessionDetail, SessionSummary } from "./contracts.js";
-import dayjs from "dayjs";
-import "dayjs/locale/zh-cn";
-import { Button, Disclosure, RangePicker, Segmented } from "./antd-ui.js";
+import { DateRange, Disclosure } from "./plugin-ui.js";
 interface SearchState { key?: string; status: string; items: SearchHit[]; failures: Failure[]; done?: number; total?: number; error?: string }
 type PreviewValue = ReturnType<typeof import("./archive-discovery.js").previewResultSchema.parse>;
 interface PreviewTarget { session: SessionSummary; query: string }
@@ -10,8 +8,11 @@ interface PreviewState { key?: PreviewTarget | null; status: string; value?: Pre
 interface MarkdownProps { text: string; streaming: boolean; labels: { code: { copyLabel: string; copiedLabel: string }; footnotes: string } }
 import { searchArchiveBatches, detailsResultSchema, findTextRange } from "./archive-discovery.js";
 
+type HostButton = import("react").ComponentType<Record<string, unknown>>;
+type HostSegmented = (props: { id: string; label: string; value: string; options: readonly { value: string; label: string }[]; onChange(value: string): void }) => import("react").ReactNode;
+
 /** 搜索异步状态和预览展示独立于页面业务操作，防止旧请求覆盖新筛选。 */
-export function createDiscoveryTools(React: typeof import("react")) {
+export function createDiscoveryTools(React: typeof import("react"), host: { Button?: HostButton; SegmentedControl?: HostSegmented } = {}) {
   const h = React.createElement;
   function HighlightedText({ text, query = "" }: { text: string; query?: string }) {
     const match = findTextRange(text, query);
@@ -106,23 +107,12 @@ export function createDiscoveryTools(React: typeof import("react")) {
     return h(Disclosure, { title, open, onToggle: () => setOpen(value => !value) }, list);
   }
   function textButton(label: string, props: { disabled?: boolean; onClick(): void }) {
-    return h(Button, { ...props }, label);
+    const Button = host.Button ?? ((buttonProps: { disabled?: boolean; onClick?: () => void; children?: import("react").ReactNode }) => h("button", { type: "button", disabled: buttonProps.disabled, onClick: buttonProps.onClick }, buttonProps.children));
+    return h(Button, { variant: "outline", size: "sm", ...props }, label);
   }
   function DiscoveryFilters({ t, from, to, onFrom, onTo, invalid, onClear }: { t: Translate; from: string; to: string; onFrom(value: string): void; onTo(value: string): void; invalid: boolean; onClear(): void }) {
-    dayjs.locale(typeof document !== "undefined" && document.documentElement.lang.toLowerCase().startsWith("en") ? "en" : "zh-cn");
-    const start = from === "" ? null : dayjs(from);
-    const end = to === "" ? null : dayjs(to);
     return h("div", { className: "dsham_dateFilter" },
-      h(RangePicker, {
-        allowClear: true, format: "YYYY-MM-DD", inputReadOnly: true, status: invalid ? "error" : "",
-        "aria-label": t("discovery.date"), placeholder: [t("discovery.from"), t("discovery.to")],
-        value: [start, end],
-        onChange: (dates: [dayjs.Dayjs | null, dayjs.Dayjs | null] | null) => {
-          if (dates == null || (dates[0] == null && dates[1] == null)) { onClear(); return; }
-          onFrom(dates[0] == null ? "" : dates[0].format("YYYY-MM-DD"));
-          onTo(dates[1] == null ? "" : dates[1].format("YYYY-MM-DD"));
-        }
-      }),
+      h(DateRange, { from, to, invalid, label: t("discovery.date"), fromLabel: t("discovery.from"), toLabel: t("discovery.to"), onFrom, onTo, onClear }),
       invalid ? h("p", { role: "alert" }, t("discovery.invalidDate")) : null);
   }
   function SearchStatus({ state, t }: { state: SearchState & { retry(): void }; t: Translate }) {
@@ -142,10 +132,10 @@ export function createDiscoveryTools(React: typeof import("react")) {
     return h("div", { className: "dsham_previewMessages" },
       h("div", { className: "dsham_previewToolbar" },
         h("span", { title: t("discovery.previewHint") }, t("discovery.readOnly"), " · ", t("discovery.messageCount", { n: value.messages.length })),
-        MarkdownText && h(Segmented, {
-          "aria-label": t("discovery.displayMode"), value: raw ? "raw" : "formatted",
+        MarkdownText && h(host.SegmentedControl ?? "div", {
+          id: "dsham-preview-mode", label: t("discovery.displayMode"), value: raw ? "raw" : "formatted",
           options: [{ value: "formatted", label: t("discovery.formatted") }, { value: "raw", label: t("discovery.raw") }],
-          onChange: value => setRaw(value === "raw")
+          onChange: (value: string) => setRaw(value === "raw")
         })),
       value.hasEarlier && h("p", null, t("discovery.earlier")),
       !value.messages.length && h("p", null, t("discovery.empty")),
@@ -155,7 +145,7 @@ export function createDiscoveryTools(React: typeof import("react")) {
   return { HighlightedText, useSessionDetails, useArchiveSearch, useArchivePreview, DiscoveryFilters, SearchStatus, PreviewContent };
 }
 
-export const discoveryCss = ".dsham_dateFilter{flex:1 1 140px;width:auto;min-width:0;max-width:none;display:flex;flex-direction:column;overflow:hidden}.dsham_dateFilter .ant-picker{width:100%;min-width:0;height:32px!important;border:0.5px solid var(--dsw-alias-border-l2)!important;border-radius:var(--dsw-radius-sm,8px)!important;background:var(--dsw-alias-bg-layer-1)!important}.dsham_dateFilter .ant-picker:hover{border-color:var(--dsw-alias-border-l3)!important}.dsham_dateFilter .ant-picker-focused{border-color:var(--dsw-alias-state-business-primary)!important;box-shadow:none!important}.dsham_dateFilter p{margin:4px 0 0;font-size:12px}.dsham_discoveryStatus{font-size:12px;margin-bottom:12px;overflow-wrap:anywhere}.dsham_settingsSnippet{display:block;width:100%;padding:0;margin:4px 0 0;border:0;background:transparent;color:var(--dsw-alias-label-secondary);font:inherit;font-size:12px;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}.dsham_previewMessages{max-height:65vh;overflow:auto;overflow-wrap:anywhere;padding-right:8px}.dsham_previewToolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px;color:var(--dsw-alias-label-secondary);font-size:12px}.dsham_previewRole{display:flex;align-items:center;gap:8px;margin-bottom:12px;font-size:13px}.dsham_previewRole>span{display:grid;place-items:center;width:28px;height:28px;border-radius:8px;background:var(--dsw-alias-bg-layer-3);font-size:11px}.dsham_previewRole[data-role=user]>span{color:var(--dsw-alias-state-business-primary)}.dsham_previewRaw{white-space:pre-wrap;font:13px/1.8 ui-monospace,monospace;overflow-wrap:anywhere}.dsham_previewMessage pre:not(.dsham_previewRaw){white-space:pre;overflow-x:auto;max-width:100%}.dsham_previewMessage table{display:block;max-width:100%;overflow-x:auto}.dsham_previewMessage img{max-width:100%}@media(max-width:520px){.dsham_previewToolbar{align-items:flex-start;flex-wrap:wrap}}.dsham_previewMessage{padding:18px 0;border-bottom:1px solid var(--dsw-alias-border-l2)}.dsham_previewMessage p{font-size:14px;line-height:1.8}.dsham_previewHint,.dsham_previewMessage small{color:var(--dsw-alias-label-secondary);font-size:12px}.dsham_settings mark,.dsham_previewMessages mark{background:var(--dsw-alias-state-warn-tertiary);color:inherit;border-radius:2px}.dsham_settingsSnippet:focus-visible{outline:2px solid var(--dsw-alias-state-business-primary);outline-offset:2px}";
+export const discoveryCss = ".dsham_dateFilter{flex:1 1 220px;width:auto;min-width:0;max-width:none;display:flex;flex-direction:column;overflow:hidden}.dsham_dateRange{display:flex;align-items:center;gap:8px;min-width:0}.dsham_date{flex:1;min-width:0;height:32px;padding:0 8px;border:0.5px solid var(--dsw-alias-border-l2);border-radius:var(--dsw-radius-sm,8px);background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary);font:inherit;font-size:13px}.dsham_date:hover{border-color:var(--dsw-alias-border-l3)}.dsham_date:focus{outline:none;border-color:var(--dsw-alias-state-business-primary)}.dsham_dateFilter p{margin:4px 0 0;font-size:12px}.dsham_discoveryStatus{font-size:12px;margin-bottom:12px;overflow-wrap:anywhere}.dsham_settingsSnippet{display:block;width:100%;padding:0;margin:4px 0 0;border:0;background:transparent;color:var(--dsw-alias-label-secondary);font:inherit;font-size:12px;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}.dsham_previewMessages{max-height:65vh;overflow:auto;overflow-wrap:anywhere;padding-right:8px}.dsham_previewToolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px;color:var(--dsw-alias-label-secondary);font-size:12px}.dsham_previewRole{display:flex;align-items:center;gap:8px;margin-bottom:12px;font-size:13px}.dsham_previewRole>span{display:grid;place-items:center;width:28px;height:28px;border-radius:8px;background:var(--dsw-alias-bg-layer-3);font-size:11px}.dsham_previewRole[data-role=user]>span{color:var(--dsw-alias-state-business-primary)}.dsham_previewRaw{white-space:pre-wrap;font:13px/1.8 ui-monospace,monospace;overflow-wrap:anywhere}.dsham_previewMessage pre:not(.dsham_previewRaw){white-space:pre;overflow-x:auto;max-width:100%}.dsham_previewMessage table{display:block;max-width:100%;overflow-x:auto}.dsham_previewMessage img{max-width:100%}@media(max-width:520px){.dsham_previewToolbar{align-items:flex-start;flex-wrap:wrap}}.dsham_previewMessage{padding:18px 0;border-bottom:1px solid var(--dsw-alias-border-l2)}.dsham_previewMessage p{font-size:14px;line-height:1.8}.dsham_previewHint,.dsham_previewMessage small{color:var(--dsw-alias-label-secondary);font-size:12px}.dsham_settings mark,.dsham_previewMessages mark{background:var(--dsw-alias-state-warn-tertiary);color:inherit;border-radius:2px}.dsham_settingsSnippet:focus-visible{outline:2px solid var(--dsw-alias-state-business-primary);outline-offset:2px}";
 export const discoveryZh = {
   "common.separator": "：", "details.notReturned": "宿主未返回会话详情",
   "copy.empty": "没有可复制的内容", "copy.unavailable": "当前环境不支持剪贴板，请在 HTTPS 或本机地址中打开页面", "copy.denied": "复制失败，请允许浏览器访问剪贴板后重试", "discovery.you": "你", "discovery.ai": "AI",
