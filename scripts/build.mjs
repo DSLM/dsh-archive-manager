@@ -65,6 +65,7 @@ try {
 		format: "cjs",
 		platform: "browser",
 		target: "es2022",
+		external: ["@deepseek-ai/dsh-client-ui-primitives"],
 		write: false,
 		minify: true,
 		keepNames: true,
