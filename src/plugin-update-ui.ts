@@ -106,6 +106,13 @@ function UpdateDialog(props: { flow: ReturnType<typeof createUpdateFlow>; packag
 function observePluginUpdate(options: UpdateUiOptions) {
 	if (typeof document === "undefined" || document.body === null) return () => {};
 	ensureStyle();
+	const ARCHIVE_MODAL_FIX = ".ant-modal-footer{display:flex!important;align-items:center!important;justify-content:flex-end!important;gap:8px!important}.ant-modal-footer::before,.ant-modal-footer::after{display:none!important}";
+	if (typeof document !== "undefined" && document.querySelector("style[data-mpi-footer-fix]") === null) {
+		const s = document.createElement("style");
+		s.setAttribute("data-mpi-footer-fix", "");
+		s.textContent = ARCHIVE_MODAL_FIX;
+		document.head.append(s);
+	}
 	const controller = new AbortController();
 	let payload: UpdatePayload | undefined;
 	let buttonHost: HTMLElement | undefined;
