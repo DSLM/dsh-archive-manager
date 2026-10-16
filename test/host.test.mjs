@@ -910,6 +910,41 @@ for (const filename of [
 	});
 }
 
+test("deleteSession removes the directory when header read throws the synthetic tool result error", async () => {
+	const env = buildRoot({ headers: [header(s1)], archived: [s1] });
+	const directory = installJsonlLayout(env, s1);
+	const registry = await mountWorkspaceRegistry(env);
+	registry.readSessionHeader = async () => {
+		throw new Error("SessionFormatError: format v4 tool/result at seq 1313 requires toolCallId matching its tool source");
+	};
+
+	assert.deepEqual(await registry.deleteSession(s1), { deleted: true });
+	assert.equal(existsSync(directory), false, "已缓存头部必须足够定位并删除");
+	assert.deepEqual(env.global.archivedSessionIds, []);
+});
+
+test("deleteSession reports transcript corruption without telling the user to delete again", async () => {
+	const env = buildRoot({ headers: [header(s1)], archived: [s1] });
+	const directory = installJsonlLayout(env, s1);
+	const registry = await mountWorkspaceRegistry(env);
+	registry.headers.delete(s1);
+	registry.sessionKnown = async () => true;
+	registry.readSessionHeader = async () => {
+		throw new Error("SessionFormatError: format v4 tool/result at seq 1313 requires toolCallId matching its tool source");
+	};
+
+	await assert.rejects(() => registry.deleteSession(s1), /删除未完成/);
+	await assert.rejects(() => registry.deleteSession(s1), (error) => {
+		assert.doesNotMatch(error.message, /可以永久删除/);
+		return true;
+	});
+	const batch = await registry.deleteArchivedSessions({ scope: "sessions", sessionIds: [s1] });
+	assert.match(batch.failures[0].message, /删除未完成/);
+	assert.doesNotMatch(batch.failures[0].message, /可以永久删除/);
+	assert.equal(existsSync(directory), true, "没有头部时不能猜路径删除");
+	assert.deepEqual(env.global.archivedSessionIds, [s1]);
+});
+
 test("deleteSession still removes a present directory when stat cannot certify a corrupt body", async () => {
 	const env = buildRoot({ headers: [header(s1)], archived: [s1] });
 	const directory = installJsonlLayout(env, s1);
@@ -937,7 +972,10 @@ test("deleteSession keeps bookkeeping when post-removal stat throws and the targ
 		throw new Error("SessionFormatError: format v4 tool/result at seq 1313 requires toolCallId matching its tool source");
 	};
 
-	await assert.rejects(() => registry.deleteSession(s1), /still present|cannot verify|cannot delete/);
+	await assert.rejects(() => registry.deleteSession(s1), /cannot verify|cannot delete/);
+	const batch = await registry.deleteArchivedSessions({ scope: "sessions", sessionIds: [s1] });
+	assert.equal(batch.failures.length, 1);
+	assert.doesNotMatch(batch.failures[0].message, /可以永久删除/);
 	assert.equal(existsSync(directory), true, "定位错了不能把真实目录记成已删除");
 	assert.deepEqual(env.global.archivedSessionIds, [s1], "无法确认删除时必须保留归档标记");
 });
@@ -967,6 +1005,8 @@ test("pruneUnknownArchivedSessionIds removes ghost entries even if headers cache
 	assert.equal(registry.headers.has(s2), false, "剪枝必须清掉宿主内存索引");
 	await registry.indexHeaders([header(s2, cwdA, { createdAt: 200 })]);
 	assert.equal(registry.headers.has(s2), false, "墓碑必须挡住 stale list() 把幽灵加回");
+	env.persistence.headers.push(header(s2, cwdA, { createdAt: 999 }));
+	assert.equal(await registry.sessionKnown(s2), true, "同 id 的新生命周期必须能冷复用");
 });
 
 test("新版快照列表中的冷子会话仍被级联删除，fork 保留", async () => {

@@ -110,9 +110,22 @@ async function pathExists(path: string) {
 	}
 }
 
+function isTranscriptFormatError(error: unknown) {
+	const message = errorMessage(error);
+	const name = error !== null && typeof error === "object" && "name" in error
+		? String((error as { name?: unknown }).name ?? "")
+		: "";
+	return name === "SessionFormatError"
+		|| name === "SessionPersistenceCorruptionError"
+		|| /SessionFormatError|SessionPersistenceCorruptionError|requires toolCallId matching its tool source|tool call id requires a nonempty string/i.test(message);
+}
+
 function deletionFailureMessage(error: unknown) {
 	const diagnostic = classifySessionError(error);
-	const detail = errorMessage(error).slice(0, 500);
+	const detail = errorMessage(error).slice(0, 400);
+	// 只有转录格式错误改写文案。路径里的 json 不能把普通删除失败判成损坏。
+	if (isTranscriptFormatError(error))
+		return `删除未完成，归档标记已保留。${diagnostic.reason}。（${detail}）`;
 	if (diagnostic.code === "unknown") return detail;
 	return `${diagnostic.reason}。${diagnostic.advice}（${detail}）`;
 }
@@ -738,7 +751,10 @@ var ArchiveWorkspaceRegistry = class extends (WorkspaceRegistry as unknown as Wo
 				// 宿主内存 this.headers 只增不减。stat 明确返回缺失时剪掉，并打墓碑，
 				// 避免随后的 stale list() 经 indexHeaders 把幽灵加回。
 				if (await this.sessionArtifactMissing(sessionId)) {
+					const header = this.headers.get(sessionId);
 					this.forgetIndexedSession(sessionId);
+					// 和正常删除一样记下头部身份，否则同 id 的新生命周期无法冷复用。
+					if (header !== void 0) this.deletedIdentities.set(sessionId, headerIdentity(header));
 					continue;
 				}
 				kept.push(sessionId);
@@ -1064,8 +1080,13 @@ var ArchiveWorkspaceRegistry = class extends (WorkspaceRegistry as unknown as Wo
 	 */
 	async deleteSession(sessionId: string) {
 		return this.enqueueOperation(async () => {
-			await this.deleteSessionCore(sessionId);
-			return { deleted: true };
+			try {
+				await this.deleteSessionCore(sessionId);
+				return { deleted: true };
+			} catch (error) {
+				if (!isTranscriptFormatError(error)) throw error;
+				throw new Error(deletionFailureMessage(error), { cause: error });
+			}
 		});
 	}
 	/** 串行化后的删除主体（级联路径复用：它已持有操作链，绝不能再入队）。 */
@@ -1239,7 +1260,9 @@ var ArchiveWorkspaceRegistry = class extends (WorkspaceRegistry as unknown as Wo
 				`cannot delete session "${sessionId}": the session persistence backend does not expose locate() to resolve its transcript artifact`,
 			);
 		}
-		const header = await this.readSessionHeader(sessionId);
+		// 列表里已有头部时不再读转录。宿主恢复校验抛出的合成 tool/result
+		// 发生在读取阶段，不能挡在 rm 之前。
+		const header = this.headers?.get(sessionId) ?? await this.readSessionHeader(sessionId);
 		const location = persistence.locate(header);
 		if (location === void 0 || typeof location.path !== "string") {
 			throw new Error(
