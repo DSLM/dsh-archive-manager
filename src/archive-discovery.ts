@@ -209,8 +209,18 @@ export function classifySessionError(error: unknown) {
     ['corrupt', /corrupt|JSON|incomplete|truncat|损坏|SessionFormatError/i]
   ];
   const rawCode = errorCode(error);
+  const name = error && typeof error === "object" && "name" in error ? String((error as { name?: unknown }).name ?? "") : "";
   const explicit = typeof rawCode === "string" ? codes[rawCode] ?? rawCode : "";
-  const code = Object.hasOwn(descriptions, explicit) ? explicit : patterns.find(([, pattern]) => pattern.test(message))?.[0] ?? 'unknown';
+  const emptyToolCall = /requires toolCallId matching its tool source|tool call id requires a nonempty string/i;
+  if (emptyToolCall.test(message)) {
+    return {
+      code: "corrupt",
+      reason: "日志尾部有未闭合的工具调用，且 toolCallId 为空",
+      advice: "可以永久删除该会话；不自动截断或改写日志。",
+    };
+  }
+  const namedCorrupt = name === "SessionFormatError" || name === "SessionPersistenceCorruptionError" ? "corrupt" : undefined;
+  const code = Object.hasOwn(descriptions, explicit) ? explicit : namedCorrupt ?? patterns.find(([, pattern]) => pattern.test(message))?.[0] ?? "unknown";
   const [reason, advice] = descriptions[code];
   return { code, reason, advice };
 }

@@ -910,31 +910,36 @@ for (const filename of [
 	});
 }
 
-test("deleteSession succeeds and cleans up when the transcript log is corrupt with SessionFormatError", async () => {
+test("deleteSession still removes a present directory when stat cannot certify a corrupt body", async () => {
 	const env = buildRoot({ headers: [header(s1)], archived: [s1] });
 	const directory = installJsonlLayout(env, s1);
 	const registry = await mountWorkspaceRegistry(env);
-
-	// 模拟损坏会话：当持久层 stat 校验时抛出 SessionFormatError
-	const originalStat = env.persistence.stat;
-	env.persistence.stat = async (id) => {
-		// 在物理删除完成后（artifact 已不存在），stat 若抛出 SessionFormatError，不应阻碍删除
-		if (id === s1) {
-			throw new Error("SessionFormatError: format v4 tool/result at seq 1313 requires toolCallId matching its tool source");
-		}
-		return typeof originalStat === "function" ? originalStat(id) : undefined;
+	const corrupt = new Error("SessionFormatError: format v4 tool/result at seq 1313 requires toolCallId matching its tool source");
+	env.persistence.stat = async () => {
+		throw corrupt;
+	};
+	env.persistence.prepare = async () => {
+		throw corrupt;
 	};
 
-	let errorCaught;
-	try {
-		const res = await registry.deleteSession(s1);
-		assert.deepEqual(res, { deleted: true });
-	} catch (e) {
-		errorCaught = e;
-	}
-	assert.equal(errorCaught, undefined);
-	assert.equal(existsSync(directory), false, "损坏会话的转录目录仍必须被删除");
-	assert.deepEqual(env.global.archivedSessionIds, [], "归档标记必须被清除");
+	assert.deepEqual(await registry.deleteSession(s1), { deleted: true });
+	assert.equal(existsSync(directory), false);
+	assert.deepEqual(env.global.archivedSessionIds, []);
+});
+
+test("deleteSession keeps bookkeeping when post-removal stat throws and the targeted path was never present", async () => {
+	const env = buildRoot({ headers: [header(s1)], archived: [s1] });
+	const directory = installJsonlLayout(env, s1);
+	const registry = await mountWorkspaceRegistry(env);
+	const missing = join(env.root, "not-the-session", "session.v4.jsonl");
+	env.persistence.locate = () => ({ kind: "jsonl", path: missing });
+	env.persistence.stat = async () => {
+		throw new Error("SessionFormatError: format v4 tool/result at seq 1313 requires toolCallId matching its tool source");
+	};
+
+	await assert.rejects(() => registry.deleteSession(s1), /still present|cannot verify|cannot delete/);
+	assert.equal(existsSync(directory), true, "定位错了不能把真实目录记成已删除");
+	assert.deepEqual(env.global.archivedSessionIds, [s1], "无法确认删除时必须保留归档标记");
 });
 
 test("pruneUnknownArchivedSessionIds removes ghost entries even if headers cache still contains the id", async () => {
@@ -959,6 +964,9 @@ test("pruneUnknownArchivedSessionIds removes ghost entries even if headers cache
 	const pruned = await registry.pruneUnknownArchivedSessionIds();
 	assert.deepEqual(pruned, [s1], "已不存在于磁盘的幽灵会话必须被剪掉");
 	assert.deepEqual(env.global.archivedSessionIds, [s1], "持久化归档标记必须已清除幽灵会话");
+	assert.equal(registry.headers.has(s2), false, "剪枝必须清掉宿主内存索引");
+	await registry.indexHeaders([header(s2, cwdA, { createdAt: 200 })]);
+	assert.equal(registry.headers.has(s2), false, "墓碑必须挡住 stale list() 把幽灵加回");
 });
 
 test("新版快照列表中的冷子会话仍被级联删除，fork 保留", async () => {
