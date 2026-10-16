@@ -71,6 +71,9 @@ const defaultAlgorithm = unwrap<MappingAlgorithm>(defaultAlgorithmImport);
  * 去算 hover/active，结果退化成近黑色。
  */
 export const hostAliasTokens = {
+	borderRadius: 8,
+	borderRadiusSM: 6,
+	borderRadiusLG: 12,
 	colorBgContainer: "var(--dsw-alias-bg-layer-3)",
 	// 下拉、日期和对话框走 colorBgElevated。暗色 layer-3 与输入框同为 #353638，
 	// 而 antd 暗色阴影几乎是透明白，浮层会贴在控件上。再亮一级才分得开。
@@ -155,6 +158,9 @@ export const hostAliasComponents = {
 		defaultHoverBg: "var(--dsw-alias-interactive-bg-hover)",
 		defaultHoverBorderColor: "var(--dsw-alias-border-l3)",
 		defaultHoverColor: "var(--dsw-alias-label-primary)",
+		borderRadius: 8,
+		borderRadiusSM: 6,
+		borderRadiusLG: 8,
 	},
 };
 
