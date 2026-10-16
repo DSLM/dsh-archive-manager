@@ -409,7 +409,15 @@ export function startArchiveClient(require: HostRequire) {
 				batchLock.current = true; setBusy(true); setError(null); setNotice(null); setBatchResult(null);
 				if (kind === "archive" && !retry) setLastArchive([]);
 				try {
-					const result = await organizeBatch(kind, ids, { idleDays: idle ? Number(idleDays) : undefined, getPending: () => pendingRef.current, onProgress: setBatchProgress });
+					const result = await organizeBatch(kind, ids, { idleDays: idle ? Number(idleDays) : undefined, getPending: () => pendingRef.current, onProgress: (progress) => {
+						setBatchProgress(progress);
+						// 列表刷新可能很慢。条目已经处理完就关掉确认框，不要把窗口留在 15/15。
+						if (kind === "archive" && progress.total > 0 && progress.done >= progress.total) {
+							setArchiveTarget(null);
+							setArchiveGroup(null);
+							setIdleRequest(false);
+						}
+					} });
 					setBatchResult({ ...result, kind, tab: archiveTab });
 					retryBatch.current = result.remaining.length ? { kind, ids: result.remaining, idle } : null;
 					if (kind === "archive") setLastArchive((previous) => [...new Set([...previous, ...result.succeeded])]);

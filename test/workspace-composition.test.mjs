@@ -506,6 +506,48 @@ test("归档 TAB 默认与切换、多项目选择、确认提交和状态刷新
 
 });
 
+test("归档处理完成后不等列表刷新就关闭确认框", async () => {
+	const values = []; let cursor = 0;
+	const hooks = { ...statics.react,
+		useSyncExternalStore: (_subscribe, snapshot) => snapshot(),
+		useState: initial => { const i = cursor++; if (!(i in values)) values[i] = typeof initial === "function" ? initial() : initial; return [values[i], value => { values[i] = typeof value === "function" ? value(values[i]) : value; }]; },
+		useRef: initial => { const i = cursor++; return values[i] ??= { current: initial }; },
+		useMemo: fn => fn(), useEffect: () => {}
+	};
+	const client = factories.get("@michengai/dsh-archive-manager")(name => name === "react" ? hooks : statics[name]);
+	let releaseRefresh;
+	const props = {
+		sessionStore: source({ byId: { one: { id: "one", title: "one", updatedAt: 1 } } }),
+		workspaceStore: source({ items: [{ workspaceId: "a", title: "项目 A", sessionIds: ["one"] }], archivedSessionIds: [] }),
+		archivedSessionMetadata: async () => ({ items: [] }),
+		organizeBatch: async (_kind, _ids, options) => {
+			options.onProgress({ total: 1, done: 1, succeeded: 1, skipped: 0, failed: 0 });
+			await new Promise(resolve => { releaseRefresh = resolve; });
+			return { succeeded: ["one"], skipped: [], failures: [], remaining: [], unprocessed: [], refreshError: null };
+		},
+		t: key => key
+	};
+	const nodes = node => Array.isArray(node) ? node.flatMap(nodes) : node?.props ? [node, ...nodes(node.props.children)] : [];
+	let tree;
+	const render = () => { cursor = 0; tree = client.__test.ArchivedSessionsSection(props); };
+	render();
+	const tabs = () => nodes(tree).find(node => node.props?.["aria-label"] === "archives.title" && typeof node.props.onChange === "function");
+	tabs().props.onChange("unarchived");
+	render();
+	nodes(tree).find(node => node.props.label && node.props.onChange).props.onChange({ target: { checked: true } });
+	render();
+	nodes(tree).find(node => node.props.onArchive).props.onArchive();
+	render();
+	const dialog = () => nodes(tree).find(node => node.props.open === true && node.props.description === "archives.archiveSelectedDesc");
+	assert.ok(dialog(), "确认前应打开归档确认框");
+	const pending = nodes(dialog().props.footer).find(node => node.props.children === "archives.archiveSelected").props.onClick();
+	await Promise.resolve();
+	render();
+	assert.equal(dialog(), undefined, "处理完成后必须关闭确认框，不能等列表刷新");
+	releaseRefresh();
+	await pending;
+});
+
 test("整理页收藏、闲置预览、部分失败重试及撤回形成完整闭环", async () => {
   const values = []; let cursor = 0;
   const hooks = { ...statics.react,
