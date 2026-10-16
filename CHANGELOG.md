@@ -6,6 +6,13 @@ Published release notes are retained below; new versions are added without remov
 
 ## Unreleased
 
+## 1.0.20 - 2026-10-16
+
+- Permanently deleting an archived session no longer fails just because the host cannot read a damaged transcript. The session files and archive record are removed, and a leftover list entry disappears without restarting DSH.
+- If removal cannot be confirmed, the deletion stays incomplete and the archive mark is kept. It is not reported as deleted.
+- Delete errors stay in the host's own wording. English and Russian screens no longer mix in a Chinese diagnosis.
+- The archive confirmation window closes as soon as processing finishes, instead of staying open while the session list refreshes.
+
 ## 1.0.19 - 2026-10-15
 
 - Keep JSONL latest-host mounting compatible with both Cordis `apply` (alpha.3+) and the older default constructor export; restore archived-path protection without rebinding the original `sessionPath`/`candidateMatches` references.
