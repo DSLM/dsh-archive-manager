@@ -110,24 +110,16 @@ async function pathExists(path: string) {
 	}
 }
 
-function isTranscriptFormatError(error: unknown) {
-	const message = errorMessage(error);
-	const name = error !== null && typeof error === "object" && "name" in error
-		? String((error as { name?: unknown }).name ?? "")
-		: "";
-	return name === "SessionFormatError"
-		|| name === "SessionPersistenceCorruptionError"
-		|| /SessionFormatError|SessionPersistenceCorruptionError|requires toolCallId matching its tool source|tool call id requires a nonempty string/i.test(message);
+class PersistenceStillPresentError extends Error {
+	constructor(sessionId: string) {
+		super(`session "${sessionId}" is still present in persistence after artifact removal`);
+		this.name = "PersistenceStillPresentError";
+	}
 }
 
 function deletionFailureMessage(error: unknown) {
-	const diagnostic = classifySessionError(error);
-	const detail = errorMessage(error).slice(0, 400);
-	// 只有转录格式错误改写文案。路径里的 json 不能把普通删除失败判成损坏。
-	if (isTranscriptFormatError(error))
-		return `删除未完成，归档标记已保留。${diagnostic.reason}。（${detail}）`;
-	if (diagnostic.code === "unknown") return detail;
-	return `${diagnostic.reason}。${diagnostic.advice}（${detail}）`;
+	// 失败详情会进各语言模板的 {detail}。这里只留宿主原文，不拼中文诊断。
+	return errorMessage(error).slice(0, 400);
 }
 
 /** alpha.1 读 schema.parse；alpha.2 只接受 create()。两套字段一起带上。 */
@@ -1080,13 +1072,8 @@ var ArchiveWorkspaceRegistry = class extends (WorkspaceRegistry as unknown as Wo
 	 */
 	async deleteSession(sessionId: string) {
 		return this.enqueueOperation(async () => {
-			try {
-				await this.deleteSessionCore(sessionId);
-				return { deleted: true };
-			} catch (error) {
-				if (!isTranscriptFormatError(error)) throw error;
-				throw new Error(deletionFailureMessage(error), { cause: error });
-			}
+			await this.deleteSessionCore(sessionId);
+			return { deleted: true };
 		});
 	}
 	/** 串行化后的删除主体（级联路径复用：它已持有操作链，绝不能再入队）。 */
@@ -1304,16 +1291,10 @@ var ArchiveWorkspaceRegistry = class extends (WorkspaceRegistry as unknown as Wo
 				try {
 					const postStat = await persistence.stat(sessionId);
 					if (postStat !== void 0) {
-						throw new Error(
-							`session "${sessionId}" is still present in persistence after artifact removal`,
-						);
+						throw new PersistenceStillPresentError(sessionId);
 					}
 				} catch (error) {
-					if (
-						error instanceof Error &&
-						error.message.includes("still present in persistence")
-					)
-						throw error;
+					if (error instanceof PersistenceStillPresentError) throw error;
 					const gone = !(await pathExists(target.path));
 					if (!existed || !gone) {
 						throw new Error(

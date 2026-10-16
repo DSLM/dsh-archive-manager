@@ -933,14 +933,14 @@ test("deleteSession reports transcript corruption without telling the user to de
 		throw new Error("SessionFormatError: format v4 tool/result at seq 1313 requires toolCallId matching its tool source");
 	};
 
-	await assert.rejects(() => registry.deleteSession(s1), /删除未完成/);
+	await assert.rejects(() => registry.deleteSession(s1), /requires toolCallId matching its tool source/);
 	await assert.rejects(() => registry.deleteSession(s1), (error) => {
-		assert.doesNotMatch(error.message, /可以永久删除/);
+		assert.doesNotMatch(error.message, /可以永久删除|删除未完成|没有权限/);
 		return true;
 	});
 	const batch = await registry.deleteArchivedSessions({ scope: "sessions", sessionIds: [s1] });
-	assert.match(batch.failures[0].message, /删除未完成/);
-	assert.doesNotMatch(batch.failures[0].message, /可以永久删除/);
+	assert.match(batch.failures[0].message, /requires toolCallId matching its tool source/);
+	assert.doesNotMatch(batch.failures[0].message, /可以永久删除|删除未完成|没有权限/);
 	assert.equal(existsSync(directory), true, "没有头部时不能猜路径删除");
 	assert.deepEqual(env.global.archivedSessionIds, [s1]);
 });
@@ -1066,6 +1066,36 @@ test("持久化仍能观察到会话时不得提交删除记账或完成通知",
 	assert.deepEqual(env.global.archivedSessionIds, [s1]);
 	assert.equal(registry.deletedSessionIds.has(s1), false);
 	assert.deepEqual(removed, []);
+});
+
+test("batch delete failure keeps the host detail instead of a Chinese diagnosis", async () => {
+	const env = buildRoot({ headers: [header(s1)], archived: [s1] });
+	installJsonlLayout(env, s1);
+	const registry = await mountWorkspaceRegistry(env);
+	const denied = Object.assign(new Error("EPERM: operation not permitted"), { code: "EPERM" });
+	env.persistence.locate = () => {
+		throw denied;
+	};
+	const batch = await registry.deleteArchivedSessions({ scope: "sessions", sessionIds: [s1] });
+	assert.match(batch.failures[0].message, /EPERM: operation not permitted/);
+	assert.doesNotMatch(batch.failures[0].message, /没有权限|检查目录访问权限/);
+	await assert.rejects(() => registry.deleteSession(s1), /EPERM: operation not permitted/);
+	await assert.rejects(() => registry.deleteSession(s1), (error) => {
+		assert.doesNotMatch(error.message, /没有权限|检查目录访问权限/);
+		return true;
+	});
+});
+
+test("stat text that mentions still present does not override a confirmed removal", async () => {
+	const env = buildRoot({ headers: [header(s1)], archived: [s1] });
+	const directory = installJsonlLayout(env, s1);
+	const registry = await mountWorkspaceRegistry(env);
+	env.persistence.stat = async () => {
+		throw new Error("session is still present in persistence after artifact removal");
+	};
+	assert.deepEqual(await registry.deleteSession(s1), { deleted: true });
+	assert.equal(existsSync(directory), false);
+	assert.deepEqual(env.global.archivedSessionIds, []);
 });
 
 test("新版投影读取失败仍关闭只读句柄", async () => {

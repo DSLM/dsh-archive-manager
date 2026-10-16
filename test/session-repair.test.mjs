@@ -29,6 +29,7 @@ test("仅转换已知自动化消息来源，保留正文和归属且不修改�
   assert.equal(emptyTail.code, "corrupt");
   assert.match(emptyTail.reason, /toolCallId/);
   assert.match(emptyTail.advice, /不自动截断/);
+  assert.doesNotMatch(emptyTail.advice, /可以永久删除/);
   assert.equal(classifySessionError("SessionFormatError: format v4 tool/result at seq 4 requires toolCallId matching its tool source").code, "corrupt");
   assert.equal(classifySessionError("cannot safely transform unclassified message source").code, "legacy-source");
   assert.equal(classifySessionError("ENOENT").code, "missing");

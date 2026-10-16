@@ -211,12 +211,16 @@ export function classifySessionError(error: unknown) {
   const rawCode = errorCode(error);
   const name = error && typeof error === "object" && "name" in error ? String((error as { name?: unknown }).name ?? "") : "";
   const explicit = typeof rawCode === "string" ? codes[rawCode] ?? rawCode : "";
+  if (Object.hasOwn(descriptions, explicit)) {
+    const [reason, advice] = descriptions[explicit];
+    return { code: explicit, reason, advice };
+  }
   const emptyToolCall = /requires toolCallId matching its tool source|tool call id requires a nonempty string/i;
   if (emptyToolCall.test(message)) {
     return {
       code: "corrupt",
       reason: "日志尾部有未闭合的工具调用，且 toolCallId 为空",
-      advice: "可以永久删除该会话；不自动截断或改写日志。",
+      advice: "保留现有日志，检查磁盘和原始文件；不自动截断或改写日志。",
     };
   }
   const namedCorrupt = name === "SessionFormatError" || name === "SessionPersistenceCorruptionError" ? "corrupt" : undefined;
