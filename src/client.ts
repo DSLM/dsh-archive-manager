@@ -3437,7 +3437,50 @@ export function startArchiveClient(require: HostRequire) {
 		//#endregion
 		//#region dsh-archive-manager: settings section
 		const ARCHIVE_TABS_CSS = ".dsham_archiveTabsLocked{opacity:.5}";
-		const ARCHIVE_SETTINGS_CSS = ".dsham_settings{container-type:inline-size;min-width:0;box-sizing:border-box;width:min(100%,760px);margin:0 auto;padding:0 0 32px;color:var(--dsw-alias-label-primary)}.dsham_settingsHeader{display:flex;flex-direction:column;align-items:stretch;gap:16px;margin-bottom:16px}.dsham_settings h2{margin:0;font-size:24px;line-height:32px;font-weight:600;letter-spacing:-.4px;white-space:nowrap}.dsham_settingsIntro{margin:12px 0 0;max-width:42em;color:var(--dsw-alias-label-tertiary);font-size:14px;line-height:22px}.dsham_settingsToolbar{display:flex;flex-direction:column;gap:8px;margin-bottom:16px}.dsham_settingsSearch{display:flex;align-items:center;gap:8px;min-width:0}.dsham_settingsFilters{display:flex;align-items:center;flex-wrap:nowrap;gap:8px;min-width:0}.dsham_settingsSort{display:flex;align-items:center;gap:8px;margin-left:auto;flex:none}.dsham_settingsSortLabel{color:var(--dsw-alias-label-tertiary);font-size:13px;line-height:20px;white-space:nowrap}.dsham_settingsFilter{width:100%;min-width:0}.dsham_settingsSearch .dsham_settingsFilter{flex:none;width:128px}.dsham_settingsFilters>.dsham_settingsFilter{flex:1 1 112px;width:auto;min-width:96px;max-width:148px}.dsham_settingsFilters>.dsham_projectFilter{flex:none;width:128px;min-width:128px;max-width:128px}.dsham_projectFilter .ant-select-selection-item{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.dsham_settingsSort .dsham_settingsFilter{flex:none;width:128px}@container(max-width:560px){.dsham_settingsFilters{flex-wrap:wrap}}.dsham_settingsSearch .ant-input-affix-wrapper,.dsham_settingsSearch .dsham_searchField{flex:1;min-width:0;width:auto}.dsham_menuLabel{display:inline-flex;align-items:center;gap:8px;line-height:22px}.dsham_menuLabel svg{position:static;display:block;width:16px;height:16px;flex:none}.dsham_settingsGroup{margin:0 0 20px}.dsham_settingsGroupHeading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 14px}.dsham_settingsGroupTitle{display:flex;align-items:center;gap:8px;min-width:0;margin:0;color:var(--dsw-alias-label-primary);font-size:13px;font-weight:600}.dsham_settingsGroupTitle svg{flex:none;color:var(--dsw-alias-label-secondary)}.dsham_settingsCount{flex:none;color:var(--dsw-alias-label-tertiary);font-size:12px}.dsham_settingsList{overflow:hidden;border:1px solid var(--dsw-alias-border-l2);border-radius:12px;background:var(--dsw-alias-bg-layer-2,var(--dsw-alias-button-elevated-fill))}.ant-list-item.dsham_settingsRow{display:grid;grid-template-columns:16px minmax(0,1fr) auto;align-items:center;gap:12px;min-height:64px;padding:10px 12px;border-bottom:1px solid var(--dsw-alias-border-l2)}.ant-list-item.dsham_settingsRow:last-child{border-bottom:0}.dsham_settingsRow{display:grid;grid-template-columns:16px minmax(0,1fr) auto;align-items:center;gap:12px;min-height:64px;padding:10px 12px;border-bottom:1px solid var(--dsw-alias-border-l2)}.dsham_settingsRow:last-child{border-bottom:0}.dsham_settingsContent{min-width:0;flex:1}.dsham_settingsTitle{overflow:hidden;color:var(--dsw-alias-label-primary);font-size:13px;font-weight:600;line-height:18px;text-overflow:ellipsis;white-space:nowrap}.dsham_settingsMeta{margin-top:2px;color:var(--dsw-alias-label-tertiary);font-size:12px;line-height:16px}.dsham_settingsActions{display:flex;align-items:center;gap:4px;flex:none}.dsham_settingsAction{min-height:32px;padding:0 12px;color:var(--dsw-alias-label-primary);background:transparent;border:1px solid var(--dsw-alias-border-l2);border-radius:8px;cursor:pointer;font:inherit;font-size:13px;font-weight:500}.dsham_settingsAction:hover{filter:brightness(1.12)}.dsham_settingsDelete{display:flex;align-items:center;justify-content:center;width:28px;height:28px;color:var(--dsw-alias-label-tertiary);background:transparent;border:0;border-radius:8px;cursor:pointer}.dsham_settingsDelete:hover{color:var(--dsw-alias-state-error-primary);background:var(--dsw-alias-interactive-bg-hover)}.dsham_settingsEmpty{padding:28px 8px;color:var(--dsw-alias-label-secondary);text-align:center}.dsham_settingsError{margin-top:10px;color:var(--dsw-alias-state-error-primary);font-size:12px}@container(max-width:520px){.dsham_settingsHeader{margin-bottom:16px}.dsham_settingsToolbar{grid-template-columns:repeat(3,minmax(0,1fr));margin-bottom:16px}.dsham_settingsSearch{grid-column:1/-1}.dsham_settingsFilter{flex:1;min-width:0}.dsham_settingsGroup{margin-bottom:32px}.dsham_settingsRow{padding:10px 12px}.dsham_settingsActions{gap:4px}}";
+		const ARCHIVE_SETTINGS_CSS = [
+			".dsham_settings{container-type:inline-size;min-width:0;box-sizing:border-box;width:min(100%,760px);margin:0 auto;padding:0 0 32px;color:var(--dsw-alias-label-primary)}",
+			".dsham_settingsHeader{display:flex;flex-direction:column;align-items:stretch;gap:16px;margin-bottom:16px}",
+			".dsham_settings h2{margin:0;font-size:24px;line-height:32px;font-weight:600;letter-spacing:-.4px;white-space:nowrap}",
+			".dsham_settingsIntro{margin:12px 0 0;max-width:42em;color:var(--dsw-alias-label-tertiary);font-size:14px;line-height:22px}",
+			".dsham_settingsToolbar{display:flex;flex-direction:column;gap:8px;margin-bottom:16px}",
+			".dsham_settingsSearch{display:flex;align-items:center;gap:8px;min-width:0}",
+			".dsham_settingsFilters{display:flex;align-items:center;flex-wrap:nowrap;gap:8px;min-width:0}",
+			".dsham_settingsSort{display:flex;align-items:center;gap:8px;margin-left:auto;flex:none}",
+			".dsham_settingsSortLabel{color:var(--dsw-alias-label-tertiary);font-size:13px;line-height:20px;white-space:nowrap}",
+			".dsham_selectWrap{display:inline-flex;position:relative}",
+			".dsham_menuSelectBtn{display:inline-flex;align-items:center;justify-content:space-between;gap:6px;width:100%;height:32px;padding:0 10px;box-sizing:border-box;font:inherit}",
+			".dsham_selectLabel{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:160px;font-size:13px;font-weight:normal}",
+			".dsham_settingsSearch .dsham_selectWrap{flex:none;width:128px}",
+			".dsham_settingsFilters>.dsham_selectWrap{flex:1 1 112px;width:auto;min-width:96px;max-width:148px}",
+			".dsham_settingsFilters>.dsham_projectFilter{flex:none;width:128px;min-width:128px;max-width:128px}",
+			".dsham_projectFilter .dsham_selectLabel{max-width:100px}",
+			".dsham_settingsSort .dsham_selectWrap{flex:none;width:128px}",
+			"@container(max-width:560px){.dsham_settingsFilters{flex-wrap:wrap}}",
+			".dsham_settingsSearch .ant-input-affix-wrapper,.dsham_settingsSearch .dsham_searchField{flex:1;min-width:0;width:auto}",
+			".dsham_menuLabel{display:inline-flex;align-items:center;gap:8px;line-height:22px}",
+			".dsham_menuLabel svg{position:static;display:block;width:16px;height:16px;flex:none}",
+			".dsham_settingsGroup{margin:0 0 20px}",
+			".dsham_settingsGroupHeading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 14px}",
+			".dsham_settingsGroupTitle{display:flex;align-items:center;gap:8px;min-width:0;margin:0;color:var(--dsw-alias-label-primary);font-size:13px;font-weight:600}",
+			".dsham_settingsGroupTitle svg{flex:none;color:var(--dsw-alias-label-secondary)}",
+			".dsham_settingsCount{flex:none;color:var(--dsw-alias-label-tertiary);font-size:12px}",
+			".dsham_settingsList{overflow:hidden;border:1px solid var(--dsw-alias-border-l2);border-radius:12px;background:var(--dsw-alias-bg-layer-2,var(--dsw-alias-button-elevated-fill))}",
+			".ant-list-item.dsham_settingsRow{display:grid;grid-template-columns:16px minmax(0,1fr) auto;align-items:center;gap:12px;min-height:64px;padding:10px 12px;border-bottom:1px solid var(--dsw-alias-border-l2)}",
+			".ant-list-item.dsham_settingsRow:last-child{border-bottom:0}",
+			".dsham_settingsRow{display:grid;grid-template-columns:16px minmax(0,1fr) auto;align-items:center;gap:12px;min-height:64px;padding:10px 12px;border-bottom:1px solid var(--dsw-alias-border-l2)}",
+			".dsham_settingsRow:last-child{border-bottom:0}",
+			".dsham_settingsContent{min-width:0;flex:1}",
+			".dsham_settingsTitle{overflow:hidden;color:var(--dsw-alias-label-primary);font-size:13px;font-weight:600;line-height:18px;text-overflow:ellipsis;white-space:nowrap}",
+			".dsham_settingsMeta{margin-top:2px;color:var(--dsw-alias-label-tertiary);font-size:12px;line-height:16px}",
+			".dsham_settingsActions{display:flex;align-items:center;gap:4px;flex:none}",
+			".dsham_settingsAction{min-height:32px;padding:0 12px;color:var(--dsw-alias-label-primary);background:transparent;border:1px solid var(--dsw-alias-border-l2);border-radius:8px;cursor:pointer;font:inherit;font-size:13px;font-weight:500}",
+			".dsham_settingsAction:hover{filter:brightness(1.12)}",
+			".dsham_settingsDelete{display:flex;align-items:center;justify-content:center;width:28px;height:28px;color:var(--dsw-alias-label-tertiary);background:transparent;border:0;border-radius:8px;cursor:pointer}",
+			".dsham_settingsDelete:hover{color:var(--dsw-alias-state-error-primary);background:var(--dsw-alias-interactive-bg-hover)}",
+			".dsham_settingsEmpty{padding:28px 8px;color:var(--dsw-alias-label-secondary);text-align:center}",
+			".dsham_settingsError{margin-top:10px;color:var(--dsw-alias-state-error-primary);font-size:12px}",
+			"@container(max-width:520px){.dsham_settingsHeader{margin-bottom:16px}.dsham_settingsToolbar{grid-template-columns:repeat(3,minmax(0,1fr));margin-bottom:16px}.dsham_settingsSearch{grid-column:1/-1}.dsham_selectWrap{flex:1;min-width:0}.dsham_settingsGroup{margin-bottom:32px}.dsham_settingsRow{padding:10px 12px}.dsham_settingsActions{gap:4px}}"
+		].join("");
 		const ARCHIVE_SETTINGS_BATCH_CSS = ".dsham_settingsTitleLink{display:block;max-width:100%;padding:0;border:0;background:transparent;color:var(--dsw-alias-label-primary);font:inherit;font-size:13px;font-weight:600;line-height:20px;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer}.dsham_settingsTitleLink:hover:not(:disabled){text-decoration:underline;text-underline-offset:3px}.dsham_settingsTitleLink:disabled{cursor:default;opacity:.6}.dsham_groupToggle{display:flex;align-items:center;gap:8px;min-width:0;max-width:100%;padding:4px 0;border:0;background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer}.dsham_groupToggle span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.dsham_settingsRow:hover{background:var(--dsw-alias-interactive-bg-hover)}.dsham_settingsRow[data-selected=true]{background:var(--dsw-alias-interactive-bg-hover)}.dsham_settingsTitleLink:focus-visible,.dsham_groupToggle:focus-visible{outline:2px solid var(--dsw-alias-state-business-primary,#3b82f6);outline-offset:2px}@container(max-width:620px){.dsham_settingsToolbar{grid-template-columns:repeat(3,minmax(0,1fr))}.dsham_settingsSearch{grid-column:1/-1}}@container(max-width:400px){.dsham_settingsRow{gap:8px;padding:10px 8px}.dsham_settingsActions{gap:0}.dsham_settingsMeta{font-size:11px}}.dsham_settingsGroupMeta{display:flex;align-items:center;gap:8px;flex:none;flex-wrap:wrap}.dsham_settingsStatus{margin-top:10px;color:var(--dsw-alias-label-secondary);font-size:12px}.ant-btn.dsham_favoriteOn{--ant-btn-text-color:#e8b931;--ant-btn-text-color-hover:#e8b931;--ant-btn-text-color-active:#e8b931;color:#e8b931}";
 		const ARCHIVE_SETTINGS_DROPDOWN_CSS = ".ant-select-dropdown,.ant-dropdown-menu{background:var(--dsw-menu-surface-fill,var(--dsw-specific-menu,var(--dsw-alias-button-elevated-fill)))!important;backdrop-filter:var(--dsw-menu-backdrop-filter,blur(16px))!important;-webkit-backdrop-filter:var(--dsw-menu-backdrop-filter,blur(16px))!important;border:1px solid var(--dsw-alias-border-l2)!important;border-radius:10px!important}.ant-select-dropdown .rc-virtual-list,.ant-select-dropdown .rc-virtual-list-holder,.ant-select-dropdown .ant-select-item{background:transparent!important}";
 		const ARCHIVE_SETTINGS_EXTERNAL_LINK_CSS = ".dsham_settingsTitleRow{display:flex;align-items:center;gap:8px 12px;min-width:0;flex-wrap:wrap}.dsham_settingsLinks{display:flex;align-items:center;gap:8px;flex-wrap:wrap}@media(max-width:720px){.dsham_settingsTitleRow{flex-wrap:wrap}}";
@@ -3452,13 +3495,78 @@ export function startArchiveClient(require: HostRequire) {
 			tag.textContent = ARCHIVE_SETTINGS_LAYOUT_OVERRIDE + ARCHIVE_WORKSPACE_CONFIRM_CSS;
 			document.head.appendChild(tag);
 		}
-		/** 设置页筛选使用 Ant Design 下拉，收起时显示当前选项。 */
+		/** 设置页筛选使用宿主官方原语 Menu 规范封装，彻底摆脱 Ant Design 下拉的虚拟列表和样式限制。 */
 		function ArchiveProjectSelect({ id, className, value, options, onChange, disabled = false, "aria-label": ariaLabel }: { id?: string; className?: string; value: string; options: {value: string; label: string; title?: string}[]; onChange(value: string): void; disabled?: boolean; "aria-label": string }) {
-			const current = options.find((option) => option.value === value);
-			return (0, react_jsx_runtime.jsx)(AntdSelect, {
-				id, className: className === undefined ? "dsham_settingsFilter" : `dsham_settingsFilter ${className}`, "aria-label": ariaLabel, disabled, value, options,
-				title: current?.title ?? current?.label, popupMatchSelectWidth: false,
-				onChange: (next) => { if (!disabled) onChange(String(next)); }
+			const [open, setOpen] = react.useState(false);
+
+			react.useEffect(() => {
+				if (!open || typeof window === "undefined") return;
+				function onKey(event: KeyboardEvent) {
+					if (event.key === "Escape") {
+						event.preventDefault();
+						event.stopPropagation();
+						event.stopImmediatePropagation();
+						setOpen(false);
+					}
+				}
+				window.addEventListener("keydown", onKey, true);
+				return () => window.removeEventListener("keydown", onKey, true);
+			}, [open]);
+
+			const items = react.useMemo(() => {
+				return options.map((opt) => ({
+					id: opt.value,
+					label: opt.label,
+				}));
+			}, [options]);
+
+			const current = options.find((opt) => opt.value === value);
+			const currentText = current?.label ?? ariaLabel;
+
+			return (0, react_jsx_runtime.jsx)("div", {
+				id,
+				className: className === undefined ? "dsham_settingsFilter" : `dsham_settingsFilter ${className}`,
+				children: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Menu, {
+					open,
+					onClose: () => setOpen(false),
+					onSelect: (selectedId: string) => {
+						if (!disabled) onChange(selectedId);
+						setOpen(false);
+					},
+					selectedId: value,
+					align: "start",
+					portal: true,
+					dense: true,
+					listClassName: "dsham_selectDropdown",
+					anchor: (0, react_jsx_runtime.jsxs)(_deepseek_ai_dsh_client_ui_primitives.Button, {
+						variant: "outline",
+						size: "sm",
+						role: "combobox",
+						"aria-label": ariaLabel,
+						"aria-expanded": open,
+						disabled,
+						className: "dsham_menuSelectBtn" + (open ? " is-open" : ""),
+						onClick: () => {
+							if (!disabled) setOpen((prev) => !prev);
+						},
+						children: [
+							(0, react_jsx_runtime.jsx)("span", { className: "dsham_selectLabel", children: currentText }),
+							(0, react_jsx_runtime.jsx)("svg", {
+								viewBox: "0 0 16 16",
+								width: 12,
+								height: 12,
+								fill: "none",
+								stroke: "currentColor",
+								strokeWidth: 1.8,
+								strokeLinecap: "round",
+								strokeLinejoin: "round",
+								style: { marginLeft: 4, transition: "transform 150ms ease", transform: open ? "rotate(180deg)" : "none", flex: "none" },
+								children: (0, react_jsx_runtime.jsx)("path", { d: "m4 6 4 4 4-4" })
+							})
+						]
+					}),
+					items
+				})
 			});
 		}
 		/** 选择摘要与动作分组显示；跨筛选范围单独提示，避免被紧凑布局隐藏。 */

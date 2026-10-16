@@ -164,11 +164,11 @@ test("删除文案中英键齐全，并统一使用子代理用语", async () =>
   assert.match(client, /showArchivedToast\(formatUnarchiveError/);
 });
 
-test("归档设置页筛选使用 Ant Design 下拉，而不是原生 select", async () => {
+test("归档设置页筛选使用宿主官方原语 Menu，而不是原生 select 或 AntdSelect", async () => {
   const client = await readFile(clientPath, "utf8");
 
   assert.match(client, /function ArchiveProjectSelect/);
-  assert.match(client, /AntdSelect/);
+  assert.match(client, /Menu/);
   assert.doesNotMatch(client, /className: "dsham_selectMenu"/);
   assert.doesNotMatch(client, /\.dsham_selectMenu\{/);
   assert.doesNotMatch(client, /\.dsham_selectOption/);
