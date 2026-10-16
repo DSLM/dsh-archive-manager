@@ -41,7 +41,7 @@ export function createSessionHealthPanel(React: typeof import("react"), icons: R
   const icon = (name: string, className?: string) => icons[name] ? h('span', { className, 'aria-hidden': true }, h(icons[name], { width: 16, height: 16 })) : null;
   function actionButton(label: string, options: { primary?: boolean; subtle?: boolean; disabled?: boolean; onClick(): void }, glyph: import("react").ReactNode) {
     const type = options.primary ? "primary" : options.subtle ? "text" : "default";
-    return h(Button, { shape: "round", type, disabled: options.disabled, onClick: options.onClick, icon: glyph ?? undefined }, label);
+    return h(Button, { type, disabled: options.disabled, onClick: options.onClick, icon: glyph ?? undefined }, label);
   }
   function TechnicalDetails({ title, glyph, children }: { title: string; glyph: import("react").ReactNode; children?: import("react").ReactNode }) {
     const [open, setOpen] = React.useState(false);

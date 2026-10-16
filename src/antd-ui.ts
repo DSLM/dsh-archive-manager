@@ -146,6 +146,13 @@ export const hostAliasComponents = {
 		activeBorderColor: "var(--dsw-alias-state-business-primary)",
 		hoverBorderColor: "var(--dsw-alias-border-l3)",
 		activeShadow: "none",
+		controlHeight: 32,
+	},
+	InputNumber: {
+		activeBorderColor: "var(--dsw-alias-state-business-primary)",
+		hoverBorderColor: "var(--dsw-alias-border-l3)",
+		activeShadow: "none",
+		controlHeight: 32,
 	},
 	Select: {
 		optionSelectedBg: "var(--dsw-alias-interactive-bg-hover)",
