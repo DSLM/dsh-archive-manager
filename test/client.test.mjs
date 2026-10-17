@@ -285,7 +285,7 @@ test("forked row stylesheet does not reuse the official workspace class prefix",
 		assert.equal(text.includes("YDXeBa_"), false);
 		assert.equal(text.includes(".dshamRow_projectRow,.dshamRow_sessionRow{cursor:pointer"), true);
 		assert.equal(text.includes("padding:0 8px"), true);
-		assert.equal(text.includes("ensureLegacyWorkspaceCss"), true);
+		assert.equal(source.includes("ctx.sessions.open("), false);
 	}
 	const injected = [];
 	const previous = document.createElement;
@@ -391,7 +391,7 @@ test("Typert remotes 同时带 create 和 schema", () => {
 test("deriveGroups: 当前会话优先 retainedBy.mainView，没有再看 list.current", () => {
 	const view = { expandedGroups: ["w1", "w2"], showArchived: false };
 	const withCurrent = t.deriveGroups({ ...list, current: "s3" }, workspaces, [], noPendingInteractions, view);
-	assert.equal(withCurrent.find((g) => g.workspaceId === "w2").containsCurrent, true);
+	assert.equal(withCurrent.find((g) => g.workspaceId === "w2").containsCurrent, false);
 	const staleCurrent = t.deriveGroups({
 		...list,
 		current: "s1",

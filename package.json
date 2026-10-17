@@ -34,7 +34,7 @@
     "test": "pnpm build && node --import tsx --test test/*.test.mjs",
     "test:matrix": "pnpm build && node scripts/test-version-matrix.mjs",
     "test:latest": "pnpm build && node scripts/test-latest-compatibility.mjs",
-    "test:compat": "pnpm build && node scripts/test-legacy-compatibility.mjs && pnpm test:matrix",
+    "test:compat": "pnpm build && pnpm test:matrix",
     "pack:check": "pnpm pack --dry-run",
     "verify": "pnpm test && pnpm test:compat && pnpm pack:check && node scripts/check-generated.mjs",
     "release:preflight": "pwsh -NoProfile -File scripts/release-preflight.ps1",

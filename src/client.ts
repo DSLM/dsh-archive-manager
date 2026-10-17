@@ -4286,7 +4286,7 @@ export function startArchiveClient(require: HostRequire) {
 		const NS = "archive-manager-workspace";
 		const DIRECTORY_FLOW_SLOT = "archiveManager.sidebar.directoryFlow";
 		/**
-		* 不 wait uiWorkspace：等它会让官方先占侧栏，0.1.6 上删除菜单出不来。
+		* 不 wait uiWorkspace：等它会让官方先占侧栏，删除菜单出不来。
 		* 导航仍在运行时 get("uiWorkspace")。插槽生命周期用 slots.inject。
 		*/
 		const inject = [
@@ -4512,8 +4512,8 @@ export function startArchiveClient(require: HostRequire) {
 				},
 				open: (sessionId) => {
 					const uiWorkspace = uiWorkspaceAt();
-					if (typeof uiWorkspace?.openSession === "function") uiWorkspace.openSession(sessionId);
-					else ctx.sessions.open(sessionId);
+					if (typeof uiWorkspace?.openSession !== "function") throw new Error("archive-manager: 宿主未提供会话打开接口。");
+					uiWorkspace.openSession(sessionId);
 				},
 				searchSessions,
 				searchResultLimit: ctx.sessions.searchResultLimit,
@@ -4534,8 +4534,8 @@ export function startArchiveClient(require: HostRequire) {
 					const uiWorkspace = uiWorkspaceAt();
 					if (typeof uiWorkspace?.forkSession === "function") return uiWorkspace.forkSession(sessionId);
 					return ctx.sessions.fork({ sessionId, increaseTitle: true }).then((childId) => {
-						if (typeof uiWorkspace?.openSession === "function") uiWorkspace.openSession(childId);
-						else ctx.sessions.open(childId);
+						if (typeof uiWorkspace?.openSession !== "function") throw new Error("archive-manager: 宿主未提供会话打开接口。");
+						uiWorkspace.openSession(childId);
 					});
 				},
 				renameWorkspace: async (workspaceId, title) => {
@@ -4622,7 +4622,7 @@ export function startArchiveClient(require: HostRequire) {
 					]
 				});
 			}
-			/** 官方列表声明了会话菜单插槽时只追加删除；否则仍换成自有列表，旧宿主菜单没有扩展位。 */
+			/** 官方列表声明了会话菜单插槽时只追加删除。插槽还没出现时只等待。 */
 			function hostSidebarDeclaresSessionMenu() {
 				if (typeof ctx.slots.entries !== "function") return false;
 				return ctx.slots.entries("sidebar.workspaces").some((entry) => entry.children?.[sessionMenuSlot] !== undefined);

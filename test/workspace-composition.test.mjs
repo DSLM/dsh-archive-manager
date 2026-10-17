@@ -127,11 +127,10 @@ test("真实官方导航监听器：显式查看归档不再被清空，切换�
   const stock = root.plugin(official);
   await stock;
   const navigation = root.get("uiWorkspace");
-  if (typeof navigation?.clearArchivedCurrent !== "function") { await stock.dispose(); t.skip("此旧宿主无新版导航监听器"); return; }
+  if (typeof navigation.openSession !== "function") { await stock.dispose(); t.skip("此宿主无会话打开接口"); return; }
   const selected = () => currentSessionId(list.getSnapshot());
   const selectWithoutGuard = (id) => {
-    if (typeof navigation.openSession === "function") navigation.openSession(id);
-    else sessions.open(id);
+    navigation.openSession(id);
     // alpha.2 在 retain 之后才写入 mainReference；官方清理看随后的列表刷新。
     list.update({ ...list.getSnapshot() });
   };

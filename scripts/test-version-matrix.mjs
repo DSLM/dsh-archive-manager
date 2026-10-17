@@ -55,19 +55,11 @@ for (const profile of profiles) {
 	try {
 		const dependencies = {};
 		for (const [name, pinned] of Object.entries(manifest.devDependencies)) {
-			// 格式目录从 0.1.5 才发布；更早宿主的修复仍使用 persistence.generationFormat.createRestore。
-			if (name === "@deepseek-ai/dsh-session-format-catalog" && ["0.1.0-rc.8", "0.1.1-rc.2", "0.1.2-rc.1"].includes(profile.version)) continue;
-			const target = profile.runtime && name === "@deepseek-ai/dsh-client-store" ? "@deepseek-ai/dsh-client-runtime" : name;
-			dependencies[target] = name.startsWith("@deepseek-ai/dsh-") ? profile.version : pinned;
+			dependencies[name] = name.startsWith("@deepseek-ai/dsh-") ? profile.version : pinned;
 		}
 		dependencies["@deepseek-ai/cordis"] = profile.cordis;
 		dependencies["@deepseek-ai/schemastery"] = profile.schemastery;
 		Object.assign(dependencies, cordisPlugins[profile.cordis]);
-		// 固定旧 Cordis 的配套插件，避免 npm 自动选入要求 4.0.2 的新版。
-		if (profile.runtime) {
-			dependencies["@deepseek-ai/cordis-plugin-include"] = "1.0.6";
-			dependencies["@deepseek-ai/cordis-plugin-loader"] = "1.0.2";
-		}
 		for (const name of ["session-persistence-jsonl", "session-query"]) dependencies[`@deepseek-ai/dsh-${name}`] = profile.version;
 		await writeFile(join(isolated, "package.json"), JSON.stringify({ private: true, type: "module", dependencies, overrides: hostTestOverrides(profile.version) }), "utf8");
 		await run(npm, [...npmPrefix, "install", "--ignore-scripts", "--no-audit", "--no-fund"], isolated);
@@ -84,8 +76,7 @@ for (const profile of profiles) {
 		for (const file of ["package.json", "tsconfig.json", ".gitattributes", "README.md", "README.zh-CN.md", "CHANGELOG.md", "CHANGELOG.zh-CN.md", "LICENSE", "cordis.patch.yml"]) {
 			await cp(join(root, file), join(isolated, file));
 		}
-		const fixture = profile.latest ? "latest-host.mjs" : "legacy-host.mjs";
-		const output = await run(process.execPath, ["--import", "tsx", "--test", "--test-reporter=spec", ...testNames.map((name) => join("test", name)), join("test", "fixtures", fixture)], isolated, { ...process.env, DSH_ARCHIVE_TEST_HOST_VERSION: profile.version });
+		const output = await run(process.execPath, ["--import", "tsx", "--test", "--test-reporter=spec", ...testNames.map((name) => join("test", name)), join("test", "fixtures", "latest-host.mjs")], isolated, { ...process.env, DSH_ARCHIVE_TEST_HOST_VERSION: profile.version });
 		console.log(output.trim().split(/\r?\n/).slice(-8).join("\n"));
 	} catch (error) {
 		console.error(`DSH ${profile.version} 回归失败：${String(error)}`);

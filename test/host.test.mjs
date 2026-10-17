@@ -39,6 +39,13 @@ const SID = (n) =>
 	`session-${String(n).padStart(5, "0")}-0000-0000-0000-000000000000`;
 const require = createRequire(import.meta.url);
 
+test("剩余宿主不再走早于 0.2.0 的投影、只读和列表回退", () => {
+	const source = readFileSync(new URL("../src/workspace.ts", import.meta.url), "utf8");
+	assert.equal(source.includes("cache.cachedSnapshot(header, inheritedEventCount)"), false);
+	assert.equal(source.includes("persistence.readFrom"), false);
+	assert.equal(source.includes("item as Header"), false);
+});
+
 /** Map-backed domain table facade matching the storage-domain table contract. */
 class FakeTable {
 	constructor(initial = {}) {
@@ -159,7 +166,7 @@ function buildRoot({
 	const domain = new FakeDomain({ workspaces: table }, global);
 	const persistence = {
 		headers: [...canonicalHeaders],
-		list: async () => [...persistence.headers],
+		list: async () => persistence.headers.map((header) => ({ header })),
 		prepared: [],
 		released: [],
 		prepare: async (id) => {
@@ -613,7 +620,7 @@ test("archivedSessionMetadata lists stored headers once while pruning unknowns",
 	let lists = 0;
 	env.persistence.list = async () => {
 		lists += 1;
-		return [...env.persistence.headers];
+		return env.persistence.headers.map((header) => ({ header }));
 	};
 	await registry.archivedSessionMetadata();
 	assert.equal(lists, 1, "prune must not rebuild the full header listing once per unknown id");
@@ -651,17 +658,10 @@ for (const version of [0, 3])
 		const cacheReads = [];
 		const reads = [];
 		const puts = [];
-		// 真实宿主 0.1.2～0.1.6 的签名是 (meta, inheritedEventCount, keys?)：替身必须
-		// 保持同一形状，否则按形参个数区分代际的探测会把它误判成 0.1.7 的投影键形态。
-		env.projCache.cachedSnapshot = (meta, inheritedEventCount, keys) => {
-			void keys;
-			cacheReads.push({ id: meta.id, inheritedEventCount });
-			const record = records.get(meta.id);
-			return record !== void 0 &&
-				JSON.stringify(record.identity) ===
-					JSON.stringify(identityOf(meta, inheritedEventCount))
-				? record.snapshot
-				: void 0;
+		// 剩余宿主只按头部查缓存，第二参数是可选投影键，不再传继承切点。
+		env.projCache.cachedSnapshot = (meta) => {
+			cacheReads.push({ id: meta.id });
+			return records.get(meta.id)?.snapshot;
 		};
 		env.projCache.put = async (id, identity, rows) => {
 			puts.push({ id, identity, rows });
@@ -670,12 +670,13 @@ for (const version of [0, 3])
 				snapshot: { asOfSeq: 9, values: { title: rows.title.val } },
 			});
 		};
-		env.persistence.readFrom = async (id, fromSeq) => {
-			reads.push({ id, fromSeq });
+		env.persistence.open = async (id) => {
+			reads.push({ id, fromSeq: 0 });
 			return {
-				meta: env.persistence.headers.find((item) => item.id === id),
+				header: env.persistence.headers.find((item) => item.id === id),
 				inheritedEventCount: 3,
-				events: [{ seq: 0, type: "session/start", data: {} }],
+				read: async () => ({ events: [{ seq: 0, type: "session/start", data: {} }] }),
+				close: async () => {},
 			};
 		};
 		env.ctx.provide("sessionProjections", {
@@ -705,8 +706,8 @@ for (const version of [0, 3])
 			"only the missing archive reads its transcript",
 		);
 		assert.deepEqual(cacheReads, [
-			{ id: s1, inheritedEventCount: 0 },
-			{ id: s2, inheritedEventCount: 3 },
+			{ id: s1 },
+			{ id: s2 },
 		]);
 		assert.deepEqual(puts, [
 			{
@@ -740,10 +741,10 @@ for (const version of [0, 3])
 			"播种会话必须读取继承事件数，普通已缓存会话无需读取原文",
 		);
 		assert.deepEqual(cacheReads, [
-			{ id: s1, inheritedEventCount: 0 },
-			{ id: s2, inheritedEventCount: 3 },
-			{ id: s1, inheritedEventCount: 0 },
-			{ id: s2, inheritedEventCount: 3 },
+			{ id: s1 },
+			{ id: s2 },
+			{ id: s1 },
+			{ id: s2 },
 		]);
 	});
 
@@ -756,9 +757,13 @@ test("archivedSessionMetadata skips seeded projection repair when the inherited 
 	const reads = [];
 	let restored = false;
 	let put = false;
-	env.persistence.readFrom = async (id, fromSeq) => {
-		reads.push({ id, fromSeq });
-		return { meta: env.persistence.headers[0], events: [] };
+	env.persistence.open = async (id) => {
+		reads.push({ id, fromSeq: 0 });
+		return {
+			header: env.persistence.headers[0],
+			read: async () => ({ events: [] }),
+			close: async () => {},
+		};
 	};
 	env.projCache.cachedSnapshot = () => void 0;
 	env.projCache.put = async () => {
@@ -1457,7 +1462,9 @@ test("批量删除只为级联预取一次存储列举，墓碑淘汰后也不�
 	const indexedDuring = [];
 	env.persistence.list = async () => {
 		lists += 1;
-		return env.persistence.headers.filter((item) => existsSync(env.located.get(item.id)));
+		return env.persistence.headers
+			.filter((item) => existsSync(env.located.get(item.id)))
+			.map((header) => ({ header }));
 	};
 	const originalIndex = registry.indexHeader.bind(registry);
 	registry.indexHeader = async (header) => {
@@ -1491,7 +1498,9 @@ test("批量级联预取失败后按会话重试列举，不缓存失败结果",
 	env.persistence.list = async () => {
 		lists += 1;
 		if (lists === 1) throw new Error("list failed");
-		return env.persistence.headers.filter((item) => existsSync(env.located.get(item.id)));
+		return env.persistence.headers
+			.filter((item) => existsSync(env.located.get(item.id)))
+			.map((header) => ({ header }));
 	};
 
 	const result = await registry.deleteArchivedSessions({ scope: "all" });
@@ -2594,7 +2603,12 @@ test("typert gateway SRC: claims + dispatch single and batch archive methods end
 	assert.equal(malformedFavorite.ok, false);
 	// 通过真实网关验证新描述符的参数解析、只读调用及返回编解码。
     await registry.archiveSession(s1);
-    env.persistence.readFrom = async () => ({ events: [{ seq: 1, type: "user/message", data: { content: "检索测试正文" } }] });
+    env.persistence.open = async () => ({
+      header: env.persistence.headers.find((item) => item.id === s1),
+      inheritedEventCount: 0,
+      read: async () => ({ events: [{ seq: 1, type: "user/message", data: { content: "检索测试正文" } }] }),
+      close: async () => {},
+    });
     const searched = await gatewayCall(captured.handler, "workspaceRegistry/searchArchivedContent", { input: { sessionIds: [s1], query: "正文" } });
     assert.equal(searched.ok, true);
     assert.equal(searched.value.items[0].sessionId, s1);
@@ -2726,7 +2740,10 @@ test("归档检索与预览只读日志，不激活会话、不修改归档或�
   const env = buildRoot({ headers: [header(s1), header(s2)], archived: [s1, s2] });
   const registry = await mountWorkspaceRegistry(env);
   const events = [{ type: "user/message", seq: 0, data: { content: [{ type: "text", text: "订单退款" }] } }];
-  env.persistence.readFrom = async id => { if (id === s2) throw new Error("读取失败"); return { events }; };
+  env.persistence.open = async id => {
+    if (id === s2) throw new Error("读取失败");
+    return { header: env.persistence.headers.find((item) => item.id === id), inheritedEventCount: 0, read: async () => ({ events }), close: async () => {} };
+  };
   const found = await registry.searchArchivedContent({ sessionIds: [s1, s2], query: "退款" });
   assert.equal(found.items[0].sessionId, s1);
   assert.equal(found.failures[0].sessionId, s2);
@@ -2755,13 +2772,18 @@ test("新版预览关闭只读句柄，失败也关闭，期间恢复的会话�
 test("会话详情统计用户轮次，读取失败保留定位路径且不激活会话", async () => {
   const env = buildRoot({ headers: [header(s1), header(s2)], archived: [s1] });
   const registry = await mountWorkspaceRegistry(env);
-  env.persistence.readFrom = async id => {
+  env.persistence.open = async id => {
     if (id === s2) throw new Error("旧日志无法转换");
-    return { events: [
-      { seq: 0, type: "user/message", data: { source: { kind: "user" }, content: [{ type: "image" }] } },
-      { seq: 1, type: "user/message", data: { source: { kind: "plugin" }, content: "注入" } },
-      { seq: 2, type: "assistant/message", data: { message: { content: "回复" } } }
-    ] };
+    return {
+      header: env.persistence.headers.find((item) => item.id === id),
+      inheritedEventCount: 0,
+      read: async () => ({ events: [
+        { seq: 0, type: "user/message", data: { source: { kind: "user" }, content: [{ type: "image" }] } },
+        { seq: 1, type: "user/message", data: { source: { kind: "plugin" }, content: "注入" } },
+        { seq: 2, type: "assistant/message", data: { message: { content: "回复" } } }
+      ] }),
+      close: async () => {},
+    };
   };
   const result = await registry.sessionDetails({ sessionIds: [s1, s2] });
   assert.equal(result.items[0].turnCount, 1);
@@ -2779,7 +2801,7 @@ test("会话路径定位旧代际目录，当前代际未生成时不复制虚�
   const directory = installJsonlLayout(env, s1);
   env.located.set(s1, join(directory, "session.v3.jsonl.zstd"));
   const registry = await mountWorkspaceRegistry(env);
-  env.persistence.readFrom = async () => { throw new Error("来源无法识别"); };
+  env.persistence.open = async () => { throw new Error("来源无法识别"); };
   const result = await registry.sessionDetails({ sessionIds: [s1] });
   assert.equal(result.items[0].path, directory);
   assert.equal(result.items[0].turnCount, null);
@@ -2805,7 +2827,7 @@ for (const [code, message] of [["missing", "ENOENT"], ["permission", "EACCES"], 
 test('诊断未知会话及修复令牌校验，不对未知错误写文件', async () => {
   const env = buildRoot({ headers: [header(s1)], archived: [s1] });
   const registry = await mountWorkspaceRegistry(env);
-  env.persistence.readFrom = async () => { throw new Error('ENOENT'); };
+  env.persistence.open = async () => { throw new Error('ENOENT'); };
   const report = await registry.diagnoseSession({ sessionId: s1 });
   assert.equal(report.repairable, false);
   assert.equal(report.code, "missing");
@@ -2817,7 +2839,7 @@ test('诊断未知会话及修复令牌校验，不对未知错误写文件', as
 test('修复需要已归档且未打开，诊断正常会话不生成新日志', async () => {
   const env = buildRoot({ headers: [header(s1)], archived: [] });
   const registry = await mountWorkspaceRegistry(env);
-  env.persistence.readFrom = async () => ({ events: [] });
+  env.persistence.open = async () => ({ header: header(s1), inheritedEventCount: 0, read: async () => ({ events: [] }), close: async () => {} });
   assert.match((await registry.diagnoseSession({ sessionId: s1 })).reason, /正常/);
   await assert.rejects(registry.sessionRepairPlan(s1), /先归档/);
 });
@@ -2825,7 +2847,7 @@ test('修复需要已归档且未打开，诊断正常会话不生成新日志',
 test('未归档正文搜索读取已知会话且不改变归档状态', async()=>{
  const env=buildRoot({headers:[header(s1)],archived:[]});
  const registry=await mountWorkspaceRegistry(env);
- env.persistence.readFrom=async()=>({events:[{seq:0,type:'user/message',data:{source:{kind:'user'},content:'审查订单'}}]});
+ env.persistence.open=async()=>({header:header(s1),inheritedEventCount:0,read:async()=>({events:[{seq:0,type:'user/message',data:{source:{kind:'user'},content:'审查订单'}}]}),close:async()=>{}});
  const result=await registry.searchSessionContent({sessionIds:[s1],query:'审查'});
  assert.equal(result.items[0].sessionId,s1);
  assert.deepEqual(env.global.archivedSessionIds,[]);
