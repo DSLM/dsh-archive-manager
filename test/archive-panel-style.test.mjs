@@ -37,11 +37,16 @@ test("归档设置页删除确认使用红色危险样式", async () => {
   assert.doesNotMatch(client, /dsham_settingsDeleteConfirm/);
 });
 
-test("全部归档确认使用红色提示样式", async () => {
+test("弹窗按钮对齐宿主：不改尺寸和边框，危险操作只改文字颜色", async () => {
   const client = await readFile(clientPath, "utf8");
+  const helper = client.slice(client.indexOf("function modalFooterButton"), client.indexOf("function tabsShell"));
 
-  assert.match(client, /className: "dsham_archiveWorkspaceConfirm"/);
-  assert.match(client, /\.dsham_archiveWorkspaceConfirm\{color:var\(--dsw-alias-state-error-primary\)!important;background:transparent!important;border-color:var\(--dsw-alias-state-error-primary\)!important/);
-  assert.match(client, /\.dsham_archiveWorkspaceConfirm:hover:not\(:disabled\)\{background:color-mix\(in srgb,var\(--dsw-alias-state-error-primary\) 20%,transparent\)!important\}/);
-  assert.match(client, /\.dsham_archiveWorkspaceConfirm:focus-visible\{outline:2px solid var\(--dsw-alias-state-error-secondary\);outline-offset:2px\}/);
+  assert.match(helper, /function modalFooterButton/);
+  assert.doesNotMatch(helper, /size:/);
+  assert.match(client, /modalFooterButton\(\{ variant: "primary"/);
+  assert.match(client, /\.dsham_modalDanger:not\(:disabled\)\{color:var\(--dsw-alias-state-error-primary\)\}/);
+  assert.match(client, /className: WorkspaceBrowser_module_css_default\.deleteAction/);
+  assert.doesNotMatch(client, /dsham_archiveWorkspaceConfirm/);
+  assert.doesNotMatch(client, /border-color:var\(--dsw-alias-state-error-primary\)!important/);
+  assert.doesNotMatch(client, /color-mix\(in srgb,var\(--dsw-alias-state-error-primary\)/);
 });

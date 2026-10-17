@@ -79,8 +79,8 @@ function UpdateDialog(props: { flow: ReturnType<typeof createUpdateFlow>; packag
 	return React.createElement(Modal, {
 		open: true, className: "mpi-dialog", title: `${name} ${view.copy.update}`, closeLabel: "Close", onClose: props.onClose,
 		footer: [
-			React.createElement(PrimitiveButton, { key: "check", variant: "outline", size: "sm", disabled: view.busy, onClick: () => { void props.flow.check(); } }, view.copy.recheck),
-			React.createElement(PrimitiveButton, { key: "update", variant: "primary", size: "sm", disabled: view.disabled, onClick: () => { void props.flow.update(); } }, view.updateLabel),
+			React.createElement(PrimitiveButton, { key: "check", variant: "outline", disabled: view.busy, onClick: () => { void props.flow.check(); } }, view.copy.recheck),
+			React.createElement(PrimitiveButton, { key: "update", variant: "primary", disabled: view.disabled, onClick: () => { void props.flow.update(); } }, view.updateLabel),
 		],
 	}, React.createElement("div", { ref: bodyRef },
 		React.createElement("p", { className: "mpi-intro" }, view.copy.intro),
