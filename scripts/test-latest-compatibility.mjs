@@ -24,6 +24,14 @@ try {
 		"session", "session-persistence", "session-persistence-jsonl", "session-format-catalog", "session-format-v3-to-v4", "session-query", "session-projection", "session-projection-cache", "workspace", "spill-local", "typert-protocol", "typert-registry"
 	].map((name) => [`@deepseek-ai/dsh-${name}`, version]));
 	dependencies["@deepseek-ai/cordis"] = manifest.devDependencies["@deepseek-ai/cordis"];
+	dependencies["@deepseek-ai/schemastery"] = "3.18.5";
+	Object.assign(dependencies, {
+		"@deepseek-ai/cordis-plugin-group": "1.0.5",
+		"@deepseek-ai/cordis-plugin-hmr": "1.0.20",
+		"@deepseek-ai/cordis-plugin-include": "1.0.10",
+		"@deepseek-ai/cordis-plugin-loader": "1.0.6",
+		"@deepseek-ai/cordis-plugin-timer": "1.1.7",
+	});
 	await writeFile(join(isolated, "package.json"), JSON.stringify({ private: true, type: "module", dependencies, overrides: hostTestOverrides(version) }), "utf8");
 	await cp(join(root, "lib"), join(isolated, "lib"), { recursive: true });
 	await mkdir(join(isolated, "test", "fixtures"), { recursive: true });

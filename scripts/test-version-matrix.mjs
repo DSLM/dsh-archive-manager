@@ -9,10 +9,27 @@ import { hostTestOverrides } from "./host-test-dependencies.mjs";
 const root = fileURLToPath(new URL("..", import.meta.url));
 const manifest = JSON.parse(await readFile(join(root, "package.json"), "utf8"));
 const profiles = [
-	{ version: "0.2.0-rc.1", cordis: "4.0.4", latest: true },
-	{ version: "0.2.0-rc.2", cordis: "4.0.4", latest: true },
-	{ version: manifest.devDependencies["@deepseek-ai/dsh-session"], cordis: manifest.devDependencies["@deepseek-ai/cordis"], latest: true }
+	{ version: "0.2.0-rc.1", cordis: "4.0.4", schemastery: "3.18.4", latest: true },
+	{ version: "0.2.0-rc.2", cordis: "4.0.4", schemastery: "3.18.4", latest: true },
+	{ version: "0.2.1-rc.1", cordis: "4.0.5", schemastery: "3.18.5", latest: true },
+	{ version: "0.2.1-rc.2", cordis: "4.0.5", schemastery: "3.18.5", latest: true },
 ];
+const cordisPlugins = {
+	"4.0.4": {
+		"@deepseek-ai/cordis-plugin-group": "1.0.4",
+		"@deepseek-ai/cordis-plugin-hmr": "1.0.19",
+		"@deepseek-ai/cordis-plugin-include": "1.0.9",
+		"@deepseek-ai/cordis-plugin-loader": "1.0.5",
+		"@deepseek-ai/cordis-plugin-timer": "1.1.6",
+	},
+	"4.0.5": {
+		"@deepseek-ai/cordis-plugin-group": "1.0.5",
+		"@deepseek-ai/cordis-plugin-hmr": "1.0.20",
+		"@deepseek-ai/cordis-plugin-include": "1.0.10",
+		"@deepseek-ai/cordis-plugin-loader": "1.0.6",
+		"@deepseek-ai/cordis-plugin-timer": "1.1.7",
+	},
+};
 const npm = process.platform === "win32" ? process.execPath : "npm";
 const npmPrefix = process.platform === "win32" ? [join(dirname(process.execPath), "node_modules", "npm", "bin", "npm-cli.js")] : [];
 const testNames = (await readdir(join(root, "test"))).filter((name) => name.endsWith(".test.mjs"));
@@ -28,6 +45,9 @@ function run(command, args, cwd, env = process.env) {
 	});
 }
 
+if (manifest.devDependencies["@deepseek-ai/dsh-session"] !== "0.2.1-rc.2") {
+	throw new Error(`开发依赖必须钉到矩阵里的最新 RC 0.2.1-rc.2，实际 ${manifest.devDependencies["@deepseek-ai/dsh-session"]}`);
+}
 const failures = [];
 for (const profile of profiles) {
 	const isolated = await mkdtemp(join(tmpdir(), "dsh-am-matrix-"));
@@ -41,6 +61,8 @@ for (const profile of profiles) {
 			dependencies[target] = name.startsWith("@deepseek-ai/dsh-") ? profile.version : pinned;
 		}
 		dependencies["@deepseek-ai/cordis"] = profile.cordis;
+		dependencies["@deepseek-ai/schemastery"] = profile.schemastery;
+		Object.assign(dependencies, cordisPlugins[profile.cordis]);
 		// 固定旧 Cordis 的配套插件，避免 npm 自动选入要求 4.0.2 的新版。
 		if (profile.runtime) {
 			dependencies["@deepseek-ai/cordis-plugin-include"] = "1.0.6";

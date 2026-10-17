@@ -14,7 +14,7 @@
   [![npm package](https://img.shields.io/npm/v/%40michengai%2Fdsh-archive-manager.svg?label=npm%20package)](https://www.npmjs.com/package/@michengai/dsh-archive-manager)
   [![npm 下载量](https://img.shields.io/npm/dt/%40michengai%2Fdsh-archive-manager.svg?label=npm%20%E4%B8%8B%E8%BD%BD%E9%87%8F)](https://www.npmjs.com/package/@michengai/dsh-archive-manager)
   [![DSH Web Plugin](https://img.shields.io/badge/DSH%20Web-Plugin-0f766e.svg)](https://github.com/MichengAI/dsh-archive-manager)
-  [![DSH 支持至 0.2.1-alpha.3](https://img.shields.io/badge/DSH-%E6%94%AF%E6%8C%81%E8%87%B3%200.2.1--alpha.3-2563eb.svg)](#前置条件)
+  [![DSH 支持至 0.2.1-rc.2](https://img.shields.io/badge/DSH-%E6%94%AF%E6%8C%81%E8%87%B3%200.2.1--rc.2-2563eb.svg)](#前置条件)
 </div>
 
 > DSH Archive Manager 是社区维护的 DeepSeek Harness（DSH）插件，并非 DeepSeek AI 官方产品。
@@ -71,7 +71,7 @@
 ## 前置条件
 
 - 已能正常使用 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) Web，并可在终端运行 `dsh`。
-- 当前支持 DSH `0.2.0-rc.1`、`0.2.0-rc.2`、`0.2.1-alpha.1`、`0.2.1-alpha.2`、`0.2.1-alpha.3`、`0.2.1-alpha.4`、`0.2.1-alpha.5`。更早宿主会被版本门拒绝，插件不会运行；已有归档和收藏仍保留。仍在使用 `0.1.x` 的，请安装 `1.0.20`。
+- 当前支持 DSH `0.2.0-rc.1`、`0.2.0-rc.2`、`0.2.1-rc.1`、`0.2.1-rc.2`。中间的 `0.2.1-alpha.*` 和更早宿主会被版本门拒绝，插件不会运行；已有归档和收藏仍保留。仍在使用 `0.1.x` 的，请安装 `1.0.20`。
 - Node.js 版本需满足 `^22.19.0 || >=24.0.0`；从源码安装还需要 pnpm。
 
 ## 安装

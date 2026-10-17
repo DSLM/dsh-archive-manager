@@ -7,7 +7,7 @@
 # 自定义侧栏通过优先级覆盖插槽；发布后的安装命令：
 #   dsh plugin --profile web add @michengai/dsh-archive-manager
 #
-# DSH 0.2.1-alpha.3 起官方已无 ui-settings-unarchive-sessions 入口；
+# DSH 0.2.1-rc.1 起官方已无 ui-settings-unarchive-sessions 入口；
 # 再 disable 会在 dump-config 告警「entry not found」，故不再写入该补丁。
 - id: ui-workspace
   disabled: false
