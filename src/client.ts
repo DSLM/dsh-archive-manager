@@ -60,11 +60,11 @@ export function startArchiveClient(require: HostRequire) {
 		function SettingsModalAnchor({ refObject, getContainer }: { refObject: import("react").RefObject<HTMLSpanElement>; getContainer(): HTMLElement }) {
 			return (0, react_jsx_runtime.jsx)("span", { hidden: true, ref: refObject, "data-get-container": getContainer });
 		}
-		function settingsButton({ variant = "outline", icon, children, danger = false, className, disabled, title, onClick, "aria-label": ariaLabel, "aria-pressed": ariaPressed, "aria-expanded": ariaExpanded, "aria-haspopup": ariaHaspopup }: { variant?: "primary" | "ghost" | "outline" | "toolbar"; icon?: import("react").ReactNode; danger?: boolean; className?: string; disabled?: boolean; title?: string; onClick?: () => void; "aria-label"?: string; "aria-pressed"?: boolean; "aria-expanded"?: boolean; "aria-haspopup"?: import("react").AriaAttributes["aria-haspopup"]; children?: import("react").ReactNode }) {
+		function settingsButton({ variant = "outline", icon, children, className, disabled, title, onClick, "aria-label": ariaLabel, "aria-pressed": ariaPressed, "aria-expanded": ariaExpanded, "aria-haspopup": ariaHaspopup }: { variant?: "primary" | "ghost" | "outline" | "toolbar"; icon?: import("react").ReactNode; className?: string; disabled?: boolean; title?: string; onClick?: () => void; "aria-label"?: string; "aria-pressed"?: boolean; "aria-expanded"?: boolean; "aria-haspopup"?: import("react").AriaAttributes["aria-haspopup"]; children?: import("react").ReactNode }) {
 			return (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Button, {
 				variant,
 				size: "sm",
-				className: clsx(className, danger && "dsham_modalDanger"),
+				className,
 				disabled,
 				title,
 				onClick,
@@ -76,10 +76,9 @@ export function startArchiveClient(require: HostRequire) {
 				children
 			});
 		}
-		function modalFooterButton({ variant = "outline", danger = false, disabled, onClick, children }: { variant?: "primary" | "outline"; danger?: boolean; disabled?: boolean; onClick?: () => void; children?: import("react").ReactNode }) {
+		function modalFooterButton({ variant = "outline", disabled, onClick, children }: { variant?: "primary" | "outline"; disabled?: boolean; onClick?: () => void; children?: import("react").ReactNode }) {
 			return (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Button, {
-				variant: danger ? "outline" : variant,
-				className: danger ? "dsham_modalDanger" : undefined,
+				variant,
 				disabled,
 				onClick,
 				children
@@ -817,7 +816,7 @@ export function startArchiveClient(require: HostRequire) {
 					title: t("archives.archiveTitle", { n: archiveTarget?.length ?? 0 }), description: archiveGroup === null ? t("archives.archiveSelectedDesc") : t(archiveGroup.key === ARCHIVE_UNGROUPED_KEY ? "archives.archiveUngroupedDesc" : "archives.archiveProjectDesc", { name: archiveGroup.title, n: archiveTarget?.length ?? 0 }),
 					footer: (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [
 						modalFooterButton({ disabled: busy, onClick: closeArchive, children: t("cancel") }),
-						modalFooterButton({ danger: true, disabled: busy || !archiveTarget?.length, onClick: confirmArchive, children: t("archives.archiveSelected") })
+						modalFooterButton({ variant: "primary", disabled: busy || !archiveTarget?.length, onClick: confirmArchive, children: t("archives.archiveSelected") })
 					] }), children: (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [
 						organizeBatch && (0, react_jsx_runtime.jsx)("p", { children: t(idleRequest ? "organizer.idleConfirm" : "organizer.manualConfirm") }),
 						organizeBatch && (0, react_jsx_runtime.jsx)("div", { className: "dsham_archivePreview", children: (archiveTarget ?? []).map((id) => (0, react_jsx_runtime.jsxs)("label", { children: [(0, react_jsx_runtime.jsx)(SelectionCheckbox, { checked: true, disabled: busy, label: displayTitle(sessions.byId[id] ?? { id }, t), onChange: () => setArchiveTarget((current) => (current ?? []).filter((value) => value !== id)) }), displayTitle(sessions.byId[id] ?? { id }, t)] }, id)) }),
@@ -831,7 +830,7 @@ export function startArchiveClient(require: HostRequire) {
 					...stopArchive === null ? {} : { description: t("archiveActive.desc", { name: stopArchive.title, kinds: stopArchive.kinds }) },
 					footer: (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [
 						modalFooterButton({ disabled: busy, onClick: () => { if (!busy) { setStopArchive(null); setError(null); } }, children: t("cancel") }),
-						modalFooterButton({ danger: true, disabled: busy, onClick: async () => {
+						modalFooterButton({ variant: "primary", disabled: busy, onClick: async () => {
 							if (archiveBusy.current || busy || stopArchive === null || typeof archiveSession !== "function") return;
 							archiveBusy.current = true; setBusy(true); setError(null);
 							try {
@@ -851,7 +850,7 @@ export function startArchiveClient(require: HostRequire) {
 					onClose: closeDelete,
 					title: deleteDialogTitle,
 					...deleteDialogDescription === void 0 ? {} : { description: deleteDialogDescription },
-					footer: (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [modalFooterButton({ disabled: busy, onClick: closeDelete, children: t("cancel") }), modalFooterButton({ danger: true, disabled: busy, onClick: confirmDelete, children: deleteConfirmLabel })] }),
+					footer: (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [modalFooterButton({ disabled: busy, onClick: closeDelete, children: t("cancel") }), modalFooterButton({ variant: "primary", disabled: busy, onClick: confirmDelete, children: deleteConfirmLabel })] }),
 					children: (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [
 						busy && (0, react_jsx_runtime.jsxs)("div", { role: "status", children: [deleteTarget?.kind === "batch" ? t("archives.deleteBatchPending") : t("deleteSession.pending"), batchProgress && (0, react_jsx_runtime.jsx)("progress", { value: batchProgress.done, max: Math.max(1, batchProgress.total), "aria-label": t("organizer.progress") }), batchProgress && t("organizer.progressCount", { done: batchProgress.done, total: batchProgress.total })] }),
 						error !== null && (0, react_jsx_runtime.jsx)("div", { className: "dsham_settingsError", role: "alert", children: error })
@@ -3517,7 +3516,7 @@ export function startArchiveClient(require: HostRequire) {
 		].join("");
 		const ARCHIVE_SETTINGS_BATCH_CSS = ".dsham_settingsTitleLink{display:block;max-width:100%;padding:0;border:0;background:transparent;color:var(--dsw-alias-label-primary);font:inherit;font-size:13px;font-weight:600;line-height:20px;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer}.dsham_settingsTitleLink:hover:not(:disabled){text-decoration:underline;text-underline-offset:3px}.dsham_settingsTitleLink:disabled{cursor:default;opacity:.6}.dsham_groupToggle{display:flex;align-items:center;gap:8px;min-width:0;max-width:100%;padding:4px 0;border:0;background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer}.dsham_groupToggle span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.dsham_settingsRow:hover{background:var(--dsw-alias-interactive-bg-hover)}.dsham_settingsRow[data-selected=true]{background:var(--dsw-alias-interactive-bg-hover)}.dsham_settingsTitleLink:focus-visible,.dsham_groupToggle:focus-visible{outline:2px solid var(--dsw-alias-state-business-primary,#3b82f6);outline-offset:2px}@container(max-width:620px){.dsham_settingsToolbar{grid-template-columns:repeat(3,minmax(0,1fr))}.dsham_settingsSearch{grid-column:1/-1}}@container(max-width:400px){.dsham_settingsRow{gap:8px;padding:10px 8px}.dsham_settingsActions{gap:0}.dsham_settingsMeta{font-size:11px}}.dsham_settingsGroupMeta{display:flex;align-items:center;gap:8px;flex:none;flex-wrap:wrap}.dsham_settingsStatus{margin-top:10px;color:var(--dsw-alias-label-secondary);font-size:12px}.dsham_checkbox{width:16px;height:16px;margin:0;accent-color:var(--dsw-alias-brand-primary);flex:none}button.dsham_favoriteOn{color:#e8b931}";
 		const ARCHIVE_SETTINGS_EXTERNAL_LINK_CSS = ".dsham_settingsTitleRow{display:flex;align-items:center;gap:8px 12px;min-width:0;flex-wrap:wrap}.dsham_settingsLinks{display:flex;align-items:center;gap:8px;flex-wrap:wrap}@media(max-width:720px){.dsham_settingsTitleRow{flex-wrap:wrap}}";
-		const ARCHIVE_MODAL_CSS = ".dsham_modalRoot{position:fixed;inset:0;z-index:1200;display:grid;place-items:center;padding:24px}.dsham_modalMask{position:absolute;inset:0;background:var(--dsw-alias-bg-mask-1,rgb(0 0 0 / 45%))}.dsham_modalDialog{position:relative;display:flex;flex-direction:column;gap:12px;max-width:calc(100vw - 48px);max-height:min(80vh,720px);padding:22px 24px 20px;overflow:auto;border:0;border-radius:var(--dsw-radius-panel,28px);background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-primary);box-shadow:var(--dsw-elevation-prominent,0 16px 40px rgb(0 0 0 / 24%))}.dsham_modalDialog h2{margin:0;font-size:16px;line-height:24px}.dsham_modalDialog>p{margin:0;color:var(--dsw-alias-label-secondary);font-size:13px;line-height:20px}.dsham_modalFooter{display:flex;align-items:center;justify-content:flex-end;gap:8px}.dsham_modalDanger:not(:disabled){color:var(--dsw-alias-state-error-primary)}";
+		const ARCHIVE_MODAL_CSS = ".dsham_modalRoot{position:fixed;inset:0;z-index:1200;display:grid;place-items:center;padding:24px}.dsham_modalMask{position:absolute;inset:0;background:var(--dsw-alias-bg-mask-1,rgb(0 0 0 / 45%))}.dsham_modalDialog{position:relative;display:flex;flex-direction:column;gap:12px;max-width:calc(100vw - 48px);max-height:min(80vh,720px);padding:22px 24px 20px;overflow:auto;border:0;border-radius:var(--dsw-radius-panel,28px);background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-primary);box-shadow:var(--dsw-elevation-prominent,0 16px 40px rgb(0 0 0 / 24%))}.dsham_modalDialog h2{margin:0;font-size:16px;line-height:24px}.dsham_modalDialog>p{margin:0;color:var(--dsw-alias-label-secondary);font-size:13px;line-height:20px}.dsham_modalFooter{display:flex;align-items:center;justify-content:flex-end;gap:8px}";
 		const ARCHIVE_SETTINGS_SELECTION_CSS = ".dsham_settingsSelection{margin:-8px 0 16px;padding:4px 0 12px;border-bottom:1px solid var(--dsw-alias-border-l2)}.dsham_settingsSelectionMain{display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;min-height:36px}.dsham_settingsSelectionSummary{display:flex;flex-wrap:wrap;align-items:center;gap:12px;min-width:0;max-width:100%}.dsham_settingsSelectionToggle{display:inline-flex;flex:none;white-space:nowrap;align-items:center;gap:12px;color:var(--dsw-alias-label-primary);font-size:13px;line-height:20px;cursor:pointer}.dsham_settingsSelectionClear{flex:none;min-height:28px;padding:0 0 0 12px;border:0;border-left:1px solid var(--dsw-alias-border-l2);background:transparent;color:var(--dsw-alias-state-business-primary,#3b82f6);font:inherit;font-size:13px;white-space:nowrap;cursor:pointer}.dsham_settingsSelectionClear:hover:not(:disabled){text-decoration:underline}.dsham_settingsSelectionActions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:10px;max-width:100%;margin-left:auto}.dsham_settingsSelectionAction{flex:none;white-space:nowrap;min-height:32px;padding:0 14px;color:var(--dsw-alias-label-primary);background:transparent;border:1px solid var(--dsw-alias-border-l2);border-radius:8px;cursor:pointer;font:inherit;font-size:13px;font-weight:500}.dsham_settingsSelectionAction:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover)}.dsham_settingsSelectionArchive,.dsham_settingsSelectionScope{margin:8px 0 0;color:var(--dsw-alias-label-tertiary);font-size:12px;line-height:20px;overflow-wrap:anywhere}.dsham_settingsSelectionAction:disabled,.dsham_settingsSelectionClear:disabled{cursor:not-allowed;opacity:.5}.dsham_settingsSelectionAction:focus-visible,.dsham_settingsSelectionClear:focus-visible{outline:2px solid var(--dsw-alias-state-business-primary,#3b82f6);outline-offset:2px}";
 		const ARCHIVE_SETTINGS_LAYOUT_OVERRIDE = ".dsham_settings{margin:0 auto!important}@media(max-width:720px){.dsham_settings{margin:0 auto!important}}";
 		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify("dsh-archive-manager/ArchiveSettings.layout.css") + "]") === null) {
@@ -3621,7 +3620,7 @@ export function startArchiveClient(require: HostRequire) {
 						}), hasSelection && settingsButton({ disabled: busy, "aria-label": t("archives.clearSelection"), onClick: onClear, children: t("archives.clearSelectionShort") })]
 					}), hasSelection && (0, react_jsx_runtime.jsxs)("div", {
 						className: "dsham_settingsSelectionActions",
-						children: onArchive ? [settingsButton({ disabled: busy, onClick: onArchive, children: t("archives.archiveSelected") })] : [settingsButton({ disabled: busy, "aria-label": t("archives.restoreSelected"), onClick: onRestore, children: t("archives.restore") }), settingsButton({ danger: true, disabled: busy, "aria-label": t("archives.deleteSelected"), onClick: onDelete, children: t("archives.deleteSelectionShort") })]
+						children: onArchive ? [settingsButton({ disabled: busy, onClick: onArchive, children: t("archives.archiveSelected") })] : [settingsButton({ disabled: busy, "aria-label": t("archives.restoreSelected"), onClick: onRestore, children: t("archives.restore") }), settingsButton({ disabled: busy, "aria-label": t("archives.deleteSelected"), onClick: onDelete, children: t("archives.deleteSelectionShort") })]
 					})]
 				}), hiddenCount > 0 && (0, react_jsx_runtime.jsx)("p", { className: "dsham_settingsSelectionScope", role: "status", children: t("archives.selectionHiddenHint", { hidden: hiddenCount }) })]
 			});
@@ -4615,7 +4614,7 @@ export function startArchiveClient(require: HostRequire) {
 					title: t("deleteSession.title"),
 					footer: (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [
 						modalFooterButton({ disabled: deleting, onClick: close, children: t("cancel") }),
-						modalFooterButton({ danger: true, disabled: deleting, onClick: confirm, children: t("deleteSession.title") })
+						modalFooterButton({ variant: "primary", disabled: deleting, onClick: confirm, children: t("deleteSession.title") })
 					] }),
 					children: [
 						deleting && (0, react_jsx_runtime.jsx)("div", { role: "status", children: t("deleteSession.pending") }),

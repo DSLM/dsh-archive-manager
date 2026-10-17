@@ -667,7 +667,7 @@ test("删除确认框显示失败原因、允许重试，并阻止重复提交",
   let tree;
   const render = () => { cursor = 0; tree = client.__test.ArchivedSessionsSection(props); };
   const dialog = () => nodes(tree).find(node => node.props.open === true && node.props.title === "deleteSession.title");
-  const confirm = () => nodes(dialog().props.footer).find(node => node.props.className === "dsham_modalDanger" || String(node.props.className).includes("dsham_modalDanger"));
+  const confirm = () => nodes(dialog().props.footer).find(node => node.props.variant === "primary");
   const alerts = () => nodes(dialog().props.children).filter(node => node.props.role === "alert");
   const open = () => { nodes(tree).find(node => node.type?.name === "ArchivedSessionMenu").props.onDelete(); render(); };
   render(); open();
@@ -688,7 +688,7 @@ test("删除确认框显示失败原因、允许重试，并阻止重复提交",
   dialog().props.onClose(); render();
   nodes(tree).find(node => node.type?.name === "ArchivedGroupActions").props.onDelete(); render();
   const batchDialog = nodes(tree).find(node => node.props.open === true);
-  await nodes(batchDialog.props.footer).find(node => node.props.className === "dsham_modalDanger" || String(node.props.className).includes("dsham_modalDanger")).props.onClick(); render();
+  await nodes(batchDialog.props.footer).find(node => node.props.variant === "primary").props.onClick(); render();
   const failedBatch = nodes(tree).find(node => node.props.open === true);
   assert.equal(nodes(failedBatch.props.children).find(node => node.props.role === "alert").props.children, "deleteSession.failed: batch backend failed");
 });

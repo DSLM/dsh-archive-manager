@@ -30,23 +30,23 @@ test("设置页不再桥接 Ant，控件直接使用宿主原语和令牌", asyn
   assert.match(organizer, /NumberField/);
 });
 
-test("归档设置页删除确认使用红色危险样式", async () => {
+test("删除确认使用宿主主按钮，不再另涂危险色", async () => {
   const client = await readFile(clientPath, "utf8");
 
-  assert.match(client, /danger: true, disabled: busy, onClick: confirmDelete/);
+  assert.match(client, /variant: "primary", disabled: busy, onClick: confirmDelete/);
+  assert.doesNotMatch(client, /dsham_modalDanger/);
   assert.doesNotMatch(client, /dsham_settingsDeleteConfirm/);
 });
 
-test("弹窗按钮对齐宿主：不改尺寸和边框，危险操作只改文字颜色", async () => {
+test("弹窗底部按钮用宿主默认尺寸，确认是主按钮", async () => {
   const client = await readFile(clientPath, "utf8");
   const helper = client.slice(client.indexOf("function modalFooterButton"), client.indexOf("function tabsShell"));
 
   assert.match(helper, /function modalFooterButton/);
-  assert.doesNotMatch(helper, /size:/);
+  assert.doesNotMatch(helper, /size:|danger/);
   assert.match(client, /modalFooterButton\(\{ variant: "primary"/);
-  assert.match(client, /\.dsham_modalDanger:not\(:disabled\)\{color:var\(--dsw-alias-state-error-primary\)\}/);
+  assert.doesNotMatch(client, /dsham_modalDanger/);
   assert.match(client, /className: WorkspaceBrowser_module_css_default\.deleteAction/);
   assert.doesNotMatch(client, /dsham_archiveWorkspaceConfirm/);
   assert.doesNotMatch(client, /border-color:var\(--dsw-alias-state-error-primary\)!important/);
-  assert.doesNotMatch(client, /color-mix\(in srgb,var\(--dsw-alias-state-error-primary\)/);
 });

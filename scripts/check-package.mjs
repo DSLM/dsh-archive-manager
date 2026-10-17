@@ -17,6 +17,7 @@ const required = [
   "lib/client.js",
   "lib/tombstone.js",
   "lib/plugin-updater.js",
+  "lib/release-age.js",
   "lib/archive-experience.js",
   "lib/archive-organizer.js",
   "lib/archive-discovery.js",
