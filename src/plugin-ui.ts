@@ -49,8 +49,10 @@ export function DateRange(props: {
 	}
 	return React.createElement("div", { className: "dsham_dateRange", role: "group", "aria-label": props.label },
 		React.createElement("input", { className: "dsham_date", type: "date", value: props.from, "aria-label": props.fromLabel, "aria-invalid": props.invalid || undefined, onChange: (event: React.ChangeEvent<HTMLInputElement>) => change("from", event.target.value) }),
-		React.createElement("span", { "aria-hidden": true, children: "–" }),
-		React.createElement("input", { className: "dsham_date", type: "date", value: props.to, "aria-label": props.toLabel, "aria-invalid": props.invalid || undefined, onChange: (event: React.ChangeEvent<HTMLInputElement>) => change("to", event.target.value) }));
+		React.createElement("span", { className: "dsham_dateSep", "aria-hidden": true, children: "–" }),
+		React.createElement("input", { className: "dsham_date", type: "date", value: props.to, "aria-label": props.toLabel, "aria-invalid": props.invalid || undefined, onChange: (event: React.ChangeEvent<HTMLInputElement>) => change("to", event.target.value) }),
+		(props.from || props.to) ? React.createElement("button", { type: "button", className: "dsham_dateClearBtn", "aria-label": "clear", title: "clear", onClick: props.onClear, children: "×" }) : null
+	);
 }
 
 /** 失败详情用受控按钮加区域，不使用 Ant Collapse。 */

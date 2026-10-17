@@ -4,6 +4,10 @@
 
 Published release notes are retained below; new versions are added without removing earlier entries.
 
+## Unreleased
+
+- Archive filter bar stays on two aligned rows at any width: dropdowns size to their labels, the search box fills the first row, and the date range fills the second row with both date inputs stretching inside it. Narrow panels no longer wrap the bar into five stacked rows, and dates are no longer clipped.
+
 ## 1.1.0 - 2026-10-17
 
 - Supported hosts are now DeepSeek Harness `0.2.0-rc.1`, `0.2.0-rc.2`, `0.2.1-rc.1`, and `0.2.1-rc.2`. Intermediate `0.2.1-alpha.*` releases and hosts before `0.2.0` are rejected by the version gate and this plugin will not run. If you still use a `0.1.x` host, install plugin `1.0.20` instead of `@latest`. Existing archives, favorites, and settings are kept.
