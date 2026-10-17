@@ -98,7 +98,7 @@ test('归档客户端与 Host 绑定自身更新入口', async () => {
   assert.match(updateUi, /data-mpi-label/)
   assert.match(updateUi, /document\.addEventListener\("keydown"/)
   assert.match(updateUi, /variant: "outline", size: "sm"/)
-  assert.match(updateUi, /width: 680/)
+  assert.doesNotMatch(updateUi, /width:\s*680/)
   assert.match(updateUi, /if \(version\.textContent !== versionLabel\)/)
   assert.match(updateUi, /color: \"#e8b15a\"/)
   assert.match(await readFile(new URL('../src/plugin-update-model.ts', import.meta.url), 'utf8'), /else if \(payload\.latestCheckFailed\)/)
