@@ -2452,15 +2452,14 @@ test("ArchiveProjectionCache tombstone guards both cold-read write-back paths an
 		"alpha.2 coldSnapshot must be able to chain .catch() onto put()",
 	);
 	await blockedPut;
-	await cache.putSoft(
+	await cache.put(
 		s3,
 		identity,
 		{ title: { ver: 1, seq: 9, val: "t" } },
-		"cold-read write-back",
 	);
 	assert.ok(
 		!table.has(projectionCacheStorageKey(s3)),
-		"put/putSoft after delete must not recreate the row",
+		"put after delete must not recreate the row",
 	);
 	// 删除落在写回进行中：写回完成后补删自己的残留行。
 	cache.clearTombstone(s3);
@@ -2478,11 +2477,10 @@ test("ArchiveProjectionCache tombstone guards both cold-read write-back paths an
 		await released;
 		return put(...args);
 	};
-	const pendingWrite = cache.putSoft(
+	const pendingWrite = cache.put(
 		s3,
 		identity,
 		{ title: { ver: 1, seq: 9, val: "t" } },
-		"cold-read write-back",
 	);
 	await writing;
 	await cache.delete(s3);
@@ -2490,7 +2488,7 @@ test("ArchiveProjectionCache tombstone guards both cold-read write-back paths an
 	await pendingWrite;
 	assert.ok(
 		!table.has(projectionCacheStorageKey(s3)),
-		"an in-flight putSoft must not resurrect the deleted row",
+		"an in-flight put must not resurrect the deleted row",
 	);
 	await cache.whenIdle();
 	assert.ok(!table.has(projectionCacheStorageKey(s3)));

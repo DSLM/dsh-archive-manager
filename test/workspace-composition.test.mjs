@@ -285,8 +285,8 @@ for (const archiveFirst of [false, true]) test(`官方选择器和导航保持�
 			const deletion = slots.entries(sessionMenu).find((entry) => entry.options.id === "archive-manager.delete-session");
 			assert.equal(deletion.options.order, 500);
 		} else {
-			assert.equal(slots.entries("sidebar.workspaces").length, 2);
-			assert.equal(slots.entries("sidebar.workspaces")[0].component !== stockSidebar.component, true);
+			assert.equal(slots.entries("sidebar.workspaces").length, 1);
+			assert.equal(slots.entries("sidebar.workspaces")[0].component, stockSidebar.component);
 		}
 		assert.deepEqual(slots.entries("conversation.hero.workspace"), [picker]);
 		assert.equal(root.get("uiWorkspace")?.archiveCompositionMarker, navigation ? "official-instance" : undefined);
@@ -297,22 +297,13 @@ for (const archiveFirst of [false, true]) test(`官方选择器和导航保持�
 			assert.ok(opened.includes("new-session"));
 		}
 		if (!extensible) {
-			const flow = () => null;
-			const injected = () => ({ pick: "official" });
-			const disposeFlow = slots.register({ name: "sidebar.workspaces.directoryFlow", inject: injected }, flow);
-			await tick();
-			const mirror = slots.entries("archiveManager.sidebar.directoryFlow")[0];
-			assert.equal(mirror.component, flow);
-			assert.equal(mirror.inject, injected);
-			disposeFlow();
-			await tick();
 			assert.equal(slots.entries("archiveManager.sidebar.directoryFlow").length, 0);
 		}
 		// 父插槽消失后重建，两个插件必须重新注册，且目录声明不能残留。
 		disposeRoot();
 		disposeRoot = declare();
 		await tick();
-		assert.equal(slots.entries("sidebar.workspaces").length, extensible ? 1 : 2);
+		assert.equal(slots.entries("sidebar.workspaces").length, 1);
 		assert.equal(slots.entries("conversation.hero.workspace").length, 1);
 		await custom.dispose();
 		assert.equal(slots.entries("sidebar.workspaces").length, 1);
@@ -676,7 +667,7 @@ test("删除确认框显示失败原因、允许重试，并阻止重复提交",
   let tree;
   const render = () => { cursor = 0; tree = client.__test.ArchivedSessionsSection(props); };
   const dialog = () => nodes(tree).find(node => node.props.open === true && node.props.title === "deleteSession.title");
-  const confirm = () => nodes(dialog().props.footer).find(node => node.props.danger);
+  const confirm = () => nodes(dialog().props.footer).find(node => node.props.className === "is-danger" || String(node.props.className).includes("is-danger"));
   const alerts = () => nodes(dialog().props.children).filter(node => node.props.role === "alert");
   const open = () => { nodes(tree).find(node => node.type?.name === "ArchivedSessionMenu").props.onDelete(); render(); };
   render(); open();
@@ -697,7 +688,7 @@ test("删除确认框显示失败原因、允许重试，并阻止重复提交",
   dialog().props.onClose(); render();
   nodes(tree).find(node => node.type?.name === "ArchivedGroupActions").props.onDelete(); render();
   const batchDialog = nodes(tree).find(node => node.props.open === true);
-  await nodes(batchDialog.props.footer).find(node => node.props.danger).props.onClick(); render();
+  await nodes(batchDialog.props.footer).find(node => node.props.className === "is-danger" || String(node.props.className).includes("is-danger")).props.onClick(); render();
   const failedBatch = nodes(tree).find(node => node.props.open === true);
   assert.equal(nodes(failedBatch.props.children).find(node => node.props.role === "alert").props.children, "deleteSession.failed: batch backend failed");
 });

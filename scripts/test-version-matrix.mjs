@@ -9,11 +9,8 @@ import { hostTestOverrides } from "./host-test-dependencies.mjs";
 const root = fileURLToPath(new URL("..", import.meta.url));
 const manifest = JSON.parse(await readFile(join(root, "package.json"), "utf8"));
 const profiles = [
-	{ version: "0.1.0-rc.8", cordis: "4.0.1", runtime: true },
-	{ version: "0.1.1-rc.2", cordis: "4.0.1", runtime: true },
-	{ version: "0.1.2-rc.1", cordis: "4.0.2" },
-	{ version: "0.1.5-rc.1", cordis: "4.0.2", latest: true },
-	{ version: "0.1.5-rc.2", cordis: "4.0.2", latest: true },
+	{ version: "0.2.0-rc.1", cordis: "4.0.4", latest: true },
+	{ version: "0.2.0-rc.2", cordis: "4.0.4", latest: true },
 	{ version: manifest.devDependencies["@deepseek-ai/dsh-session"], cordis: manifest.devDependencies["@deepseek-ai/cordis"], latest: true }
 ];
 const npm = process.platform === "win32" ? process.execPath : "npm";

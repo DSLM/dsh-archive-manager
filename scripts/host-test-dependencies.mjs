@@ -1,34 +1,30 @@
-// 同代 RC 的依赖范围允许后续版本；隔离验收固定传递依赖，避免宿主混版。
-// 此清单覆盖 0.1.5 起的 RC / alpha 依赖闭包，不套用到 0.1.2 及更早独立发布的包。
+// 同代宿主的依赖范围允许后续版本；隔离验收固定传递依赖，避免宿主混版。
+// 只覆盖仍支持的 0.2.x。0.1.x 已退出 peer。
 export function hostTestOverrides(version) {
 	const supported = [
-		"0.1.5-rc.1",
-		"0.1.5-rc.2",
-		"0.1.5-rc.3",
-		"0.1.7-rc.1",
-		"0.1.7-rc.2",
 		"0.2.0-rc.1",
 		"0.2.0-rc.2",
+		"0.2.1-alpha.1",
+		"0.2.1-alpha.2",
 		"0.2.1-alpha.3",
+		"0.2.1-alpha.4",
+		"0.2.1-alpha.5",
 	];
 	if (!supported.includes(version)) return {};
-	const isAlpha3 = version === "0.2.1-alpha.3";
 	const names = [
 		"agent", "api-gateway", "brand", "client-connection", "client-locale", "client-store",
 		"client-ui-conversation", "client-ui-primitives", "client-ui-sidebar", "client-ui-slots", "client-ui-workspace",
 		"code-runtime", "compaction", "credentials", "deque", "host-webserver",
-		// invariants 自 0.2.1-alpha.1 起从宿主移除；alpha.3 不要再钉。
-		...(isAlpha3 ? [] : ["invariants"]),
+		...(version.startsWith("0.2.0-") ? ["invariants"] : []),
 		"llm",
 		"sandbox", "sandbox-policy", "scope", "session",
 		"session-format", "session-format-catalog", "session-format-v0-to-v1", "session-format-v1-to-v2", "session-format-v2-to-v3",
-		...(["0.1.7-rc.1", "0.1.7-rc.2", "0.2.0-rc.1", "0.2.0-rc.2", "0.2.1-alpha.3"].includes(version) ? ["session-format-v3-to-v4"] : []),
+		"session-format-v3-to-v4",
 		"session-persistence", "session-persistence-jsonl", "session-projection", "session-projection-cache", "session-query", "session-title",
 		"spill", "spill-local", "storage", "storage-domain", "system-prompt", "timeout", "tool-todo", "tools",
 		"typert-protocol", "typert-registry", "user-approval", "util-crypto", "util-values", "workspace",
-		// 0.1.7-rc.1 才纳入这两个包；0.1.5 两版把它们钉到同版本会取不到包。
-		...(["0.1.5-rc.1", "0.1.5-rc.2", "0.1.5-rc.3"].includes(version) ? [] : ["compaction-image-offload", "ptc-runtime"]),
-		...(["0.2.0-rc.1", "0.2.0-rc.2", "0.2.1-alpha.3"].includes(version) ? ["client-shortcuts", "client-product-analytics"] : [])
+		"compaction-image-offload", "ptc-runtime",
+		"client-shortcuts", "client-product-analytics"
 	];
 	return Object.fromEntries(names.map((name) => [`@deepseek-ai/dsh-${name}`, version]));
 }

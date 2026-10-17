@@ -93,14 +93,6 @@ const bundle = materialize("@michengai/dsh-archive-manager", {
 		"@deepseek-ai/dsh-client-store": { defineStore }
 	}
 });
-const legacyRequests = [];
-const legacyBundle = materialize("@michengai/dsh-archive-manager", {
-	requests: legacyRequests,
-	staticModules: {
-		...statics,
-		"@deepseek-ai/dsh-client-runtime/client": { defineStore }
-	}
-});
 
 const t = bundle.__test;
 
@@ -167,71 +159,16 @@ test("设置页批量恢复串行调用官方 unarchiveSession", async () => {
 	assert.deepEqual(result.archivedSessionIds, ["s2"]);
 });
 
-test("restore prefers official unarchiveSession when the host provides it", async () => {
+test("restore requires the official unarchiveSession", async () => {
 	const official = [];
-	const remote = [];
 	const unarchive = t.createUnarchiveSession({
 		async unarchiveSession(id) {
 			official.push(id);
 		}
-	}, () => ({
-		async unarchiveSession(id) {
-			remote.push(id);
-			return { ok: true, value: { archivedSessionIds: [] } };
-		}
-	}));
+	});
 	await unarchive("s1");
 	assert.deepEqual(official, ["s1"]);
-	assert.deepEqual(remote, []);
-});
-
-test("restore falls back to plugin remote unarchiveSession on older hosts", async () => {
-	const archived = ["s1", "s2"];
-	const remote = [];
-	const unarchive = t.createUnarchiveSession({
-		list: { getSnapshot: () => ({ archivedSessionIds: ["s1", "s2"] }) }
-	}, () => ({
-		async unarchiveSession(id) {
-			remote.push(id);
-			const i = archived.indexOf(id);
-			if (i !== -1) archived.splice(i, 1);
-			return { ok: true, value: { archivedSessionIds: [...archived] } };
-		}
-	}));
-	await unarchive("s1");
-	assert.deepEqual(remote, ["s1"]);
-	assert.deepEqual(archived, ["s2"]);
-});
-
-test("legacy batch restore counts from the plugin remote set when the official snapshot lags", async () => {
-	const archived = ["s1", "s2", "s3"];
-	const remote = [];
-	const workspaces = {
-		list: { getSnapshot: () => ({ archivedSessionIds: ["s1", "s2", "s3"] }) }
-	};
-	const unarchive = t.createUnarchiveSession(workspaces, () => ({
-		async unarchiveSession(id) {
-			remote.push(id);
-			const i = archived.indexOf(id);
-			if (i !== -1) archived.splice(i, 1);
-			return { ok: true, value: { archivedSessionIds: [...archived] } };
-		}
-	}));
-	const result = await t.unarchiveSessionsViaOfficial(workspaces, ["s1", "s1", "s3"], async () => {}, unarchive);
-	assert.deepEqual(remote, ["s1", "s3"]);
-	assert.deepEqual(result.unarchivedSessionIds, ["s1", "s3"]);
-	assert.deepEqual(result.archivedSessionIds, ["s2"]);
-});
-
-test("plugin remote restore surfaces host errors and missing registry", async () => {
-	const missing = t.createUnarchiveSession({}, () => undefined);
-	await assert.rejects(() => missing("s1"), /archive-manager remote service is unavailable/);
-	const failed = t.createUnarchiveSession({}, () => ({
-		async unarchiveSession() {
-			return { ok: false, error: { message: "workspace locked" } };
-		}
-	}));
-	await assert.rejects(() => failed("s1"), /workspace locked/);
+	await assert.rejects(() => t.createUnarchiveSession({})("s1"), /host unarchiveSession is unavailable/);
 });
 
 test("设置页与侧栏批量归档串行调用官方 archiveSession", async () => {
@@ -372,15 +309,10 @@ test("forked row stylesheet does not reuse the official workspace class prefix",
 	assert.equal(injected.includes("@michengai/dsh-archive-manager/WorkspacePicker.module.css"), false);
 });
 
-test("bundle resolves the current client-store and keeps the legacy fallback", () => {
+test("bundle resolves the current client-store", () => {
 	assert.equal(alphaRequests.includes("@deepseek-ai/dsh-client-store"), true);
 	assert.equal(alphaRequests.includes("@deepseek-ai/dsh-client-runtime/client"), false);
-	assert.equal(legacyRequests.includes("@deepseek-ai/dsh-client-store"), true);
-	assert.equal(legacyRequests.includes("@deepseek-ai/dsh-client-runtime/client"), true);
 	assert.equal(typeof bundle.__test.createWorkspaceViewStore().create, "function");
-	assert.equal(typeof legacyBundle.__test.createWorkspaceViewStore().create, "function");
-	assert.equal(bundle.__test.hasSplitClientStore, true);
-	assert.equal(legacyBundle.__test.hasSplitClientStore, false);
 });
 
 test("manifest keeps one DSH peer range; store optional; ghost client-runtime peer removed", () => {
@@ -394,16 +326,16 @@ test("manifest keeps one DSH peer range; store optional; ghost client-runtime pe
 		.map(([, version]) => version);
 	assert.ok(dshPeerRanges.length > 0);
 	assert.equal(new Set(dshPeerRanges).size, 1);
-	assert.equal(dshPeerRanges[0], "0.1.2-rc.1 || 0.1.5-rc.1 || 0.1.5-rc.2 || 0.1.5-rc.3 || 0.1.7-rc.1 || 0.1.7-rc.2 || 0.2.0-rc.1 || 0.2.0-rc.2 || 0.2.1-alpha.2 || 0.2.1-alpha.3");
-	for (const version of ["0.1.2-rc.1", "0.1.5-rc.1", "0.1.5-rc.2", "0.1.5-rc.3", "0.1.7-rc.1", "0.1.7-rc.2", "0.2.0-rc.1", "0.2.0-rc.2", "0.2.1-alpha.2", "0.2.1-alpha.3"]) {
+	assert.equal(dshPeerRanges[0], "0.2.0-rc.1 || 0.2.0-rc.2 || 0.2.1-alpha.1 || 0.2.1-alpha.2 || 0.2.1-alpha.3 || 0.2.1-alpha.4 || 0.2.1-alpha.5");
+	for (const version of ["0.2.0-rc.1", "0.2.0-rc.2", "0.2.1-alpha.1", "0.2.1-alpha.2", "0.2.1-alpha.3", "0.2.1-alpha.4", "0.2.1-alpha.5"]) {
 		assert.ok(semver.satisfies(version, dshPeerRanges[0]), `peer 范围必须接纳已验证宿主 ${version}`);
 	}
-	for (const version of ["0.1.0-rc.5", "0.1.0-rc.8", "0.1.0-rc.9", "0.1.1-rc.2", "0.1.3-alpha.2", "0.1.5", "0.1.6", "0.1.6-alpha.1", "0.1.6-alpha.2", "0.1.7-alpha.1", "0.1.7-rc.3", "0.1.7", "0.2.0", "0.2.0-rc.3"]) {
+	for (const version of ["0.1.0-rc.8", "0.1.1-rc.2", "0.1.2-rc.1", "0.1.5-rc.1", "0.1.5-rc.2", "0.1.5-rc.3", "0.1.6-alpha.1", "0.1.6-alpha.2", "0.1.7-alpha.1", "0.1.7-rc.1", "0.1.7-rc.2", "0.2.0", "0.2.0-rc.3", "0.2.1-alpha.6"]) {
 		assert.equal(semver.satisfies(version, dshPeerRanges[0]), false, `不接纳未声明版本 ${version}`);
 	}
 	assert.ok(dshDevelopmentVersions.length > 0);
 	assert.deepEqual([...new Set(dshDevelopmentVersions)], ["0.2.1-alpha.3"]);
-	assert.equal(PACKAGE_MANIFEST.peerDependenciesMeta?.["@deepseek-ai/dsh-client-store"]?.optional, true);
+	assert.equal(PACKAGE_MANIFEST.peerDependenciesMeta?.["@deepseek-ai/dsh-client-store"], undefined);
 	assert.equal(PACKAGE_MANIFEST.peerDependenciesMeta?.["@deepseek-ai/dsh-client-runtime"], undefined);
 	assert.equal(PACKAGE_MANIFEST.peerDependencies?.["@deepseek-ai/dsh-client-runtime"], undefined);
 	assert.equal(PACKAGE_MANIFEST.dsh.client.inject.includes("@deepseek-ai/dsh-client-runtime"), false);
@@ -428,34 +360,21 @@ test("bindObservable preserves receiver-sensitive alpha store methods", () => {
 	assert.equal(observed, 42);
 });
 
-test("侧栏注册的打开和分叉操作委托新版导航服务，并保留旧宿主回退", async () => {
-	for (const modern of [true, false]) {
-		const opened = [];
-		const forked = [];
-		const registrations = new Map();
-		const navigation = modern ? {
-			openSession: (id) => opened.push(id),
-			forkSession: async (id) => { forked.push(id); }
-		} : {};
-		const ctx = {
-			get: (name) => name === "uiWorkspace" ? navigation : void 0,
-			sessions: {
-				open: (id) => { assert.equal(modern, false); opened.push(id); },
-				fork: async ({ sessionId }) => { assert.equal(modern, false); forked.push(sessionId); return "fork"; }
-			},
-			workspaces: {},
-			slots: { inject: (name, callback) => name === "archiveManager.sidebar.directoryFlow" ? () => {} : callback(), register: (options) => registrations.set(options.name, options) },
-			// 本测试只执行槽位接线；字典、观察器和自动选中由各自测试覆盖。
-			effect() {}
-		};
-		const dispose = await bundle.apply(ctx);
-		const actions = registrations.get("sidebar.workspaces").inject();
-		actions.open("s1");
-		await actions.forkSession("s1");
-		assert.deepEqual(opened, modern ? ["s1"] : ["s1", "fork"]);
-		assert.deepEqual(forked, ["s1"]);
-		await dispose();
-	}
+test("侧栏不再替换官方列表，打开和分叉交给宿主导航", async () => {
+	const registrations = new Map();
+	const ctx = {
+		get: () => undefined,
+		sessions: { open() {}, fork: async () => "fork" },
+		workspaces: {},
+		slots: {
+			inject: (name, callback) => name === "archiveManager.sidebar.directoryFlow" ? () => {} : callback(),
+			register: (options) => registrations.set(options.name, options)
+		},
+		effect() {}
+	};
+	const dispose = await bundle.apply(ctx);
+	assert.equal(registrations.has("sidebar.workspaces"), false);
+	await dispose();
 });
 
 test("Typert remotes 同时带 create 和 schema", () => {

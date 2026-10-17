@@ -71,7 +71,7 @@
 ## 前置条件
 
 - 已能正常使用 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) Web，并可在终端运行 `dsh`。
-- 当前支持 DSH `0.1.2-rc.1`、`0.1.5-rc.1`、`0.1.5-rc.2`、`0.1.5-rc.3`、`0.1.7-rc.1`、`0.1.7-rc.2`、`0.2.0-rc.1`、`0.2.0-rc.2`、`0.2.1-alpha.2`、`0.2.1-alpha.3`；其他版本暂未纳入支持范围。
+- 当前支持 DSH `0.2.0-rc.1`、`0.2.0-rc.2`、`0.2.1-alpha.1`、`0.2.1-alpha.2`、`0.2.1-alpha.3`、`0.2.1-alpha.4`、`0.2.1-alpha.5`。更早宿主会被版本门拒绝，插件不会运行；已有归档和收藏仍保留。仍在使用 `0.1.x` 的，请安装 `1.0.20`。
 - Node.js 版本需满足 `^22.19.0 || >=24.0.0`；从源码安装还需要 pnpm。
 
 ## 安装
@@ -131,7 +131,7 @@ dsh plugin --profile web add @michengai/dsh-archive-manager@latest --registry=ht
 
 「全选当前筛选结果」只选择符合当前条件的会话。项目菜单的整体操作仍作用于该项目全部会话，不受搜索筛选影响。未归档页排除子代理和空白占位会话。
 
-设置页与侧栏的批量归档、批量恢复均串行调用单条接口：归档在所有支持的宿主走官方 `ctx.workspaces.archiveSession`；恢复在 DSH 0.1.6+ 走官方 `ctx.workspaces.unarchiveSession`，更早宿主回退到本插件的 `workspaceRegistry.unarchiveSession`。
+设置页与侧栏的批量归档、批量恢复均串行调用官方单条接口 `ctx.workspaces.archiveSession` 和 `ctx.workspaces.unarchiveSession`。
 
 ### 查看并继续归档对话
 

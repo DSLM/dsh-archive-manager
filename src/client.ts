@@ -7,7 +7,6 @@ import { createSessionHealthPanel, healthZh, healthEn, healthRu } from "./sessio
 import { createDiscoveryTools, discoveryCss, discoveryZh, discoveryEn, discoveryRu } from "./archive-discovery-ui.js";
 import { compareTurnCounts, copySessionText, discoveryInvocations, matchesUpdatedRange, validUpdatedRange, sessionDetailCandidates } from "./archive-discovery.js";
 import { allowArchivedNavigation, openArchivedConversation, formatArchiveNavigationError, ArchiveNavigationError, currentSessionId } from "./archive-experience.js";
-import { mirrorDirectoryFlow } from "./directory-flow-slot.js";
 import { observePluginUpdate } from "./plugin-update-ui.js";
 import { favoriteInvocations, idleArchiveCandidate, createSessionOrganizer } from "./archive-organizer.js";
 import { createOrganizerPanel, organizerZh, organizerEn, organizerRu } from "./archive-organizer-ui.js";
@@ -18,29 +17,10 @@ export function startArchiveClient(require: HostRequire) {
 		var module: { exports: Record<string, unknown> } = { exports: {} };
 		var exports = module.exports;
 		Object.defineProperty(exports, Symbol.toStringTag, { value: "Module" });
-		let _deepseek_ai_dsh_client_store: typeof import("@deepseek-ai/dsh-client-store");
-		let hasSplitClientStore = true;
-		try {
-			_deepseek_ai_dsh_client_store = require("@deepseek-ai/dsh-client-store");
-		} catch {
-			// DSH <= 0.1.1 owns the store engine in client-runtime; 0.1.2+
-			// seeds the split client-store package directly into the module table.
-			hasSplitClientStore = false;
-			_deepseek_ai_dsh_client_store = require("@deepseek-ai/dsh-client-runtime/client");
-		}
+		let _deepseek_ai_dsh_client_store = require("@deepseek-ai/dsh-client-store");
 		let react_jsx_runtime = require("react/jsx-runtime");
 		let react = require("react");
-		type LegacyIcon = (props: { size?: number; className?: string }) => import("react").ReactNode;
-		let _deepseek_ai_dsh_client_ui_primitives = require("@deepseek-ai/dsh-client-ui-primitives") as typeof import("@deepseek-ai/dsh-client-ui-primitives") & Record<string, LegacyIcon>;
-		// 0.1.7 把带尺寸后缀的图标改成 Medium；旧宿主仍导出原来的名字。
-		_deepseek_ai_dsh_client_ui_primitives = new Proxy(_deepseek_ai_dsh_client_ui_primitives, {
-			get(target, prop, receiver) {
-				const value = Reflect.get(target, prop, receiver);
-				if (value !== undefined || typeof prop !== "string") return value;
-				const medium = prop.replace(/(\D)\d+$/, "$1Medium");
-				return medium === prop ? value : Reflect.get(target, medium, receiver);
-			},
-		});
+		let _deepseek_ai_dsh_client_ui_primitives = require("@deepseek-ai/dsh-client-ui-primitives");
 		function SettingsModal({ open, onClose, title, description, footer, children, className, width }: { open: boolean; onClose(): void; title: import("react").ReactNode; description?: import("react").ReactNode; footer?: import("react").ReactNode; children?: import("react").ReactNode; className?: string; width?: number }) {
 			const anchor = react.useRef<HTMLSpanElement>(null);
 			// 设置壳会把 body 下的外部分支标成 inert。宿主 Modal 固定挂到 body，
@@ -81,10 +61,8 @@ export function startArchiveClient(require: HostRequire) {
 			return (0, react_jsx_runtime.jsx)("span", { hidden: true, ref: refObject, "data-get-container": getContainer });
 		}
 		function settingsButton({ variant = "outline", icon, children, danger = false, className, disabled, title, onClick, "aria-label": ariaLabel, "aria-pressed": ariaPressed, "aria-expanded": ariaExpanded, "aria-haspopup": ariaHaspopup }: { variant?: "primary" | "ghost" | "outline" | "toolbar"; icon?: import("react").ReactNode; danger?: boolean; className?: string; disabled?: boolean; title?: string; onClick?: () => void; "aria-label"?: string; "aria-pressed"?: boolean; "aria-expanded"?: boolean; "aria-haspopup"?: import("react").AriaAttributes["aria-haspopup"]; children?: import("react").ReactNode }) {
-			const mappedVariant = variant === "primary" ? "primary" : variant === "ghost" || variant === "toolbar" ? "ghost" : "outline";
 			return (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Button, {
-				...danger ? { danger: true } : {},
-				variant: mappedVariant,
+				variant,
 				size: "sm",
 				className: clsx(className, danger && "is-danger"),
 				disabled,
@@ -105,7 +83,7 @@ export function startArchiveClient(require: HostRequire) {
 		}
 		const OrganizerPanel = createOrganizerPanel(react, _deepseek_ai_dsh_client_ui_primitives.Button);
         const { HighlightedText, useSessionDetails, useArchiveSearch, useArchivePreview, DiscoveryFilters, SearchStatus, PreviewContent } = createDiscoveryTools(react, { Button: _deepseek_ai_dsh_client_ui_primitives.Button, SegmentedControl: _deepseek_ai_dsh_client_ui_primitives.SegmentedControl });
-        const SessionHealthPanel = createSessionHealthPanel(react, { warning: _deepseek_ai_dsh_client_ui_primitives.IconWarningOutline16, info: _deepseek_ai_dsh_client_ui_primitives.IconInfoOutline14, check: _deepseek_ai_dsh_client_ui_primitives.IconCheckOutline16, refresh: _deepseek_ai_dsh_client_ui_primitives.IconRefreshOutline16, search: _deepseek_ai_dsh_client_ui_primitives.IconSearchOutline16, chevron: _deepseek_ai_dsh_client_ui_primitives.IconChevronDownOutline14 }, _deepseek_ai_dsh_client_ui_primitives.Button);
+        const SessionHealthPanel = createSessionHealthPanel(react, { warning: _deepseek_ai_dsh_client_ui_primitives.IconWarningOutlineMedium, info: _deepseek_ai_dsh_client_ui_primitives.IconInfoOutlineMedium, check: _deepseek_ai_dsh_client_ui_primitives.IconCheckOutlineMedium, refresh: _deepseek_ai_dsh_client_ui_primitives.IconRefreshOutlineMedium, search: _deepseek_ai_dsh_client_ui_primitives.IconSearchOutlineMedium, chevron: _deepseek_ai_dsh_client_ui_primitives.IconChevronDownOutlineMedium }, _deepseek_ai_dsh_client_ui_primitives.Button);
 		const UPDATE_ICON_PATHS: Record<string, string[]> = {
 			refresh: ["M13.5 5.5V2.5m0 0h-3m3 0-2.1 2.1A5.5 5.5 0 1 0 13.2 12"],
 			download: ["M8 2v8m0 0 3-3m-3 3-3-3M3 13v2h10v-2"],
@@ -756,7 +734,7 @@ export function startArchiveClient(require: HostRequire) {
 			return (0, react_jsx_runtime.jsxs)("section", {
 				className: "dsham_settings",
 				"aria-label": t("archives.title"),
-				children: [(0, react_jsx_runtime.jsx)("style", { children: ARCHIVE_TABS_CSS + ARCHIVE_SETTINGS_CSS + ARCHIVE_SETTINGS_BATCH_CSS + ARCHIVE_SETTINGS_DROPDOWN_CSS + ARCHIVE_SETTINGS_EXTERNAL_LINK_CSS + ARCHIVE_MODAL_CSS + ARCHIVE_SETTINGS_SELECTION_CSS + ARCHIVE_WORKSPACE_CONFIRM_CSS }), (0, react_jsx_runtime.jsxs)("div", {
+				children: [(0, react_jsx_runtime.jsx)("style", { children: ARCHIVE_TABS_CSS + ARCHIVE_SETTINGS_CSS + ARCHIVE_SETTINGS_BATCH_CSS + ARCHIVE_SETTINGS_EXTERNAL_LINK_CSS + ARCHIVE_MODAL_CSS + ARCHIVE_SETTINGS_SELECTION_CSS + ARCHIVE_WORKSPACE_CONFIRM_CSS }), (0, react_jsx_runtime.jsxs)("div", {
 					// 设置页使用独立布局容器，避免被 Codex UI 的会话 header 页签适配器识别。
 					className: "dsham_settingsHeader",
 					children: [(0, react_jsx_runtime.jsxs)("div", {
@@ -798,7 +776,7 @@ export function startArchiveClient(require: HostRequire) {
 						className: "dsham_settingsGroup",
 						children: [(0, react_jsx_runtime.jsxs)("div", {
 							className: "dsham_settingsGroupHeading",
-							children: [(0, react_jsx_runtime.jsx)("h3", { className: "dsham_settingsGroupTitle", children: (0, react_jsx_runtime.jsxs)("button", { type: "button", className: "dsham_groupToggle", "aria-expanded": !collapsedGroups.has(group.key), "aria-controls": "dsham-group-" + encodeURIComponent(group.key), onClick: () => setCollapsedGroups((previous) => { const next = new Set(previous); if (next.has(group.key)) next.delete(group.key); else next.add(group.key); return next; }), children: [(0, react_jsx_runtime.jsx)(collapsedGroups.has(group.key) ? _deepseek_ai_dsh_client_ui_primitives.IconChevronRightOutline14 : _deepseek_ai_dsh_client_ui_primitives.IconChevronDownOutline14, {}), (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconFolderOpenOutline16, {}), (0, react_jsx_runtime.jsx)("span", { children: group.title })] }) }), (0, react_jsx_runtime.jsxs)("div", { className: "dsham_settingsGroupMeta", children: [(0, react_jsx_runtime.jsx)("span", { className: "dsham_settingsCount", children: t("archives.sessionCount", { n: group.sessions.length }) }), (0, react_jsx_runtime.jsx)(ArchivedGroupActions, { group, busy, onArchive: isArchived ? undefined : () => requestArchive(groupSessionIds, group), onRestore: () => onBatchUnarchive(target), onDelete: () => requestDelete({ kind: "batch", target, title: group.title, count }), t })] })]
+							children: [(0, react_jsx_runtime.jsx)("h3", { className: "dsham_settingsGroupTitle", children: (0, react_jsx_runtime.jsxs)("button", { type: "button", className: "dsham_groupToggle", "aria-expanded": !collapsedGroups.has(group.key), "aria-controls": "dsham-group-" + encodeURIComponent(group.key), onClick: () => setCollapsedGroups((previous) => { const next = new Set(previous); if (next.has(group.key)) next.delete(group.key); else next.add(group.key); return next; }), children: [(0, react_jsx_runtime.jsx)(collapsedGroups.has(group.key) ? _deepseek_ai_dsh_client_ui_primitives.IconChevronRightOutlineMedium : _deepseek_ai_dsh_client_ui_primitives.IconChevronDownOutlineMedium, {}), (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconFolderOpenOutlineMedium, {}), (0, react_jsx_runtime.jsx)("span", { children: group.title })] }) }), (0, react_jsx_runtime.jsxs)("div", { className: "dsham_settingsGroupMeta", children: [(0, react_jsx_runtime.jsx)("span", { className: "dsham_settingsCount", children: t("archives.sessionCount", { n: group.sessions.length }) }), (0, react_jsx_runtime.jsx)(ArchivedGroupActions, { group, busy, onArchive: isArchived ? undefined : () => requestArchive(groupSessionIds, group), onRestore: () => onBatchUnarchive(target), onDelete: () => requestDelete({ kind: "batch", target, title: group.title, count }), t })] })]
 						}), (0, react_jsx_runtime.jsx)("div", {
 							className: "dsham_settingsList", id: "dsham-group-" + encodeURIComponent(group.key),
 							hidden: collapsedGroups.has(group.key) || undefined,
@@ -813,7 +791,7 @@ export function startArchiveClient(require: HostRequire) {
                     ] }),
                     (0, react_jsx_runtime.jsxs)("div", { className: "dsham_settingsActions", children: [
                       typeof setSessionFavorite === "function" && settingsButton({ variant: "ghost", className: favoriteSet.has(session.id) ? "dsham_favoriteOn" : undefined, title: t(favoriteSet.has(session.id) ? "organizer.unfavorite" : "organizer.favorite"), "aria-pressed": favoriteSet.has(session.id), "aria-label": t(favoriteSet.has(session.id) ? "organizer.unfavorite" : "organizer.favorite") + t("common.separator") + displayTitle(session, t), disabled: busy || favoriteBusy || !favoritesReady, onClick: () => toggleFavorite(session.id), children: (0, react_jsx_runtime.jsx)("svg", { viewBox: "0 0 16 16", width: 16, height: 16, fill: favoriteSet.has(session.id) ? "currentColor" : "none", stroke: "currentColor", strokeWidth: 1.4, strokeLinejoin: "round", "aria-hidden": true, style: { display: "block" }, children: (0, react_jsx_runtime.jsx)("path", { d: "M8 1.75l1.934 3.918 4.324.628-3.129 3.05.738 4.306L8 11.618l-3.867 2.034.738-4.306-3.129-3.05 4.324-.628L8 1.75z" }) }) }),
-                      settingsButton({ variant: "ghost", title: t(isArchived ? "archives.restore" : "archives.archiveSelected"), "aria-label": t(isArchived ? "archives.restore" : "archives.archiveSelected"), disabled: busy || unarchivingSessionIds.has(session.id), onClick: () => isArchived ? onUnarchive(session.id) : performArchive([session.id]), icon: (0, react_jsx_runtime.jsx)(isArchived ? _deepseek_ai_dsh_client_ui_primitives.IconRefreshOutline16 : _deepseek_ai_dsh_client_ui_primitives.IconArchiveOutline20, { size: 16 }) }),
+                      settingsButton({ variant: "ghost", title: t(isArchived ? "archives.restore" : "archives.archiveSelected"), "aria-label": t(isArchived ? "archives.restore" : "archives.archiveSelected"), disabled: busy || unarchivingSessionIds.has(session.id), onClick: () => isArchived ? onUnarchive(session.id) : performArchive([session.id]), icon: (0, react_jsx_runtime.jsx)(isArchived ? _deepseek_ai_dsh_client_ui_primitives.IconRefreshOutlineMedium : _deepseek_ai_dsh_client_ui_primitives.IconArchiveOutlineMedium, { size: 16 }) }),
                       (isArchived || typeof sessionDetails === "function") && (0, react_jsx_runtime.jsx)(ArchivedSessionMenu, { busy: busy || unarchivingSessionIds.has(session.id), t, title: displayTitle(session, t), onCopyId: () => copyDetail(session, "id"), onCopyPath: typeof sessionDetails === "function" ? () => copyDetail(session, "path") : undefined, onPreview: isArchived && typeof previewArchivedSession === "function" ? () => preview.open(session, query) : undefined, onRestoreOpen: isArchived ? () => viewConversation(session, true) : undefined, onDelete: isArchived ? () => requestDelete({ kind: "session", session }) : undefined })
                     ] })
                   ]
@@ -1411,15 +1389,15 @@ export function startArchiveClient(require: HostRequire) {
 			const workspaceMenuItems = [{
 				id: "rename",
 				label: t("rename"),
-				icon: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconEditOutline16, {})
+				icon: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconEditOutlineMedium, {})
 			}, ...(actions?.canArchive === true ? [{
 				id: "archive-workspace",
 				label: t("menu.archiveWorkspace"),
-				icon: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconArchiveOutline20, { size: 16 })
+				icon: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconArchiveOutlineMedium, { size: 16 })
 			}] : []), {
 				id: "delete",
 				label: t("delete.workspace"),
-				icon: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconTrashOutline16, {}),
+				icon: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconTrashOutlineMedium, {}),
 				danger: true
 			}];
 			const ownRow = (0, react_jsx_runtime.jsxs)("div", {
@@ -1437,11 +1415,11 @@ export function startArchiveClient(require: HostRequire) {
 				children: [
 					(0, react_jsx_runtime.jsx)("span", {
 						className: clsx(Rows_module_css_default.slot, Rows_module_css_default.folder, active && Rows_module_css_default.folderActive),
-						children: row.expanded ? (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconFolderOpen16, {}) : (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconFolderClose16, {})
+						children: row.expanded ? (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconFolderOpenMedium, {}) : (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconFolderCloseMedium, {})
 					}),
 					(0, react_jsx_runtime.jsx)("span", {
 						className: clsx(Rows_module_css_default.slot, Rows_module_css_default.chevron),
-						children: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconTriangleRightFill14, { className: clsx(Rows_module_css_default.arrow, row.expanded && Rows_module_css_default.arrowOpen) })
+						children: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconTriangleRightFillMedium, { className: clsx(Rows_module_css_default.arrow, row.expanded && Rows_module_css_default.arrowOpen) })
 					}),
 					(0, react_jsx_runtime.jsx)("span", {
 						className: Rows_module_css_default.projectText,
@@ -1476,7 +1454,7 @@ export function startArchiveClient(require: HostRequire) {
 									e.stopPropagation();
 									setMenuOpen((v) => !v);
 								},
-								children: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconEllipsisOutline16, {})
+								children: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconEllipsisOutlineMedium, {})
 							})
 						}), (0, react_jsx_runtime.jsx)("button", {
 							type: "button",
@@ -1486,7 +1464,7 @@ export function startArchiveClient(require: HostRequire) {
 								e.stopPropagation();
 								onCreate();
 							},
-							children: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconPlusOutline16, {})
+							children: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconPlusOutlineMedium, {})
 						})]
 					})
 				]
@@ -1675,34 +1653,34 @@ export function startArchiveClient(require: HostRequire) {
 				{
 					id: "unarchive",
 					label: t("menu.unarchive"),
-					icon: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconArchiveOutline20, { size: 16 })
+					icon: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconArchiveOutlineMedium, { size: 16 })
 				},
 				{
 					id: "delete-session",
 					label: t("menu.deleteSession"),
-					icon: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconTrashOutline16, {}),
+					icon: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconTrashOutlineMedium, {}),
 					danger: true
 				}
 			] : [
 				{
 					id: "rename",
 					label: t("rename"),
-					icon: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconEditOutline16, {})
+					icon: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconEditOutlineMedium, {})
 				},
 				{
 					id: "fork",
 					label: t("menu.fork"),
-					icon: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconBranchOutline16, {})
+					icon: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconBranchOutlineMedium, {})
 				},
 				{
 					id: "archive",
 					label: t("menu.archiveSession"),
-					icon: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconArchiveOutline20, { size: 16 })
+					icon: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconArchiveOutlineMedium, { size: 16 })
 				},
 				{
 					id: "delete-session",
 					label: t("menu.deleteSession"),
-					icon: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconTrashOutline16, {}),
+					icon: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconTrashOutlineMedium, {}),
 					danger: true
 				}
 			];
@@ -1770,7 +1748,7 @@ export function startArchiveClient(require: HostRequire) {
 								className: ARCHIVED_CLASSES.delete,
 								"aria-label": t("menu.deleteSession"),
 								onClick: () => onDeleteSession(node.id, row.title),
-								children: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconTrashOutline16, {})
+								children: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconTrashOutlineMedium, {})
 							}), (0, react_jsx_runtime.jsx)("button", {
 								type: "button",
 								className: ARCHIVED_CLASSES.unarchive,
@@ -1804,7 +1782,7 @@ export function startArchiveClient(require: HostRequire) {
 										e.stopPropagation();
 										setMenuOpen((v) => !v);
 									},
-									children: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconEllipsisOutline16, {})
+									children: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconEllipsisOutlineMedium, {})
 								})
 							})
 						})
@@ -1853,14 +1831,14 @@ export function startArchiveClient(require: HostRequire) {
 			const addEntries = flowAvailable ? [{
 				id: ADD_WORKSPACE,
 				label: t("menu.addWorkspace"),
-				icon: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconPlusOutline16, { size: 16 }),
+				icon: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconPlusOutlineMedium, { size: 16 }),
 				disabled: flowBusy
 			}] : [];
 			const pinAdd = !addOnly && workspaces.length > 0;
 			const items = pinAdd ? workspaces.map((workspace) => ({
 				id: workspace.workspaceId,
 				label: workspace.title,
-				icon: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconFolderClose16, { size: 16 }),
+				icon: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconFolderCloseMedium, { size: 16 }),
 				disabled: flowBusy
 			})) : addEntries;
 			const menuIsEmpty = items.length === 0;
@@ -2183,7 +2161,7 @@ export function startArchiveClient(require: HostRequire) {
 						onClick: () => {
 							setOpen((v) => !v);
 						},
-						children: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconPersonalizationOutline16, {})
+						children: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconPersonalizationOutlineMedium, {})
 					})
 				})
 			});
@@ -3066,7 +3044,7 @@ export function startArchiveClient(require: HostRequire) {
 													setWsPickerOpen(false);
 													setSearchExpanded(true);
 												},
-												children: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconSearchOutline16, { size: searchExpanded ? 11 : 14 })
+												children: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconSearchOutlineMedium, { size: searchExpanded ? 11 : 14 })
 											})
 										}),
 										(0, react_jsx_runtime.jsx)("input", {
@@ -3095,7 +3073,7 @@ export function startArchiveClient(require: HostRequire) {
 												setQuery("");
 												setSearchExpanded(false);
 											},
-											children: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconCloseFill14, {})
+											children: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconCloseFillMedium, {})
 										})
 									]
 								})
@@ -3124,7 +3102,7 @@ export function startArchiveClient(require: HostRequire) {
 										onClick: () => {
 											setWsPickerOpen((v) => !v);
 										},
-										children: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconProjectAddOutline16, { size: wide ? 16 : 18 })
+										children: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconProjectAddOutlineMedium, { size: wide ? 16 : 18 })
 									})
 								})]
 							}),
@@ -3161,7 +3139,7 @@ export function startArchiveClient(require: HostRequire) {
 									setSearchOnExpand(true);
 									expandSidebar();
 								},
-								children: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconSearchOutline16, { size: 18 })
+								children: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconSearchOutlineMedium, { size: 18 })
 							})
 						})
 					}),
@@ -3529,9 +3507,8 @@ export function startArchiveClient(require: HostRequire) {
 			"@container(max-width:520px){.dsham_settingsHeader{margin-bottom:16px}.dsham_settingsToolbar{grid-template-columns:repeat(3,minmax(0,1fr));margin-bottom:16px}.dsham_settingsSearch{grid-column:1/-1}.dsham_selectWrap{flex:1;min-width:0}.dsham_settingsGroup{margin-bottom:32px}.dsham_settingsRow{padding:10px 12px}.dsham_settingsActions{gap:4px}}"
 		].join("");
 		const ARCHIVE_SETTINGS_BATCH_CSS = ".dsham_settingsTitleLink{display:block;max-width:100%;padding:0;border:0;background:transparent;color:var(--dsw-alias-label-primary);font:inherit;font-size:13px;font-weight:600;line-height:20px;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer}.dsham_settingsTitleLink:hover:not(:disabled){text-decoration:underline;text-underline-offset:3px}.dsham_settingsTitleLink:disabled{cursor:default;opacity:.6}.dsham_groupToggle{display:flex;align-items:center;gap:8px;min-width:0;max-width:100%;padding:4px 0;border:0;background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer}.dsham_groupToggle span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.dsham_settingsRow:hover{background:var(--dsw-alias-interactive-bg-hover)}.dsham_settingsRow[data-selected=true]{background:var(--dsw-alias-interactive-bg-hover)}.dsham_settingsTitleLink:focus-visible,.dsham_groupToggle:focus-visible{outline:2px solid var(--dsw-alias-state-business-primary,#3b82f6);outline-offset:2px}@container(max-width:620px){.dsham_settingsToolbar{grid-template-columns:repeat(3,minmax(0,1fr))}.dsham_settingsSearch{grid-column:1/-1}}@container(max-width:400px){.dsham_settingsRow{gap:8px;padding:10px 8px}.dsham_settingsActions{gap:0}.dsham_settingsMeta{font-size:11px}}.dsham_settingsGroupMeta{display:flex;align-items:center;gap:8px;flex:none;flex-wrap:wrap}.dsham_settingsStatus{margin-top:10px;color:var(--dsw-alias-label-secondary);font-size:12px}.dsham_checkbox{width:16px;height:16px;margin:0;accent-color:var(--dsw-alias-brand-primary);flex:none}button.dsham_favoriteOn{color:#e8b931}";
-		const ARCHIVE_SETTINGS_DROPDOWN_CSS = "";
 		const ARCHIVE_SETTINGS_EXTERNAL_LINK_CSS = ".dsham_settingsTitleRow{display:flex;align-items:center;gap:8px 12px;min-width:0;flex-wrap:wrap}.dsham_settingsLinks{display:flex;align-items:center;gap:8px;flex-wrap:wrap}@media(max-width:720px){.dsham_settingsTitleRow{flex-wrap:wrap}}";
-		const ARCHIVE_MODAL_CSS = ".dsham_modalRoot{position:fixed;inset:0;z-index:1200;display:grid;place-items:center;padding:24px}.dsham_modalMask{position:absolute;inset:0;background:var(--dsw-alias-bg-mask-1,rgb(0 0 0 / 45%))}.dsham_modalDialog{position:relative;display:flex;flex-direction:column;gap:12px;max-width:calc(100vw - 48px);max-height:min(80vh,720px);padding:22px 24px 20px;overflow:auto;border:0;border-radius:var(--dsw-radius-panel,28px);background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-primary);box-shadow:var(--dsw-elevation-prominent,0 16px 40px rgb(0 0 0 / 24%))}.dsham_modalDialog h2{margin:0;font-size:16px;line-height:24px}.dsham_modalDialog>p{margin:0;color:var(--dsw-alias-label-secondary);font-size:13px;line-height:20px}.dsham_modalFooter{display:flex;align-items:center;justify-content:flex-end;gap:8px}";
+		const ARCHIVE_MODAL_CSS = ".dsham_modalRoot{position:fixed;inset:0;z-index:1200;display:grid;place-items:center;padding:24px}.dsham_modalMask{position:absolute;inset:0;background:var(--dsw-alias-bg-mask-1,rgb(0 0 0 / 45%))}.dsham_modalDialog{position:relative;display:flex;flex-direction:column;gap:12px;max-width:calc(100vw - 48px);max-height:min(80vh,720px);padding:22px 24px 20px;overflow:auto;border:0;border-radius:var(--dsw-radius-panel,28px);background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-primary);box-shadow:var(--dsw-elevation-prominent,0 16px 40px rgb(0 0 0 / 24%))}.dsham_modalDialog h2{margin:0;font-size:16px;line-height:24px}.dsham_modalDialog>p{margin:0;color:var(--dsw-alias-label-secondary);font-size:13px;line-height:20px}.dsham_modalFooter{display:flex;align-items:center;justify-content:flex-end;gap:8px}.is-danger{color:var(--dsw-alias-state-error-primary)!important;background:transparent!important;border-color:var(--dsw-alias-state-error-primary)!important}.is-danger:hover:not(:disabled){background:color-mix(in srgb,var(--dsw-alias-state-error-primary) 20%,transparent)!important}";
 		const ARCHIVE_WORKSPACE_CONFIRM_CSS = ".dsham_archiveWorkspaceConfirm{color:var(--dsw-alias-state-error-primary)!important;background:transparent!important;border-color:var(--dsw-alias-state-error-primary)!important}.dsham_archiveWorkspaceConfirm:hover:not(:disabled){background:color-mix(in srgb,var(--dsw-alias-state-error-primary) 20%,transparent)!important}.dsham_archiveWorkspaceConfirm:focus-visible{outline:2px solid var(--dsw-alias-state-error-secondary);outline-offset:2px}.dsham_archiveWorkspaceConfirm:disabled{cursor:not-allowed;opacity:.5}";
 		const ARCHIVE_SETTINGS_SELECTION_CSS = ".dsham_settingsSelection{margin:-8px 0 16px;padding:4px 0 12px;border-bottom:1px solid var(--dsw-alias-border-l2)}.dsham_settingsSelectionMain{display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;min-height:36px}.dsham_settingsSelectionSummary{display:flex;flex-wrap:wrap;align-items:center;gap:12px;min-width:0;max-width:100%}.dsham_settingsSelectionToggle{display:inline-flex;flex:none;white-space:nowrap;align-items:center;gap:12px;color:var(--dsw-alias-label-primary);font-size:13px;line-height:20px;cursor:pointer}.dsham_settingsSelectionClear{flex:none;min-height:28px;padding:0 0 0 12px;border:0;border-left:1px solid var(--dsw-alias-border-l2);background:transparent;color:var(--dsw-alias-state-business-primary,#3b82f6);font:inherit;font-size:13px;white-space:nowrap;cursor:pointer}.dsham_settingsSelectionClear:hover:not(:disabled){text-decoration:underline}.dsham_settingsSelectionActions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:10px;max-width:100%;margin-left:auto}.dsham_settingsSelectionAction{flex:none;white-space:nowrap;min-height:32px;padding:0 14px;color:var(--dsw-alias-label-primary);background:transparent;border:1px solid var(--dsw-alias-border-l2);border-radius:8px;cursor:pointer;font:inherit;font-size:13px;font-weight:500}.dsham_settingsSelectionAction:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover)}.dsham_settingsSelectionArchive,.dsham_settingsSelectionScope{margin:8px 0 0;color:var(--dsw-alias-label-tertiary);font-size:12px;line-height:20px;overflow-wrap:anywhere}.dsham_settingsSelectionAction:disabled,.dsham_settingsSelectionClear:disabled{cursor:not-allowed;opacity:.5}.dsham_settingsSelectionAction:focus-visible,.dsham_settingsSelectionClear:focus-visible{outline:2px solid var(--dsw-alias-state-business-primary,#3b82f6);outline-offset:2px}";
 		const ARCHIVE_SETTINGS_LAYOUT_OVERRIDE = ".dsham_settings{margin:0 auto!important}@media(max-width:720px){.dsham_settings{margin:0 auto!important}}";
@@ -3676,15 +3653,15 @@ export function startArchiveClient(require: HostRequire) {
 			const menuLabelNode = (icon: import("react").ReactNode, text: string) => (0, react_jsx_runtime.jsxs)("span", { className: "dsham_menuLabel", children: [icon, text] });
 			const items = onArchive ? [{
 				id: "archive",
-				label: menuLabelNode((0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconArchiveOutline20, { size: 16 }), t(ungrouped ? "archives.archiveUngrouped" : "archives.archiveProject")),
+				label: menuLabelNode((0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconArchiveOutlineMedium, { size: 16 }), t(ungrouped ? "archives.archiveUngrouped" : "archives.archiveProject")),
 				danger: true
 			}] : [{
 				id: "restore",
-				label: menuLabelNode((0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconRefreshOutline16, { size: 16 }), t(ungrouped ? "archives.restoreUngrouped" : "archives.restoreProject")),
+				label: menuLabelNode((0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconRefreshOutlineMedium, { size: 16 }), t(ungrouped ? "archives.restoreUngrouped" : "archives.restoreProject")),
 				danger: false
 			}, {
 				id: "delete",
-				label: menuLabelNode((0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconTrashOutline16, { size: 16 }), t(ungrouped ? "archives.deleteUngrouped" : "archives.deleteProject")),
+				label: menuLabelNode((0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconTrashOutlineMedium, { size: 16 }), t(ungrouped ? "archives.deleteUngrouped" : "archives.deleteProject")),
 				danger: true
 			}];
 			const [open, setOpen] = (0, react.useState)(false);
@@ -4329,21 +4306,11 @@ export function startArchiveClient(require: HostRequire) {
 		* effect-scoped inside `applyWorkspaceBrowser`).
 		* @param ctx - client root context.
 		*/
-		/**
-		* 单条恢复：0.1.6+ 走官方 `workspaces.unarchiveSession`（会回写客户端归档快照）。
-		* 更早宿主没有该方法，回退到本插件一直注册的 `workspaceRegistry.unarchiveSession`。
-		*/
-		function createUnarchiveSession(workspaces: Workspaces, getRegistry: Registry | undefined | (() => Registry | undefined)) {
+		/** 单条恢复走官方 `workspaces.unarchiveSession`，由宿主回写客户端归档快照。 */
+		function createUnarchiveSession(workspaces: Workspaces) {
 			return async (sessionId: string) => {
-				if (typeof workspaces?.unarchiveSession === "function") {
-					await workspaces.unarchiveSession(sessionId);
-					return;
-				}
-				const registry = typeof getRegistry === "function" ? getRegistry() : getRegistry;
-				if (registry === undefined) throw new Error("archive-manager remote service is unavailable");
-				const result = await registry.unarchiveSession(sessionId);
-				if (!result.ok) throw new Error(result.error.message);
-				return result.value;
+				if (typeof workspaces?.unarchiveSession !== "function") throw new Error("archive-manager: host unarchiveSession is unavailable");
+				await workspaces.unarchiveSession(sessionId);
 			};
 		}
 		/** 设置页/侧栏批量归档：串行调官方单笔 archiveSession。已归档与未知会话交给官方处理。 */
@@ -4367,20 +4334,18 @@ export function startArchiveClient(require: HostRequire) {
 				archivedSessionIdsAdded: archivedSessionIds.filter((id) => !before.has(id))
 			};
 		}
-		/** 设置页批量恢复：串行调单笔恢复。官方方法会回写快照；插件 remote 则用返回集合计数。 */
-		async function unarchiveSessionsViaOfficial(workspaces: Workspaces, sessionIds: readonly string[], refresh?: () => Promise<unknown>, unarchive?: (id: string) => Promise<import("./contracts.js").ArchiveState | undefined>) {
+		/** 设置页批量恢复：串行调官方单笔恢复，完成后按快照计数。 */
+		async function unarchiveSessionsViaOfficial(workspaces: Workspaces, sessionIds: readonly string[], refresh?: () => Promise<unknown>, unarchive?: (id: string) => Promise<unknown>) {
 			const before = new Set(workspaces.list?.getSnapshot?.()?.archivedSessionIds ?? []);
 			const seen = new Set<string>();
 			const run = typeof unarchive === "function" ? unarchive : (id: string) => workspaces.unarchiveSession?.(id);
-			let archivedSessionIds;
 			for (const sessionId of sessionIds) {
 				if (typeof sessionId !== "string" || sessionId.length === 0 || seen.has(sessionId)) continue;
 				seen.add(sessionId);
-				const value = await run(sessionId);
-				if (Array.isArray(value?.archivedSessionIds)) archivedSessionIds = [...value.archivedSessionIds];
+				await run(sessionId);
 			}
 			if (typeof refresh === "function") await refresh();
-			archivedSessionIds ??= [...(workspaces.list?.getSnapshot?.()?.archivedSessionIds ?? [])];
+			const archivedSessionIds = [...(workspaces.list?.getSnapshot?.()?.archivedSessionIds ?? [])];
 			return {
 				archivedSessionIds,
 				unarchivedSessionIds: [...before].filter((id) => !archivedSessionIds.includes(id))
@@ -4458,7 +4423,7 @@ export function startArchiveClient(require: HostRequire) {
 					return error instanceof Error ? error.message : String(error);
 				}
 			};
-			const unarchiveOne = createUnarchiveSession(ctx.workspaces, () => ctx.get("remote.workspaceRegistry"));
+			const unarchiveOne = createUnarchiveSession(ctx.workspaces);
 			const registryCall = async <K extends keyof RegistryCalls>(method: K, ...args: Parameters<RegistryCalls[K]>): Promise<Awaited<ReturnType<RegistryCalls[K]>>> => {
                 const registry = ctx.get("remote.workspaceRegistry");
                 if (!registry || typeof registry[method] !== "function") throw new Error(ctx.locale.bind(NS)("service.unavailable"));
@@ -4478,7 +4443,7 @@ export function startArchiveClient(require: HostRequire) {
             const setSessionFavorite: RegistryCalls["setSessionFavorite"] = input => registryCall("setSessionFavorite", input);
             const organizeBatch = createSessionOrganizer({
 				workspaces: ctx.workspaces.list, sessions: ctx.sessions.list,
-				archive: (id) => ctx.workspaces.archiveSession(id), restore: unarchiveOne,
+				archive: (id) => ctx.workspaces.archiveSession(id), restore: async (id) => { await unarchiveOne(id); return undefined; },
 				deleteOne: async (id) => {
 					const registry = ctx.get("remote.workspaceRegistry");
 					if (!registry) throw new Error(ctx.locale.bind(NS)("service.unavailable"));
@@ -4607,7 +4572,7 @@ export function startArchiveClient(require: HostRequire) {
 			function DeleteSessionMenuItem({ sessionId, displayTitle: title, useMenuOpenState, t }: { sessionId: string; displayTitle: string; useMenuOpenState: () => readonly [boolean, (open: boolean) => void]; t: Translate }) {
 				const [, setMenuOpen] = useMenuOpenState();
 				const Item = _deepseek_ai_dsh_client_ui_primitives.MenuItemButton;
-				const icon = (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconTrashOutlineRegular ?? _deepseek_ai_dsh_client_ui_primitives.IconTrashOutline16, { size: 14 });
+				const icon = (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconTrashOutlineRegular, { size: 14 });
 				const onSelect = () => {
 					setMenuOpen(false);
 					publishDeleteTarget({ sessionId, title });
@@ -4655,43 +4620,16 @@ export function startArchiveClient(require: HostRequire) {
 				if (typeof ctx.slots.entries !== "function") return false;
 				return ctx.slots.entries("sidebar.workspaces").some((entry) => entry.children?.[sessionMenuSlot] !== undefined);
 			}
-			let sidebarMode: "menu" | "legacy" | undefined;
-			let disposeLegacy: (() => void) | undefined;
-			let disposeMirror: (() => void) | undefined;
+			let sidebarMode: "menu" | "waiting" | undefined;
 			let disposeMenu: (() => void) | undefined;
 			let disposeDialog: (() => void) | undefined;
-			const registerLegacySidebar = () => {
-				ensureLegacyWorkspaceCss();
-				const common = {
-					name: "sidebar.workspaces",
-					// 低于官方 0，高于 Codex -1：旧宿主必须盖住官方三项菜单才能露出删除。
-					priority: -0.5,
-					store: createWorkspaceViewStore(),
-					inject: browserInjected,
-					locale: NS
-				};
-				return ctx.slots.inject("sidebar.workspaces", () => {
-					try {
-						return ctx.slots.register({
-							...common,
-							children: { [DIRECTORY_FLOW_SLOT]: { kind: "single", scope: "root" } }
-						}, WorkspaceBrowser);
-					} catch (error) {
-						console.warn("archive-manager: sidebar registration with directory child failed, retrying without children", error);
-						return ctx.slots.register(common, WorkspaceBrowser);
-					}
-				});
-			};
+			/** 支持的宿主都声明了会话菜单插槽。插槽还没出现时只等待，不再盖掉官方侧栏。 */
 			const reconcileSidebar = () => {
-				const next = hostSidebarDeclaresSessionMenu() ? "menu" : "legacy";
+				const next = hostSidebarDeclaresSessionMenu() ? "menu" : "waiting";
 				if (next === sidebarMode) return;
 				sidebarMode = next;
-				if (next === "menu") {
-					disposeLegacy?.();
-					disposeLegacy = undefined;
-					disposeMirror?.();
-					disposeMirror = undefined;
-					disposeMenu ??= ctx.slots.inject(sessionMenuSlot, () => ctx.slots.register({
+				if (next !== "menu") return;
+				disposeMenu ??= ctx.slots.inject(sessionMenuSlot, () => ctx.slots.register({
 						name: sessionMenuSlot,
 						id: "archive-manager.delete-session",
 						order: 500,
@@ -4704,14 +4642,6 @@ export function startArchiveClient(require: HostRequire) {
 						locale: NS,
 						inject: () => ({ t: ctx.locale.bind(NS) })
 					}, DeleteSessionOverlay));
-					return;
-				}
-				disposeMenu?.();
-				disposeMenu = undefined;
-				disposeDialog?.();
-				disposeDialog = undefined;
-				disposeLegacy ??= registerLegacySidebar();
-				disposeMirror ??= mirrorDirectoryFlow(ctx, DIRECTORY_FLOW_SLOT);
 			};
 			reconcileSidebar();
 			const unsubscribeSidebar = typeof ctx.on === "function" ? ctx.on("slots/changed", (key: string) => {
@@ -4721,8 +4651,6 @@ export function startArchiveClient(require: HostRequire) {
 			}) : undefined;
 			ctx.effect(() => () => {
 				unsubscribeSidebar?.();
-				disposeLegacy?.();
-				disposeMirror?.();
 				disposeMenu?.();
 				disposeDialog?.();
 			}, "archive-manager: sidebar mode");
@@ -4806,7 +4734,6 @@ export function startArchiveClient(require: HostRequire) {
 			WORKSPACE_VIEW_PERSIST_KEY,
 			LEGACY_WORKSPACE_VIEW_PERSIST_KEY,
 			bindObservable,
-			hasSplitClientStore,
 			groupByWorkspace,
 			byRecency,
 			ARCHIVE_MANAGER_REMOTE,

@@ -4,7 +4,11 @@
 
 Published release notes are retained below; new versions are added without removing earlier entries.
 
-## Unreleased
+## 1.1.0 - 2026-10-17
+
+- Supported hosts are now DeepSeek Harness `0.2.0-rc.1`, `0.2.0-rc.2`, `0.2.1-alpha.1`, `0.2.1-alpha.2`, `0.2.1-alpha.3`, `0.2.1-alpha.4`, and `0.2.1-alpha.5`. Hosts before `0.2.0` are rejected by the version gate and this plugin will not run. If you still use a `0.1.x` host, install plugin `1.0.20` instead of `@latest`. Existing archives, favorites, and settings are kept.
+- Settings buttons no longer pass the Ant Design `danger` attribute to the host button. Destructive actions use the `is-danger` style. Icons use the Medium and Regular names the host actually exports.
+- Removed client fallbacks that existed only for `0.1.x`: `client-runtime`, the plugin remote restore fallback, projection-cache `putSoft`, and replacing the official sidebar when it has no session menu slot.
 
 ## 1.0.20 - 2026-10-16
 

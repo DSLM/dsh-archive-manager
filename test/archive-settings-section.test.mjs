@@ -191,8 +191,8 @@ test("每个项目分组提供恢复全部与删除全部菜单", async () => {
   assert.match(client, /function ArchivedGroupActions/);
   assert.match(client, /archives\.restoreProject/);
   assert.match(client, /archives\.deleteProject/);
-  assert.match(client, /id: "restore",[\s\S]*IconRefreshOutline16/);
-  assert.match(client, /IconEllipsisOutline16/);
+  assert.match(client, /id: "restore",[\s\S]*IconRefreshOutlineMedium/);
+  assert.match(client, /IconEllipsisOutlineMedium/);
   assert.match(client, /archivedBatchTargetForGroup\(group\.key\)/);
   assert.match(client, /archives\.deleteProjectDesc/);
 });

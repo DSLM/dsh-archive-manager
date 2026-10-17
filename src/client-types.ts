@@ -10,7 +10,6 @@ interface ClientModules {
   "react": typeof React;
   "react/jsx-runtime": { jsx: TypedJsx; jsxs: TypedJsx; Fragment: typeof React.Fragment };
   "@deepseek-ai/dsh-client-store": typeof import("@deepseek-ai/dsh-client-store");
-  "@deepseek-ai/dsh-client-runtime/client": typeof import("@deepseek-ai/dsh-client-store");
   "@deepseek-ai/dsh-client-ui-primitives": typeof import("@deepseek-ai/dsh-client-ui-primitives");
 }
 declare global {

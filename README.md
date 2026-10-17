@@ -67,7 +67,7 @@ Switch to **Unarchived** for the same filters, idle cleanup previews, and projec
 ## Prerequisites
 
 - A working [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) Web installation with `dsh` available in your terminal.
-- Supported DSH versions: `0.1.2-rc.1`, `0.1.5-rc.1`, `0.1.5-rc.2`, `0.1.5-rc.3`, `0.1.7-rc.1`, `0.1.7-rc.2`, `0.2.0-rc.1`, `0.2.0-rc.2`, `0.2.1-alpha.2`, and `0.2.1-alpha.3`. Other versions are not currently supported.
+- Supported DSH versions: `0.2.0-rc.1`, `0.2.0-rc.2`, `0.2.1-alpha.1`, `0.2.1-alpha.2`, `0.2.1-alpha.3`, `0.2.1-alpha.4`, and `0.2.1-alpha.5`. Earlier hosts are rejected by the version gate and this plugin will not run. Existing archives and favorites are kept. Install `1.0.20` if you still use a `0.1.x` host.
 - Node.js matching `^22.19.0 || >=24.0.0`. Source installation also requires pnpm.
 
 ## Installation
@@ -117,7 +117,7 @@ The page opens on **Archived**, with **Unarchived** on the right. Switching tabs
 
 **Select all filtered results** selects matching sessions, including collapsed groups. Project-wide actions still apply to the whole project regardless of search filters. Unarchived excludes subagents and blank placeholders.
 
-Settings and sidebar batch archive/restore call the single-session APIs serially: official `ctx.workspaces.archiveSession` on every supported host, official `ctx.workspaces.unarchiveSession` on DSH 0.1.6+, and this plugin's `workspaceRegistry.unarchiveSession` on older hosts.
+Settings and sidebar batch archive/restore call the official single-session APIs `ctx.workspaces.archiveSession` and `ctx.workspaces.unarchiveSession` serially.
 
 ### Favorites and idle cleanup
 
