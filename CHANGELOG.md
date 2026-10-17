@@ -7,7 +7,7 @@ Published release notes are retained below; new versions are added without remov
 ## Unreleased
 
 - Archive filter bar stays on two aligned rows at any width: dropdowns size to their labels, the search box fills the first row, and the date range fills the second row with both date inputs stretching inside it. Narrow panels no longer wrap the bar into five stacked rows, and dates are no longer clipped.
-- Destructive confirmations (delete sessions, stop-and-archive, workspace archive or delete) now use a red outlined button aligned with the host warning pattern instead of a filled primary button. Sidebar dialogs no longer reference the host's hashed delete class, whose name changed across host versions and left those buttons unstyled.
+- Destructive confirmations (delete sessions, stop-and-archive, workspace archive or delete) now use a red outlined button aligned with the host warning pattern instead of a filled primary button. The batch selection bar's delete button uses the same treatment, and its leftover pre-host-button styles are removed. Sidebar dialogs no longer reference the host's hashed delete class, whose name changed across host versions and left those buttons unstyled.
 
 ## 1.1.0 - 2026-10-17
 
