@@ -76,9 +76,10 @@ export function startArchiveClient(require: HostRequire) {
 				children
 			});
 		}
-		function modalFooterButton({ variant = "outline", disabled, onClick, children }: { variant?: "primary" | "outline"; disabled?: boolean; onClick?: () => void; children?: import("react").ReactNode }) {
+		function modalFooterButton({ variant = "outline", danger = false, disabled, onClick, children }: { variant?: "primary" | "outline"; danger?: boolean; disabled?: boolean; onClick?: () => void; children?: import("react").ReactNode }) {
 			return (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Button, {
-				variant,
+				variant: danger ? "outline" : variant,
+				className: danger ? "dsham_btnDanger" : undefined,
 				disabled,
 				onClick,
 				children
@@ -264,6 +265,15 @@ export function startArchiveClient(require: HostRequire) {
 			tag.dataset.plugin = "@michengai/dsh-archive-manager";
 			tag.dataset.pluginCss = "dsh-archive-manager/Archived.module.css";
 			tag.textContent = ARCHIVED_CSS;
+			document.head.appendChild(tag);
+		}
+		/** 危险操作确认按钮统一红色描边。宿主哈希类名随版本变，不再引用。 */
+		const DANGER_BUTTON_CSS = ".dsham_btnDanger:not(:disabled){color:var(--dsw-alias-state-error-primary,#ef7272)}";
+		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify("dsh-archive-manager/DangerButton.css") + "]") === null) {
+			const tag = document.createElement("style");
+			tag.dataset.plugin = "@michengai/dsh-archive-manager";
+			tag.dataset.pluginCss = "dsh-archive-manager/DangerButton.css";
+			tag.textContent = DANGER_BUTTON_CSS;
 			document.head.appendChild(tag);
 		}
 		//#endregion
@@ -830,7 +840,7 @@ export function startArchiveClient(require: HostRequire) {
 					...stopArchive === null ? {} : { description: t("archiveActive.desc", { name: stopArchive.title, kinds: stopArchive.kinds }) },
 					footer: (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [
 						modalFooterButton({ disabled: busy, onClick: () => { if (!busy) { setStopArchive(null); setError(null); } }, children: t("cancel") }),
-						modalFooterButton({ variant: "primary", disabled: busy, onClick: async () => {
+						modalFooterButton({ danger: true, disabled: busy, onClick: async () => {
 							if (archiveBusy.current || busy || stopArchive === null || typeof archiveSession !== "function") return;
 							archiveBusy.current = true; setBusy(true); setError(null);
 							try {
@@ -850,7 +860,7 @@ export function startArchiveClient(require: HostRequire) {
 					onClose: closeDelete,
 					title: deleteDialogTitle,
 					...deleteDialogDescription === void 0 ? {} : { description: deleteDialogDescription },
-					footer: (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [modalFooterButton({ disabled: busy, onClick: closeDelete, children: t("cancel") }), modalFooterButton({ variant: "primary", disabled: busy, onClick: confirmDelete, children: deleteConfirmLabel })] }),
+					footer: (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [modalFooterButton({ disabled: busy, onClick: closeDelete, children: t("cancel") }), modalFooterButton({ danger: true, disabled: busy, onClick: confirmDelete, children: deleteConfirmLabel })] }),
 					children: (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [
 						busy && (0, react_jsx_runtime.jsxs)("div", { role: "status", children: [deleteTarget?.kind === "batch" ? t("archives.deleteBatchPending") : t("deleteSession.pending"), batchProgress && (0, react_jsx_runtime.jsx)("progress", { value: batchProgress.done, max: Math.max(1, batchProgress.total), "aria-label": t("organizer.progress") }), batchProgress && t("organizer.progressCount", { done: batchProgress.done, total: batchProgress.total })] }),
 						error !== null && (0, react_jsx_runtime.jsx)("div", { className: "dsham_settingsError", role: "alert", children: error })
@@ -3358,7 +3368,7 @@ export function startArchiveClient(require: HostRequire) {
 							children: t("cancel")
 						}), (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Button, {
 							variant: "outline",
-							className: WorkspaceBrowser_module_css_default.deleteAction,
+							className: "dsham_btnDanger",
 							disabled: deleting,
 							onClick: confirmDelete,
 							children: t("delete.workspace")
@@ -3386,7 +3396,7 @@ export function startArchiveClient(require: HostRequire) {
 							children: t("cancel")
 						}), (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Button, {
 							variant: "outline",
-							className: WorkspaceBrowser_module_css_default.deleteAction,
+							className: "dsham_btnDanger",
 							disabled: archivingWorkspace,
 							onClick: confirmArchiveWorkspace,
 							children: t("archiveWorkspace.confirm")
@@ -3414,7 +3424,7 @@ export function startArchiveClient(require: HostRequire) {
 							children: t("cancel")
 						}), (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Button, {
 							variant: "outline",
-							className: WorkspaceBrowser_module_css_default.deleteAction,
+							className: "dsham_btnDanger",
 							disabled: deletingSession,
 							onClick: confirmDeleteSession,
 							children: t("deleteSession.title")
@@ -3442,7 +3452,7 @@ export function startArchiveClient(require: HostRequire) {
 							children: t("cancel")
 						}), (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Button, {
 							variant: "outline",
-							className: WorkspaceBrowser_module_css_default.deleteAction,
+							className: "dsham_btnDanger",
 							disabled: stoppingArchive,
 							onClick: confirmStopArchive,
 							children: t("archiveActive.confirm")
@@ -4610,7 +4620,7 @@ export function startArchiveClient(require: HostRequire) {
 					title: t("deleteSession.title"),
 					footer: (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [
 						modalFooterButton({ disabled: deleting, onClick: close, children: t("cancel") }),
-						modalFooterButton({ variant: "primary", disabled: deleting, onClick: confirm, children: t("deleteSession.title") })
+						modalFooterButton({ danger: true, disabled: deleting, onClick: confirm, children: t("deleteSession.title") })
 					] }),
 					children: [
 						deleting && (0, react_jsx_runtime.jsx)("div", { role: "status", children: t("deleteSession.pending") }),
