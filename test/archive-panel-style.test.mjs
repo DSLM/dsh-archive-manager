@@ -34,7 +34,7 @@ test("删除与停止确认用红色描边按钮，对齐宿主警告样式", as
   const client = await readFile(clientPath, "utf8");
 
   assert.match(client, /modalFooterButton\(\{ danger: true, disabled: busy, onClick: confirmDelete/);
-  assert.match(client, /\.dsham_btnDanger:not\(:disabled\)\{color:var\(--dsw-alias-state-error-primary/);
+  assert.match(client, /\.dsham_btnDanger:not\(:disabled\)\{[^}]*color:var\(--dsw-alias-state-error-primary/);
   assert.doesNotMatch(client, /variant: "primary", disabled: busy, onClick: confirmDelete/);
   assert.doesNotMatch(client, /dsham_modalDanger/);
   assert.doesNotMatch(client, /dsham_settingsDeleteConfirm/);

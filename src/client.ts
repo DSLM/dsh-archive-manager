@@ -3,6 +3,9 @@ import type { BrowserProps, TreeProps, FlatProps, SearchProps, WorkspacePickProp
 import { record, errorMessage, errorCode } from "./contracts.js";
 import type { Schema } from "./contracts.js";
 import type { ClientSession, ClientList, ClientWorkspace, WorkspaceSnapshot, Observable, WorkspaceView, UiFacts, PendingHook, StatusHook, StatusMap, BatchTarget, DeletedBatch, ArchivedGroup, ArchiveProps, ArchiveBatchResult, ArchiveRetry, Translate, BatchProgress, OrganizeKind, SessionDetail } from "./client-types.js";
+import type { NavigationSource } from "./archive-experience.js";
+import type { RemoteResult } from "./client-compat.js";
+import type { ReactNode, RefObject, AriaAttributes, HTMLAttributes, DragEvent as ReactDragEvent } from "react";
 import { createSessionHealthPanel, healthZh, healthEn, healthRu } from "./session-health-ui.js";
 import { createDiscoveryTools, discoveryCss, discoveryZh, discoveryEn, discoveryRu } from "./archive-discovery-ui.js";
 import { compareTurnCounts, copySessionText, discoveryInvocations, matchesUpdatedRange, validUpdatedRange, sessionDetailCandidates } from "./archive-discovery.js";
@@ -21,7 +24,7 @@ export function startArchiveClient(require: HostRequire) {
 		let react_jsx_runtime = require("react/jsx-runtime");
 		let react = require("react");
 		let _deepseek_ai_dsh_client_ui_primitives = require("@deepseek-ai/dsh-client-ui-primitives");
-		function SettingsModal({ open, onClose, title, description, footer, children, className, width }: { open: boolean; onClose(): void; title: import("react").ReactNode; description?: import("react").ReactNode; footer?: import("react").ReactNode; children?: import("react").ReactNode; className?: string; width?: number }) {
+		function SettingsModal({ open, onClose, title, description, footer, children, className, width }: { open: boolean; onClose(): void; title: ReactNode; description?: ReactNode; footer?: ReactNode; children?: ReactNode; className?: string; width?: number }) {
 			const anchor = react.useRef<HTMLSpanElement>(null);
 			// 设置壳会把 body 下的外部分支标成 inert。宿主 Modal 固定挂到 body，
 			// 所以这里自己门户到所属归档页；没有归档页时才回退 body。
@@ -57,10 +60,10 @@ export function startArchiveClient(require: HostRequire) {
 				open && container ? createPortal(dialog, container) : null
 			] });
 		}
-		function SettingsModalAnchor({ refObject, getContainer }: { refObject: import("react").RefObject<HTMLSpanElement>; getContainer(): HTMLElement }) {
+		function SettingsModalAnchor({ refObject, getContainer }: { refObject: RefObject<HTMLSpanElement>; getContainer(): HTMLElement }) {
 			return (0, react_jsx_runtime.jsx)("span", { hidden: true, ref: refObject, "data-get-container": getContainer });
 		}
-		function settingsButton({ variant = "outline", icon, children, className, disabled, title, onClick, "aria-label": ariaLabel, "aria-pressed": ariaPressed, "aria-expanded": ariaExpanded, "aria-haspopup": ariaHaspopup }: { variant?: "primary" | "ghost" | "outline" | "toolbar"; icon?: import("react").ReactNode; className?: string; disabled?: boolean; title?: string; onClick?: () => void; "aria-label"?: string; "aria-pressed"?: boolean; "aria-expanded"?: boolean; "aria-haspopup"?: import("react").AriaAttributes["aria-haspopup"]; children?: import("react").ReactNode }) {
+		function settingsButton({ variant = "outline", icon, children, className, disabled, title, onClick, "aria-label": ariaLabel, "aria-pressed": ariaPressed, "aria-expanded": ariaExpanded, "aria-haspopup": ariaHaspopup }: { variant?: "primary" | "ghost" | "outline" | "toolbar"; icon?: ReactNode; className?: string; disabled?: boolean; title?: string; onClick?: () => void; "aria-label"?: string; "aria-pressed"?: boolean; "aria-expanded"?: boolean; "aria-haspopup"?: AriaAttributes["aria-haspopup"]; children?: ReactNode }) {
 			return (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Button, {
 				variant,
 				size: "sm",
@@ -76,7 +79,7 @@ export function startArchiveClient(require: HostRequire) {
 				children
 			});
 		}
-		function modalFooterButton({ variant = "outline", danger = false, disabled, onClick, children }: { variant?: "primary" | "outline"; danger?: boolean; disabled?: boolean; onClick?: () => void; children?: import("react").ReactNode }) {
+		function modalFooterButton({ variant = "outline", danger = false, disabled, onClick, children }: { variant?: "primary" | "outline"; danger?: boolean; disabled?: boolean; onClick?: () => void; children?: ReactNode }) {
 			return (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Button, {
 				variant: danger ? "outline" : variant,
 				className: danger ? "dsham_btnDanger" : undefined,
@@ -85,10 +88,10 @@ export function startArchiveClient(require: HostRequire) {
 				children
 			});
 		}
-		function tabsShell(locked: boolean, children: import("react").ReactNode) {
-			const props: { className?: string; inert?: ""; children: import("react").ReactNode } = { className: locked ? "dsham_archiveTabsLocked" : undefined, children };
+		function tabsShell(locked: boolean, children: ReactNode) {
+			const props: { className?: string; inert?: ""; children: ReactNode } = { className: locked ? "dsham_archiveTabsLocked" : undefined, children };
 			if (locked) props.inert = "";
-			return props as import("react").HTMLAttributes<HTMLDivElement> & { children: import("react").ReactNode };
+			return props as HTMLAttributes<HTMLDivElement> & { children: ReactNode };
 		}
 		const OrganizerPanel = createOrganizerPanel(react, _deepseek_ai_dsh_client_ui_primitives.Button);
         const { HighlightedText, useSessionDetails, useArchiveSearch, useArchivePreview, DiscoveryFilters, SearchStatus, PreviewContent } = createDiscoveryTools(react, { Button: _deepseek_ai_dsh_client_ui_primitives.Button, SegmentedControl: _deepseek_ai_dsh_client_ui_primitives.SegmentedControl });
@@ -257,9 +260,9 @@ export function startArchiveClient(require: HostRequire) {
 			meta: "dsham_archiveCardMeta",
 			actions: "dsham_archiveCardActions",
 			unarchive: "dsham_archiveCardUnarchive",
-			delete: "dsham_archiveCardDelete"
+			delete: "dsham_iconAction dsham_iconDanger"
 		};
-		const ARCHIVED_CSS = ".dshamRow_sessionRow.dsham_archivedRow{box-sizing:border-box;cursor:default;min-height:64px;height:auto;background:var(--dsw-alias-button-elevated-fill);border:1px solid var(--dsw-alias-border-l2);border-radius:12px;gap:12px;margin:8px 0;padding:10px 16px}.dshamRow_sessionRow.dsham_archivedRow:hover{background:var(--dsw-alias-button-elevated-fill);border-color:var(--dsw-alias-border-l3)}.dshamRow_searchResultRow.dsham_archivedRow{background:var(--dsw-alias-button-elevated-fill);border:1px solid var(--dsw-alias-border-l2);border-radius:12px;margin:8px 0;padding:10px 16px}.dsham_archivedTitle{color:var(--dsw-alias-label-primary);font-weight:600}.dsham_archivedBadge{display:none}.dsham_archiveCardContent{min-width:0;flex:1;flex-direction:column;gap:2px;display:flex}.dsham_archiveCardMeta{color:var(--dsw-alias-label-tertiary);font-size:12px;line-height:18px}.dshamRow_sessionRow.dsham_archivedRow>.dshamRow_time,.dshamRow_sessionRow.dsham_archivedRow>.dshamRow_rowActions{display:none}.dsham_archiveCardActions{align-items:center;gap:12px;display:inline-flex}.dsham_archiveCardActions button{cursor:pointer;flex:none}.dsham_archiveCardDelete{width:22px;height:22px;color:var(--dsw-alias-state-error-primary);background:transparent;border:0.5px solid var(--dsw-alias-state-error-primary);border-radius:8px;align-items:center;justify-content:center;display:inline-flex}.dsham_archiveCardUnarchive{height:32px;color:var(--dsw-alias-label-primary);background:var(--dsw-alias-button-elevated-fill);border:1px solid var(--dsw-alias-border-l2)!important;border-radius:8px;padding:0 12px;font-size:13px;font-weight:600;line-height:20px}.dsham_archiveCardUnarchive:hover{background:var(--dsw-alias-interactive-bg-hover)}";
+		const ARCHIVED_CSS = ".dshamRow_sessionRow.dsham_archivedRow{box-sizing:border-box;cursor:default;min-height:64px;height:auto;background:var(--dsw-alias-button-elevated-fill);border:1px solid var(--dsw-alias-border-l2);border-radius:12px;gap:12px;margin:8px 0;padding:10px 16px}.dshamRow_sessionRow.dsham_archivedRow:hover{background:var(--dsw-alias-button-elevated-fill);border-color:var(--dsw-alias-border-l3)}.dshamRow_searchResultRow.dsham_archivedRow{background:var(--dsw-alias-button-elevated-fill);border:1px solid var(--dsw-alias-border-l2);border-radius:12px;margin:8px 0;padding:10px 16px}.dsham_archivedTitle{color:var(--dsw-alias-label-primary);font-weight:600}.dsham_archivedBadge{display:none}.dsham_archiveCardContent{min-width:0;flex:1;flex-direction:column;gap:2px;display:flex}.dsham_archiveCardMeta{color:var(--dsw-alias-label-tertiary);font-size:12px;line-height:18px}.dshamRow_sessionRow.dsham_archivedRow>.dshamRow_time,.dshamRow_sessionRow.dsham_archivedRow>.dshamRow_rowActions{display:none}.dsham_archiveCardActions{align-items:center;gap:12px;display:inline-flex}.dsham_archiveCardActions button{cursor:pointer;flex:none}.dsham_archiveCardUnarchive{height:32px;color:var(--dsw-alias-label-primary);background:var(--dsw-alias-button-elevated-fill);border:1px solid var(--dsw-alias-border-l2)!important;border-radius:8px;padding:0 12px;font-size:13px;font-weight:600;line-height:20px}.dsham_archiveCardUnarchive:hover{background:var(--dsw-alias-interactive-bg-hover)}";
 		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify("dsh-archive-manager/Archived.module.css") + "]") === null) {
 			const tag = document.createElement("style");
 			tag.dataset.plugin = "@michengai/dsh-archive-manager";
@@ -268,7 +271,7 @@ export function startArchiveClient(require: HostRequire) {
 			document.head.appendChild(tag);
 		}
 		/** 危险操作确认按钮统一红色描边。宿主哈希类名随版本变，不再引用。 */
-		const DANGER_BUTTON_CSS = ".dsham_btnDanger:not(:disabled){color:var(--dsw-alias-state-error-primary,#ef7272)}";
+		const DANGER_BUTTON_CSS = ".dsham_btnDanger:not(:disabled){color:var(--dsw-alias-state-error-primary,#ef7272);border-color:var(--dsw-alias-state-error-primary,#ef7272)}";
 		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify("dsh-archive-manager/DangerButton.css") + "]") === null) {
 			const tag = document.createElement("style");
 			tag.dataset.plugin = "@michengai/dsh-archive-manager";
@@ -1383,7 +1386,7 @@ export function startArchiveClient(require: HostRequire) {
 			});
 		}
 		/** Pointer-position half of a row (insert line above or below). */
-		function rowHalf(e: import("react").DragEvent<HTMLElement>) {
+		function rowHalf(e: ReactDragEvent<HTMLElement>) {
 			const rect = e.currentTarget.getBoundingClientRect();
 			return e.clientY < rect.top + rect.height / 2 ? "before" : "after";
 		}
@@ -2185,7 +2188,7 @@ export function startArchiveClient(require: HostRequire) {
 			});
 		}
 		/** Resolve an insertion side from the full rendered workspace group. */
-		function workspaceGroupHalf(e: import("react").DragEvent<HTMLElement>) {
+		function workspaceGroupHalf(e: ReactDragEvent<HTMLElement>) {
 			const rect = e.currentTarget.getBoundingClientRect();
 			return e.clientY < rect.top + rect.height / 2 ? "before" : "after";
 		}
@@ -3486,16 +3489,17 @@ export function startArchiveClient(require: HostRequire) {
 			".dsham_settings h2{margin:0;font-size:24px;line-height:32px;font-weight:600;letter-spacing:-.4px;white-space:nowrap}",
 			".dsham_settingsIntro{margin:12px 0 0;max-width:42em;color:var(--dsw-alias-label-tertiary);font-size:14px;line-height:22px}",
 			".dsham_settingsToolbar{display:flex;flex-direction:column;gap:8px;margin-bottom:16px;width:100%;min-width:0}",
-			".dsham_settingsSearch,.dsham_settingsFilters{display:flex;align-items:center;gap:8px;min-width:0;width:100%;flex-wrap:nowrap}",
+			".dsham_settingsSearch{display:flex;align-items:center;gap:8px;min-width:0;width:100%;flex-wrap:nowrap}",
+			".dsham_settingsFilters{display:flex;align-items:center;gap:8px;min-width:0;width:100%;flex-wrap:nowrap}",
 			".dsham_settingsSort{display:flex;align-items:center;gap:8px;margin-left:auto;flex:none;min-width:0}",
 			".dsham_settingsSortLabel{flex:none;color:var(--dsw-alias-label-tertiary);font-size:13px;line-height:20px;white-space:nowrap}",
 			".dsham_settingsFilter{display:flex;position:relative;flex:none;width:auto;min-width:0}",
 			".dsham_settingsSearch .dsham_favoriteFilter,.dsham_settingsSearch .dsham_scopeFilter,.dsham_settingsFilters>.dsham_projectFilter,.dsham_settingsSort .dsham_sortFilter{flex:none;width:auto}",
 			".dsham_settingsFilters>.dsham_dateFilter{flex:1 1 auto;min-width:0}",
+			"@container(max-width:480px){.dsham_settingsFilters{flex-wrap:wrap}.dsham_settingsSort{margin-left:0}}",
 			".dsham_menuSelectBtn{display:inline-flex!important;align-items:center;justify-content:space-between;gap:6px;width:auto!important;max-width:100%;min-width:0!important;height:32px!important;padding:0 10px;border:0.5px solid var(--dsw-alias-border-l2);border-radius:var(--dsw-radius-sm,8px);background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary);box-sizing:border-box;font:inherit;font-size:13px;cursor:pointer}",
 			".dsham_selectLabel{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;font-weight:normal;text-align:left}",
 			".dsham_settingsSearch .dsham_searchField{flex:1 1 0;min-width:0;width:auto;max-width:none;box-sizing:border-box}",
-			".dsham_settingsSearch,.dsham_settingsFilters{flex-wrap:nowrap}",
 			".dsham_settingsGroup{margin:0 0 20px}",
 			".dsham_settingsGroupHeading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 14px}",
 			".dsham_settingsGroupTitle{display:flex;align-items:center;gap:8px;min-width:0;margin:0;color:var(--dsw-alias-label-primary);font-size:13px;font-weight:600}",
@@ -3509,14 +3513,15 @@ export function startArchiveClient(require: HostRequire) {
 			".dsham_settingsMeta{margin-top:2px;color:var(--dsw-alias-label-tertiary);font-size:12px;line-height:16px}",
 			".dsham_settingsActions{display:flex;align-items:center;gap:4px;flex:none}",
 			".dsham_iconAction{width:22px!important;min-width:22px!important;height:22px!important;padding:0!important;border-radius:var(--dsw-radius-sm,8px)!important;background:transparent;color:var(--dsw-alias-label-secondary);border-color:var(--dsw-alias-border-l2)}",
-			".dsham_iconAction:not(:disabled):not(.dsham_iconDanger):hover{color:var(--dsw-alias-link,#4176e6)!important;border-color:var(--dsw-alias-link,#4176e6)!important}",
-			".dsham_iconAction.dsham_iconDanger{color:var(--dsw-alias-state-error-primary,#ef7272);border-color:var(--dsw-alias-state-error-primary,#ef7272)}",
+			".dsham_iconAction:not(:disabled):hover{color:var(--dsw-alias-link,#4176e6)!important;border-color:var(--dsw-alias-link,#4176e6)!important}",
+			".dsham_iconAction.dsham_iconDanger{color:var(--dsw-alias-state-error-primary,#ef7272)!important;border-color:var(--dsw-alias-state-error-primary,#ef7272)!important}",
+			".dsham_iconAction.dsham_iconDanger:not(:disabled):hover{color:var(--dsw-alias-state-error-primary,#ef7272)!important;border-color:var(--dsw-alias-state-error-primary,#ef7272)!important}",
 			".dsham_iconAction svg{width:16px!important;height:16px!important;flex:none!important}",
 			".dsham_settingsEmpty{padding:28px 8px;color:var(--dsw-alias-label-secondary);text-align:center}",
 			".dsham_settingsError{margin-top:10px;color:var(--dsw-alias-state-error-primary);font-size:12px}",
 			"@container(max-width:520px){.dsham_settingsHeader{margin-bottom:16px}.dsham_settingsGroup{margin-bottom:32px}.dsham_settingsRow{padding:10px 12px}.dsham_settingsActions{gap:4px}}"
 		].join("");
-		const ARCHIVE_SETTINGS_BATCH_CSS = ".dsham_settingsTitleLink{display:block;max-width:100%;padding:0;border:0;background:transparent;color:var(--dsw-alias-label-primary);font:inherit;font-size:13px;font-weight:600;line-height:20px;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer}.dsham_settingsTitleLink:hover:not(:disabled){text-decoration:underline;text-underline-offset:3px}.dsham_settingsTitleLink:disabled{cursor:default;opacity:.6}.dsham_groupToggle{display:flex;align-items:center;gap:8px;min-width:0;max-width:100%;padding:4px 0;border:0;background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer}.dsham_groupToggle span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.dsham_settingsRow:hover{background:var(--dsw-alias-interactive-bg-hover)}.dsham_settingsRow[data-selected=true]{background:var(--dsw-alias-interactive-bg-hover)}.dsham_settingsTitleLink:focus-visible,.dsham_groupToggle:focus-visible{outline:2px solid var(--dsw-alias-state-business-primary,#3b82f6);outline-offset:2px}@container(max-width:400px){.dsham_settingsRow{gap:8px;padding:10px 8px}.dsham_settingsActions{gap:0}.dsham_settingsMeta{font-size:11px}}.dsham_settingsGroupMeta{display:flex;align-items:center;gap:8px;flex:none;flex-wrap:wrap}.dsham_settingsStatus{margin-top:10px;color:var(--dsw-alias-label-secondary);font-size:12px}.dsham_checkbox{width:16px;height:16px;margin:0;accent-color:var(--dsw-alias-brand-primary);flex:none}button.dsham_favoriteOn{color:#e8b931}";
+		const ARCHIVE_SETTINGS_BATCH_CSS = ".dsham_settingsTitleLink{display:block;max-width:100%;padding:0;border:0;background:transparent;color:var(--dsw-alias-label-primary);font:inherit;font-size:13px;font-weight:600;line-height:20px;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer}.dsham_settingsTitleLink:hover:not(:disabled){text-decoration:underline;text-underline-offset:3px}.dsham_settingsTitleLink:disabled{cursor:default;opacity:.6}.dsham_groupToggle{display:flex;align-items:center;gap:8px;min-width:0;max-width:100%;padding:4px 0;border:0;background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer}.dsham_groupToggle span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.dsham_settingsRow:hover{background:var(--dsw-alias-interactive-bg-hover)}.dsham_settingsRow[data-selected=true]{background:var(--dsw-alias-interactive-bg-hover)}.dsham_settingsTitleLink:focus-visible,.dsham_groupToggle:focus-visible{outline:2px solid var(--dsw-alias-state-business-primary,#3b82f6);outline-offset:2px}@container(max-width:400px){.dsham_settingsRow{gap:8px;padding:10px 8px}.dsham_settingsActions{gap:0}.dsham_settingsMeta{font-size:11px}}.dsham_settingsGroupMeta{display:flex;align-items:center;gap:8px;flex:none;flex-wrap:wrap}.dsham_settingsStatus{margin-top:10px;color:var(--dsw-alias-label-secondary);font-size:12px}.dsham_checkbox{width:16px;height:16px;margin:0;accent-color:var(--dsw-alias-brand-primary);flex:none}button.dsham_favoriteOn{color:#e8b931}button.dsham_favoriteOn:not(:disabled):hover{color:#e8b931!important;border-color:#e8b931!important}";
 		const ARCHIVE_SETTINGS_EXTERNAL_LINK_CSS = ".dsham_settingsTitleRow{display:flex;align-items:center;gap:8px 12px;min-width:0;flex-wrap:wrap}.dsham_settingsLinks{display:flex;align-items:center;gap:8px;flex-wrap:wrap}@media(max-width:720px){.dsham_settingsTitleRow{flex-wrap:wrap}}";
 		const ARCHIVE_MODAL_CSS = ".dsham_modalRoot{position:fixed;inset:0;z-index:1200;display:grid;place-items:center;padding:24px}.dsham_modalMask{position:absolute;inset:0;background:var(--dsw-alias-bg-mask-1,rgb(0 0 0 / 45%))}.dsham_modalDialog{position:relative;display:flex;flex-direction:column;gap:12px;max-width:calc(100vw - 48px);max-height:min(80vh,720px);padding:22px 24px 20px;overflow:auto;border:0;border-radius:var(--dsw-radius-panel,28px);background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-primary);box-shadow:var(--dsw-elevation-prominent,0 16px 40px rgb(0 0 0 / 24%))}.dsham_modalDialog h2{margin:0;font-size:16px;line-height:24px}.dsham_modalDialog>p{margin:0;color:var(--dsw-alias-label-secondary);font-size:13px;line-height:20px}.dsham_modalFooter{display:flex;align-items:center;justify-content:flex-end;gap:8px}";
 		const ARCHIVE_SETTINGS_SELECTION_CSS = ".dsham_settingsSelection{margin:-8px 0 16px;padding:4px 0 12px;border-bottom:1px solid var(--dsw-alias-border-l2)}.dsham_settingsSelectionMain{display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;min-height:36px}.dsham_settingsSelectionSummary{display:flex;flex-wrap:wrap;align-items:center;gap:12px;min-width:0;max-width:100%}.dsham_settingsSelectionToggle{display:inline-flex;flex:none;white-space:nowrap;align-items:center;gap:12px;color:var(--dsw-alias-label-primary);font-size:13px;line-height:20px;cursor:pointer}.dsham_settingsSelectionActions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:10px;max-width:100%;margin-left:auto}.dsham_settingsSelectionScope{margin:8px 0 0;color:var(--dsw-alias-label-tertiary);font-size:12px;line-height:20px;overflow-wrap:anywhere}";
@@ -4396,7 +4401,7 @@ export function startArchiveClient(require: HostRequire) {
 			const uiWorkspaceAt = () => ctx.get("uiWorkspace");
 			const archiveViewState = {};
 			let archiveNavigation: ReturnType<typeof allowArchivedNavigation> | undefined;
-			const attachArchiveNavigation = (navigation: import("./archive-experience.js").NavigationSource | undefined) => {
+			const attachArchiveNavigation = (navigation: NavigationSource | undefined) => {
 				archiveNavigation = allowArchivedNavigation(navigation, ctx.sessions, ctx.workspaces, {
 					onOpened: () => ctx.get("layout")?.selectPanel(null),
 					beginNavigation: () => ctx.get("layout")?.beginNavigation?.()
@@ -4439,7 +4444,7 @@ export function startArchiveClient(require: HostRequire) {
                 const registry = ctx.get("remote.workspaceRegistry");
                 if (!registry || typeof registry[method] !== "function") throw new Error(ctx.locale.bind(NS)("service.unavailable"));
                 // 映射类型索引后的联合无法保留参数与返回值关联；断言只放在这一个分发边界。
-                const call = registry[method] as (...input: Parameters<RegistryCalls[K]>) => Promise<import("./client-compat.js").RemoteResult<Awaited<ReturnType<RegistryCalls[K]>>>>;
+                const call = registry[method] as (...input: Parameters<RegistryCalls[K]>) => Promise<RemoteResult<Awaited<ReturnType<RegistryCalls[K]>>>>;
                 const result = await call.apply(registry, args);
                 if (!result.ok) throw new Error(result.error.message);
                 return result.value;
