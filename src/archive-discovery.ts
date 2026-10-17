@@ -35,7 +35,21 @@ export const searchResultSchema = { parse(input: unknown) {
     failures: value.failures.map(record).map(row => ({ sessionId: id(row.sessionId), message: boundedString(row.message, 500) }))
   };
 } };
-export const previewResultSchema = { parse(input: unknown) {
+/** 只读预览中的单条消息；正文只保留用户和助手的文本。 */
+export interface ArchivePreviewMessage {
+  seq: number;
+  role: string;
+  text: string;
+  truncated: boolean;
+}
+/** 只读预览的返回结构，供客户端消费方直接引用，避免从实现推导。 */
+export interface ArchivePreviewResult {
+  sessionId: string;
+  hasEarlier: boolean;
+  hasLater: boolean;
+  messages: ArchivePreviewMessage[];
+}
+export const previewResultSchema = { parse(input: unknown): ArchivePreviewResult {
   const value = record(input);
   if (!value || !Array.isArray(value.messages) || value.messages.length > 8 || typeof value.hasEarlier !== "boolean" || typeof value.hasLater !== "boolean") throw new TypeError("预览结果无效");
   return { sessionId: id(value.sessionId), hasEarlier: value.hasEarlier, hasLater: value.hasLater,
@@ -234,7 +248,18 @@ export const repairInputSchema = { parse(input: unknown) {
   if (value?.token !== undefined && (typeof value.token !== "string" || !/^[a-f0-9]{64}$/.test(value.token))) throw new TypeError('修复凭据无效');
   return { sessionId, ...(value.token !== undefined ? { token: value.token } : {}) };
 } };
-export const repairResultSchema = { parse(input: unknown) {
+/** 会话诊断与修复的返回结构。 */
+export interface RepairResult {
+  code?: string;
+  sessionId: string;
+  repairable: boolean;
+  repaired: boolean;
+  reason: string;
+  advice: string;
+  token: string;
+  count: number;
+}
+export const repairResultSchema = { parse(input: unknown): RepairResult {
   const value = record(input);
   if (!value || typeof value.repairable !== 'boolean' || typeof value.repaired !== 'boolean') throw new TypeError('诊断结果无效');
   return { ...(value.code !== undefined ? { code: boundedString(value.code, 64) } : {}), sessionId: id(value.sessionId), repairable: value.repairable, repaired: value.repaired, reason: boundedString(value.reason, 1000), advice: boundedString(value.advice, 1000), token: boundedString(value.token ?? '',64), count: sequence(value.count ?? 0) };
