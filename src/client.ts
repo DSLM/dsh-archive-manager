@@ -3496,8 +3496,6 @@ export function startArchiveClient(require: HostRequire) {
 			".dsham_selectLabel{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;font-weight:normal;text-align:left}",
 			".dsham_settingsSearch .dsham_searchField{flex:1 1 0;min-width:0;width:auto;max-width:none;box-sizing:border-box}",
 			".dsham_settingsSearch,.dsham_settingsFilters{flex-wrap:nowrap}",
-			".dsham_menuLabel{display:inline-flex;align-items:center;gap:8px;line-height:22px}",
-			".dsham_menuLabel svg{position:static;display:block;width:16px;height:16px;flex:none}",
 			".dsham_settingsGroup{margin:0 0 20px}",
 			".dsham_settingsGroupHeading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 14px}",
 			".dsham_settingsGroupTitle{display:flex;align-items:center;gap:8px;min-width:0;margin:0;color:var(--dsw-alias-label-primary);font-size:13px;font-weight:600}",
@@ -3647,11 +3645,11 @@ export function startArchiveClient(require: HostRequire) {
 			const [open, setOpen] = (0, react.useState)(false);
 			const choose = (id: string) => { if (busy) return; setOpen(false); if (id === "copyId") return onCopyId?.(); if (id === "copyPath") return onCopyPath?.(); if (id === "preview") return onPreview?.(); if (id === "restoreOpen") return onRestoreOpen?.(); if (id === "delete") onDelete?.(); };
 			const items = [
-				...onPreview ? [{ id: "preview", label: t("discovery.preview"), danger: false }] : [],
-				...onRestoreOpen ? [{ id: "restoreOpen", label: t("archives.restoreOpen"), danger: false }] : [],
-				...onCopyId ? [{ id: "copyId", label: t("details.copyId"), danger: false }] : [],
-				...onCopyPath ? [{ id: "copyPath", label: t("details.copyPath"), danger: false }] : [],
-				...onDelete ? [{ id: "delete", label: t("menu.deleteSession"), danger: true }] : []
+				...onPreview ? [{ id: "preview", label: t("discovery.preview"), icon: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconBrowseOutlineMedium, { size: 16 }), danger: false }] : [],
+				...onRestoreOpen ? [{ id: "restoreOpen", label: t("archives.restoreOpen"), icon: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconUnarchiveOutlineMedium, { size: 16 }), danger: false }] : [],
+				...onCopyId ? [{ id: "copyId", label: t("details.copyId"), icon: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconCopyOutlineMedium, { size: 16 }), danger: false }] : [],
+				...onCopyPath ? [{ id: "copyPath", label: t("details.copyPath"), icon: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconLinkOutlineMedium, { size: 16 }), danger: false }] : [],
+				...onDelete ? [{ id: "delete", label: t("menu.deleteSession"), icon: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconTrashOutlineMedium, { size: 16 }), danger: true }] : []
 			];
 			return (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Menu, {
 				open: !busy && open, align: "end", portal: true, dense: true, items, onSelect: choose, onClose: () => setOpen(false),
@@ -3661,18 +3659,20 @@ export function startArchiveClient(require: HostRequire) {
 		/** 项目标题右侧的批量菜单，向左展开，归档项保持危险色。 */
 		function ArchivedGroupActions({ group, busy, onArchive, onRestore, onDelete, t }: { group: ArchivedGroup; busy: boolean; onArchive?: () => void; onRestore?: () => void; onDelete?: () => void; t: Translate }) {
 			const ungrouped = group.key === ARCHIVE_UNGROUPED_KEY;
-			const menuLabelNode = (icon: import("react").ReactNode, text: string) => (0, react_jsx_runtime.jsxs)("span", { className: "dsham_menuLabel", children: [icon, text] });
 			const items = onArchive ? [{
 				id: "archive",
-				label: menuLabelNode((0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconArchiveOutlineMedium, { size: 16 }), t(ungrouped ? "archives.archiveUngrouped" : "archives.archiveProject")),
+				label: t(ungrouped ? "archives.archiveUngrouped" : "archives.archiveProject"),
+				icon: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconArchiveOutlineMedium, { size: 16 }),
 				danger: true
 			}] : [{
 				id: "restore",
-				label: menuLabelNode((0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconRefreshOutlineMedium, { size: 16 }), t(ungrouped ? "archives.restoreUngrouped" : "archives.restoreProject")),
+				label: t(ungrouped ? "archives.restoreUngrouped" : "archives.restoreProject"),
+				icon: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconUnarchiveOutlineMedium, { size: 16 }),
 				danger: false
 			}, {
 				id: "delete",
-				label: menuLabelNode((0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconTrashOutlineMedium, { size: 16 }), t(ungrouped ? "archives.deleteUngrouped" : "archives.deleteProject")),
+				label: t(ungrouped ? "archives.deleteUngrouped" : "archives.deleteProject"),
+				icon: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconTrashOutlineMedium, { size: 16 }),
 				danger: true
 			}];
 			const [open, setOpen] = (0, react.useState)(false);
