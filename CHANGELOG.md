@@ -4,17 +4,13 @@
 
 Published release notes are retained below; new versions are added without removing earlier entries.
 
-## Unreleased
-
-- Archive filter bar stays on two aligned rows at any width: dropdowns size to their labels, the search box fills the first row, and the date range fills the second row with both date inputs stretching inside it. Narrow panels no longer wrap the bar into five stacked rows, and dates are no longer clipped.
-- Destructive confirmations (delete sessions, stop-and-archive, workspace archive or delete) now use a red outlined button aligned with the host warning pattern instead of a filled primary button. The batch selection bar's delete button uses the same treatment, and its leftover pre-host-button styles are removed. Sidebar dialogs no longer reference the host's hashed delete class, whose name changed across host versions and left those buttons unstyled.
-- Icon-only buttons (favorite, restore or archive, more actions, sidebar card delete) now share one 22×22 outlined style: neutral gray with a blue hover, and always-red for permanent delete. Unused custom button styles are removed.
-- Both "more actions" menus (session rows and project groups) now use the host menu's native icons: restore uses the unarchive glyph, delete the trash glyph, and the session menu gains icons for preview, copy ID, and copy path. The custom icon-label wrapper is removed.
-
 ## 1.1.0 - 2026-10-17
 
 - Supported hosts are now DeepSeek Harness `0.2.0-rc.1`, `0.2.0-rc.2`, `0.2.1-rc.1`, and `0.2.1-rc.2`. Intermediate `0.2.1-alpha.*` releases and hosts before `0.2.0` are rejected by the version gate and this plugin will not run. If you still use a `0.1.x` host, install plugin `1.0.20` instead of `@latest`. Existing archives, favorites, and settings are kept.
-- Settings buttons no longer pass the Ant Design `danger` attribute to the host button. Dialog footer buttons use the host default size: cancel is outline and confirm is primary, without a separate danger color. Icons use the Medium and Regular names the host actually exports.
+- Archive filter bar stays on two aligned rows at normal widths: dropdowns size to their labels, the search box fills the first row, and the date range fills the second row with both date inputs stretching inside it. Below a 480px container the filter row wraps instead of clipping the dates, and narrow panels no longer stack the bar into five separate rows.
+- Destructive confirmations (delete sessions, stop-and-archive, workspace archive or delete) now use a red outlined button aligned with the host warning pattern instead of a filled primary button. The batch selection bar's delete button uses the same treatment, and its leftover pre-host-button styles are removed. Sidebar dialogs no longer reference the host's hashed delete class, whose name changed across host versions and left those buttons unstyled.
+- Icon-only buttons (favorite, restore or archive, more actions, sidebar card delete) now share one 22×22 outlined style: neutral gray with a blue hover, and always-red for permanent delete. Unused custom button styles are removed.
+- Both "more actions" menus (session rows and project groups) now use the host menu's native icons: restore uses the unarchive glyph, delete the trash glyph, and the session menu gains icons for preview, copy ID, and copy path. The custom icon-label wrapper is removed.
 - Self-update still bypasses the one-day release-age gate. After a successful install, the exact version is merged into that package's existing allowlist entry so later installs and uninstalls in the profile are not blocked.
 - Removed client fallbacks that existed only for `0.1.x`: `client-runtime`, the plugin remote restore fallback, projection-cache `putSoft`, and replacing the official sidebar when it has no session menu slot.
 
