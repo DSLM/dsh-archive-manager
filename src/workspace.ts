@@ -737,6 +737,11 @@ var ArchiveWorkspaceRegistry = class extends (WorkspaceRegistry as unknown as Wo
 					this.forgetIndexedSession(sessionId);
 					// 和正常删除一样记下头部身份，否则同 id 的新生命周期无法冷复用。
 					if (header !== void 0) this.deletedIdentities.set(sessionId, headerIdentity(header));
+					const projCache = this.ctx.get("sessionProjectionCache");
+					if (projCache !== undefined && typeof projCache.delete === "function") {
+						try { await projCache.delete(sessionId); }
+						catch (e) { this.ctx.logger.warn(`archive-manager: cleanup projection cache for missing session "${sessionId}" failed: ${String(e)}`); }
+					}
 					continue;
 				}
 				kept.push(sessionId);

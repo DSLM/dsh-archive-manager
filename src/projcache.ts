@@ -321,12 +321,18 @@ var ArchiveProjectionCache = class extends CacheBase {
 	}
 	/**
 	 * 永久移除一个会话的缓存投影行。
+	 * 同时清理当前表与底层原生表（如官方 session_projcache 域），防止残留孤儿文件。
 	 * @param id - 要删除缓存行的会话。
 	 * @returns 行删除完成后的 resolution。
 	 */
 	async delete(id: string) {
 		trackTombstone(this.deletedSessionIds, this.deletedSessionOrder, id, this.deletedSessionTombstoneLimit);
-		await this.requireTable().delete(id);
+		const tasks = [this.requireTable().delete(id)];
+		const secondary = (this as { secondaryTable?: CacheTable }).secondaryTable;
+		if (secondary !== undefined && typeof secondary.delete === "function") {
+			tasks.push(secondary.delete(id).catch(() => false));
+		}
+		await Promise.all(tasks);
 	}
 	/** 撤销墓碑（供测试与同 id 新生命周期复用路径使用）。 */
 	clearTombstone(id: string) {
@@ -339,12 +345,13 @@ var ArchiveProjectionCache = class extends CacheBase {
 // 独立接收对象把在途任务固定在安装时的表和墓碑上；恢复官方实例不改变其异步续体。
 const projectionGuards = new WeakMap<object, () => Promise<void>>();
 /** 安全域无法打开时仍须安装删除墓碑和写入屏障，复用官方缓存表。 */
-export function installArchiveProjectionCacheGuards(cache: object, table?: CacheTable): () => Promise<void> {
+export function installArchiveProjectionCacheGuards(cache: object, table?: CacheTable, secondaryTable?: CacheTable): () => Promise<void> {
 	const target = ((Reflect.get(cache, symbols.original) as object | undefined) ?? cache) as CacheCompat & Record<string | symbol, unknown>;
 	const existing = projectionGuards.get(target);
 	if (existing) return existing;
 	const fields = {
 		table: table ?? target.table,
+		secondaryTable: secondaryTable !== (table ?? target.table) ? secondaryTable : undefined,
 		deletedSessionIds: new Set<string>(), deletedSessionOrder: [] as string[],
 		deletedSessionTombstoneLimit: 4096, writeTail: Promise.resolve(),
 	};
@@ -409,7 +416,7 @@ export async function installArchiveProjectionCache(cache: object): Promise<() =
 	try {
 		const table = new SafeSessionTable(domain.table("sessions"));
 		await importPreviousProjectionCache(target.ctx, table, previousTable);
-		uninstallGuards = installArchiveProjectionCacheGuards(cache, table);
+		uninstallGuards = installArchiveProjectionCacheGuards(cache, table, previousTable);
 		target.table = table;
 		target[projectionOverlay] = true;
 		installed = true;

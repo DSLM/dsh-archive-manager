@@ -139,6 +139,32 @@ test("overlay 从官方已打开的缓存表补缺迁入，不覆盖安全域记
 	}
 });
 
+test("overlay 开启时 delete 会话同步清除官方底层表中的记录，避免残留孤儿投影文件", async () => {
+	const host = await mountCache();
+	const { cache, domains } = host;
+	const officialTable = cache.table;
+	await cache.put("to-delete", identity, rows("official title"));
+	assert.ok(officialTable.get("to-delete") !== undefined);
+
+	let uninstall;
+	try {
+		uninstall = await installArchiveProjectionCache(cache);
+		// 此时 safe domain 已装载，且 overlay 把 to-delete 导入了安全表
+		assert.ok(cache.table.get("to-delete") !== undefined);
+
+		// 执行 delete
+		await cache.delete("to-delete");
+
+		// 安全表已被删除
+		assert.ok(cache.table.get("to-delete") === undefined);
+		// 官方原生底层表也必须已被清理，不再残留！
+		assert.ok(officialTable.get("to-delete") === undefined);
+	} finally {
+		await uninstall?.();
+		await domains.get("session_projcache")?.close();
+	}
+});
+
 for (const overlay of [true, false]) {
  test(overlay ? "overlay 卸载只等旧写入，新写入立即回到官方表" : "兜底 guards 卸载不追逐后续官方写入", async () => {
   const host = await mountCache(); const table = host.cache.table;
