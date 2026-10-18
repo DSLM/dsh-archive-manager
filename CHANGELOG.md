@@ -4,6 +4,11 @@
 
 Published release notes are retained below; new versions are added without removing earlier entries.
 
+## 1.1.2 - 2026-10-18
+
+- Synchronously remove official projection cache records (`session_projcache/sessions/<id>.json`) when permanently deleting a session, preventing orphaned files from lingering on disk and re-importing as blank ghost entries upon host launch (#65).
+- Automatically prune orphaned projection entries when cleaning up corrupt or missing archived session records.
+
 ## 1.1.1 - 2026-10-18
 
 - In the sidebar session menu, "Delete session" confirmation is now a neat floating card anchored right next to that session row instead of a full-screen overlay, matching the native translucent dark blur and lighting of host dropdown menus (#60).
