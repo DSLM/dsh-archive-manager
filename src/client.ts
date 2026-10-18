@@ -279,6 +279,33 @@ export function startArchiveClient(require: HostRequire) {
 			tag.textContent = DANGER_BUTTON_CSS;
 			document.head.appendChild(tag);
 		}
+		/** 图标按钮类同时用于设置页宿主按钮和侧栏原生按钮，必须全局注入，否则侧栏先于设置页渲染时没有样式。 */
+		const ICON_ACTION_CSS = ".dsham_iconAction{display:inline-flex!important;align-items:center!important;justify-content:center!important;box-sizing:border-box!important;width:22px!important;min-width:22px!important;height:22px!important;padding:0!important;border:0.5px solid var(--dsw-alias-border-l2);border-radius:var(--dsw-radius-sm,8px)!important;background:transparent;color:var(--dsw-alias-label-secondary)}.dsham_iconAction:not(:disabled):hover{color:var(--dsw-alias-link,#4176e6)!important;border-color:var(--dsw-alias-link,#4176e6)!important}.dsham_iconAction.dsham_iconDanger{color:var(--dsw-alias-state-error-primary,#ef7272)!important;border-color:var(--dsw-alias-state-error-primary,#ef7272)!important}.dsham_iconAction.dsham_iconDanger:not(:disabled):hover{color:var(--dsw-alias-state-error-primary,#ef7272)!important;border-color:var(--dsw-alias-state-error-primary,#ef7272)!important}.dsham_iconAction svg{width:16px!important;height:16px!important;flex:none!important}";
+		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify("dsh-archive-manager/IconAction.css") + "]") === null) {
+			const tag = document.createElement("style");
+			tag.dataset.plugin = "@michengai/dsh-archive-manager";
+			tag.dataset.pluginCss = "dsh-archive-manager/IconAction.css";
+			tag.textContent = ICON_ACTION_CSS;
+			document.head.appendChild(tag);
+		}
+		/** 模态与确认卡片基础样式全局注入，防止侧栏触发删除时因未进过设置页而无样式。 */
+		const ARCHIVE_MODAL_CSS = ".dsham_modalRoot{position:fixed;inset:0;z-index:1200;display:grid;place-items:center;padding:24px}.dsham_modalMask{position:absolute;inset:0;background:var(--dsw-alias-bg-mask-1,rgb(0 0 0 / 45%))}.dsham_modalDialog{position:relative;display:flex;flex-direction:column;gap:12px;max-width:calc(100vw - 48px);max-height:min(80vh,720px);padding:22px 24px 20px;overflow:auto;border:0;border-radius:var(--dsw-radius-panel,28px);background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-primary);box-shadow:var(--dsw-elevation-prominent,0 16px 40px rgb(0 0 0 / 24%))}.dsham_modalDialog h2{margin:0;font-size:16px;line-height:24px}.dsham_modalDialog>p{margin:0;color:var(--dsw-alias-label-secondary);font-size:13px;line-height:20px}.dsham_modalFooter{display:flex;align-items:center;justify-content:flex-end;gap:8px}";
+		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify("dsh-archive-manager/Modal.css") + "]") === null) {
+			const tag = document.createElement("style");
+			tag.dataset.plugin = "@michengai/dsh-archive-manager";
+			tag.dataset.pluginCss = "dsh-archive-manager/Modal.css";
+			tag.textContent = ARCHIVE_MODAL_CSS;
+			document.head.appendChild(tag);
+		}
+		/** 侧边栏行内就地确认卡片样式：完全对齐官方原生 MenuSurface 材质与无箭头悬浮设计 */
+		const SIDEBAR_POPOVER_CSS = ".dsham_sidebarCardRoot{position:fixed;inset:0;z-index:1200;pointer-events:none}.dsham_sidebarCardBackdrop{position:fixed;inset:0;pointer-events:auto;background:transparent}.dsham_sidebarCard{position:fixed;pointer-events:auto;box-sizing:border-box;width:290px;padding:16px 18px 14px;border-radius:var(--dsw-radius-lg,14px);background:var(--dsw-menu-surface-fill);backdrop-filter:var(--dsw-menu-backdrop-filter,blur(40px) saturate(150%));-webkit-backdrop-filter:var(--dsw-menu-backdrop-filter,blur(40px) saturate(150%));border:none;box-shadow:var(--dsw-elevation-prominent);color:var(--dsw-alias-label-primary);display:flex;flex-direction:column;gap:8px}.dsham_sidebarCardTitle{margin:0;font-size:14px;font-weight:600;line-height:20px;color:var(--dsw-alias-label-primary)}.dsham_sidebarCardDesc{margin:0;font-size:13px;line-height:18px;color:var(--dsw-alias-label-secondary)}.dsham_sidebarCardError{margin-top:2px;font-size:12px;line-height:16px;color:var(--dsw-alias-state-error-primary,#ef7272)}.dsham_sidebarCardFooter{display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-top:10px}.dsham_sidebarCardBtn{border:none;background:transparent;padding:5px 12px;border-radius:var(--dsw-radius-sm,6px);font:inherit;font-size:13px;font-weight:500;line-height:18px;cursor:pointer;transition:background-color .15s ease,opacity .15s ease}.dsham_sidebarCardBtnCancel{color:var(--dsw-alias-label-primary)}.dsham_sidebarCardBtnCancel:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover)}.dsham_sidebarCardBtnDanger{color:var(--dsw-alias-state-error-primary,#ef7272)}.dsham_sidebarCardBtnDanger:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover-danger,#f25a5a26)}.dsham_sidebarCardBtn:disabled{opacity:.4;cursor:default}";
+		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify("dsh-archive-manager/SidebarPopover.css") + "]") === null) {
+			const tag = document.createElement("style");
+			tag.dataset.plugin = "@michengai/dsh-archive-manager";
+			tag.dataset.pluginCss = "dsh-archive-manager/SidebarPopover.css";
+			tag.textContent = SIDEBAR_POPOVER_CSS;
+			document.head.appendChild(tag);
+		}
 		//#endregion
 		//#region lib/types/client/subagent-lineage.js
 		/**
@@ -755,7 +782,7 @@ export function startArchiveClient(require: HostRequire) {
 			return (0, react_jsx_runtime.jsxs)("section", {
 				className: "dsham_settings",
 				"aria-label": t("archives.title"),
-				children: [(0, react_jsx_runtime.jsx)("style", { children: ARCHIVE_TABS_CSS + ARCHIVE_SETTINGS_CSS + ARCHIVE_SETTINGS_BATCH_CSS + ARCHIVE_SETTINGS_EXTERNAL_LINK_CSS + ARCHIVE_MODAL_CSS + ARCHIVE_SETTINGS_SELECTION_CSS }), (0, react_jsx_runtime.jsxs)("div", {
+				children: [(0, react_jsx_runtime.jsx)("style", { children: ARCHIVE_TABS_CSS + ARCHIVE_SETTINGS_CSS + ARCHIVE_SETTINGS_BATCH_CSS + ARCHIVE_SETTINGS_EXTERNAL_LINK_CSS + ARCHIVE_MODAL_LOCAL_CSS + ARCHIVE_SETTINGS_SELECTION_CSS }), (0, react_jsx_runtime.jsxs)("div", {
 					// 设置页使用独立布局容器，避免被 Codex UI 的会话 header 页签适配器识别。
 					className: "dsham_settingsHeader",
 					children: [(0, react_jsx_runtime.jsxs)("div", {
@@ -3512,18 +3539,14 @@ export function startArchiveClient(require: HostRequire) {
 			".dsham_settingsTitle{overflow:hidden;color:var(--dsw-alias-label-primary);font-size:13px;font-weight:600;line-height:18px;text-overflow:ellipsis;white-space:nowrap}",
 			".dsham_settingsMeta{margin-top:2px;color:var(--dsw-alias-label-tertiary);font-size:12px;line-height:16px}",
 			".dsham_settingsActions{display:flex;align-items:center;gap:4px;flex:none}",
-			".dsham_iconAction{width:22px!important;min-width:22px!important;height:22px!important;padding:0!important;border-radius:var(--dsw-radius-sm,8px)!important;background:transparent;color:var(--dsw-alias-label-secondary);border-color:var(--dsw-alias-border-l2)}",
-			".dsham_iconAction:not(:disabled):hover{color:var(--dsw-alias-link,#4176e6)!important;border-color:var(--dsw-alias-link,#4176e6)!important}",
-			".dsham_iconAction.dsham_iconDanger{color:var(--dsw-alias-state-error-primary,#ef7272)!important;border-color:var(--dsw-alias-state-error-primary,#ef7272)!important}",
-			".dsham_iconAction.dsham_iconDanger:not(:disabled):hover{color:var(--dsw-alias-state-error-primary,#ef7272)!important;border-color:var(--dsw-alias-state-error-primary,#ef7272)!important}",
-			".dsham_iconAction svg{width:16px!important;height:16px!important;flex:none!important}",
 			".dsham_settingsEmpty{padding:28px 8px;color:var(--dsw-alias-label-secondary);text-align:center}",
 			".dsham_settingsError{margin-top:10px;color:var(--dsw-alias-state-error-primary);font-size:12px}",
 			"@container(max-width:520px){.dsham_settingsHeader{margin-bottom:16px}.dsham_settingsGroup{margin-bottom:32px}.dsham_settingsRow{padding:10px 12px}.dsham_settingsActions{gap:4px}}"
 		].join("");
 		const ARCHIVE_SETTINGS_BATCH_CSS = ".dsham_settingsTitleLink{display:block;max-width:100%;padding:0;border:0;background:transparent;color:var(--dsw-alias-label-primary);font:inherit;font-size:13px;font-weight:600;line-height:20px;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer}.dsham_settingsTitleLink:hover:not(:disabled){text-decoration:underline;text-underline-offset:3px}.dsham_settingsTitleLink:disabled{cursor:default;opacity:.6}.dsham_groupToggle{display:flex;align-items:center;gap:8px;min-width:0;max-width:100%;padding:4px 0;border:0;background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer}.dsham_groupToggle span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.dsham_settingsRow:hover{background:var(--dsw-alias-interactive-bg-hover)}.dsham_settingsRow[data-selected=true]{background:var(--dsw-alias-interactive-bg-hover)}.dsham_settingsTitleLink:focus-visible,.dsham_groupToggle:focus-visible{outline:2px solid var(--dsw-alias-state-business-primary,#3b82f6);outline-offset:2px}@container(max-width:400px){.dsham_settingsRow{gap:8px;padding:10px 8px}.dsham_settingsActions{gap:0}.dsham_settingsMeta{font-size:11px}}.dsham_settingsGroupMeta{display:flex;align-items:center;gap:8px;flex:none;flex-wrap:wrap}.dsham_settingsStatus{margin-top:10px;color:var(--dsw-alias-label-secondary);font-size:12px}.dsham_checkbox{width:16px;height:16px;margin:0;accent-color:var(--dsw-alias-brand-primary);flex:none}button.dsham_favoriteOn{color:#e8b931}button.dsham_favoriteOn:not(:disabled):hover{color:#e8b931!important;border-color:#e8b931!important}";
 		const ARCHIVE_SETTINGS_EXTERNAL_LINK_CSS = ".dsham_settingsTitleRow{display:flex;align-items:center;gap:8px 12px;min-width:0;flex-wrap:wrap}.dsham_settingsLinks{display:flex;align-items:center;gap:8px;flex-wrap:wrap}@media(max-width:720px){.dsham_settingsTitleRow{flex-wrap:wrap}}";
-		const ARCHIVE_MODAL_CSS = ".dsham_modalRoot{position:fixed;inset:0;z-index:1200;display:grid;place-items:center;padding:24px}.dsham_modalMask{position:absolute;inset:0;background:var(--dsw-alias-bg-mask-1,rgb(0 0 0 / 45%))}.dsham_modalDialog{position:relative;display:flex;flex-direction:column;gap:12px;max-width:calc(100vw - 48px);max-height:min(80vh,720px);padding:22px 24px 20px;overflow:auto;border:0;border-radius:var(--dsw-radius-panel,28px);background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-primary);box-shadow:var(--dsw-elevation-prominent,0 16px 40px rgb(0 0 0 / 24%))}.dsham_modalDialog h2{margin:0;font-size:16px;line-height:24px}.dsham_modalDialog>p{margin:0;color:var(--dsw-alias-label-secondary);font-size:13px;line-height:20px}.dsham_modalFooter{display:flex;align-items:center;justify-content:flex-end;gap:8px}";
+		// ARCHIVE_MODAL_CSS 已移至启动时全局注入，此处保留定义以兼容内联引用的地方
+		const ARCHIVE_MODAL_LOCAL_CSS = "";
 		const ARCHIVE_SETTINGS_SELECTION_CSS = ".dsham_settingsSelection{margin:-8px 0 16px;padding:4px 0 12px;border-bottom:1px solid var(--dsw-alias-border-l2)}.dsham_settingsSelectionMain{display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;min-height:36px}.dsham_settingsSelectionSummary{display:flex;flex-wrap:wrap;align-items:center;gap:12px;min-width:0;max-width:100%}.dsham_settingsSelectionToggle{display:inline-flex;flex:none;white-space:nowrap;align-items:center;gap:12px;color:var(--dsw-alias-label-primary);font-size:13px;line-height:20px;cursor:pointer}.dsham_settingsSelectionActions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:10px;max-width:100%;margin-left:auto}.dsham_settingsSelectionScope{margin:8px 0 0;color:var(--dsw-alias-label-tertiary);font-size:12px;line-height:20px;overflow-wrap:anywhere}";
 		const ARCHIVE_SETTINGS_LAYOUT_OVERRIDE = ".dsham_settings{margin:0 auto!important}@media(max-width:720px){.dsham_settings{margin:0 auto!important}}";
 		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify("dsh-archive-manager/ArchiveSettings.layout.css") + "]") === null) {
@@ -4600,6 +4623,62 @@ export function startArchiveClient(require: HostRequire) {
 				const request = useDeleteRequest();
 				const [deleting, setDeleting] = (0, react.useState)(false);
 				const [error, setError] = (0, react.useState)<string | null>(null);
+				const [cardPos, setCardPos] = (0, react.useState)<{ top: number; left: number } | null>(null);
+
+				(0, react.useEffect)(() => {
+					if (request === null || typeof document === "undefined") {
+						setCardPos(null);
+						return;
+					}
+					// 寻找宿主侧边栏对应 session 的 DOM 节点
+					const targetRow = document.querySelector<HTMLElement>(`[data-row-key="session:${request.sessionId}"]`);
+					if (!targetRow) {
+						// 找不到行元素时居中回退
+						const w = window.innerWidth;
+						const h = window.innerHeight;
+						setCardPos({ top: Math.max(20, (h - 160) / 2), left: Math.max(20, (w - 290) / 2) });
+						return;
+					}
+					const rect = targetRow.getBoundingClientRect();
+					const cardWidth = 290;
+					const cardHeight = 140;
+					const margin = 8;
+
+					// 默认放在该行右侧，顶部稍微错落贴近触发点
+					let top = rect.top - 4;
+					// 边界约束
+					if (top + cardHeight > window.innerHeight - 16) {
+						top = window.innerHeight - 16 - cardHeight;
+					}
+					if (top < 16) top = 16;
+
+					let left = rect.right + margin;
+
+					// 如果右侧放不下，放到左侧
+					if (left + cardWidth > window.innerWidth - 16) {
+						left = rect.left - cardWidth - margin;
+					}
+					if (left < 16) left = 16;
+
+					setCardPos({ top, left });
+				}, [request]);
+
+				(0, react.useEffect)(() => {
+					if (request === null) return;
+					const onKey = (event: KeyboardEvent) => {
+						if (event.key !== "Escape") return;
+						event.preventDefault();
+						event.stopPropagation();
+						if ("stopImmediatePropagation" in event && typeof event.stopImmediatePropagation === "function") event.stopImmediatePropagation();
+						if (!deleting) {
+							setError(null);
+							publishDeleteTarget(null);
+						}
+					};
+					window.addEventListener("keydown", onKey, true);
+					return () => window.removeEventListener("keydown", onKey, true);
+				}, [request, deleting]);
+
 				if (request === null) return null;
 				const close = () => {
 					if (deleting) return;
@@ -4617,17 +4696,60 @@ export function startArchiveClient(require: HostRequire) {
 						setError(formatDeleteError(reason, t));
 					});
 				};
-				return (0, react_jsx_runtime.jsx)(SettingsModal, {
-					open: true,
-					onClose: close,
-					title: t("deleteSession.title"),
-					footer: (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [
-						modalFooterButton({ disabled: deleting, onClick: close, children: t("cancel") }),
-						modalFooterButton({ danger: true, disabled: deleting, onClick: confirm, children: t("deleteSession.title") })
-					] }),
+
+				return (0, react_jsx_runtime.jsxs)("div", {
+					className: "dsham_sidebarCardRoot",
 					children: [
-						deleting && (0, react_jsx_runtime.jsx)("div", { role: "status", children: t("deleteSession.pending") }),
-						error !== null && (0, react_jsx_runtime.jsx)("div", { role: "alert", children: error })
+						(0, react_jsx_runtime.jsx)("div", {
+							className: "dsham_sidebarCardBackdrop",
+							onClick: close
+						}),
+						(0, react_jsx_runtime.jsxs)("div", {
+							role: "dialog",
+							"aria-modal": true,
+							"aria-label": t("deleteSession.title"),
+							className: "dsham_sidebarCard",
+							style: cardPos ? { top: cardPos.top, left: cardPos.left } : { top: "30%", left: "50%", transform: "translate(-50%, -50%)" },
+							children: [
+								(0, react_jsx_runtime.jsx)("h3", {
+									className: "dsham_sidebarCardTitle",
+									children: t("deleteSession.title") + "？"
+								}),
+								(0, react_jsx_runtime.jsx)("p", {
+									className: "dsham_sidebarCardDesc",
+									children: t("deleteSession.desc", { name: request.title })
+								}),
+								deleting && (0, react_jsx_runtime.jsx)("div", {
+									className: "dsham_sidebarCardDesc",
+									role: "status",
+									children: t("deleteSession.pending")
+								}),
+								error !== null && (0, react_jsx_runtime.jsx)("div", {
+									className: "dsham_sidebarCardError",
+									role: "alert",
+									children: error
+								}),
+								(0, react_jsx_runtime.jsxs)("div", {
+									className: "dsham_sidebarCardFooter",
+									children: [
+										(0, react_jsx_runtime.jsx)("button", {
+											type: "button",
+											className: "dsham_sidebarCardBtn dsham_sidebarCardBtnCancel",
+											disabled: deleting,
+											onClick: close,
+											children: t("cancel")
+										}),
+										(0, react_jsx_runtime.jsx)("button", {
+											type: "button",
+											className: "dsham_sidebarCardBtn dsham_sidebarCardBtnDanger",
+											disabled: deleting,
+											onClick: confirm,
+											children: t("deleteSession.title")
+										})
+									]
+								})
+							]
+						})
 					]
 				});
 			}

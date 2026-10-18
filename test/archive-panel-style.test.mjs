@@ -30,6 +30,26 @@ test("设置页不再桥接 Ant，控件直接使用宿主原语和令牌", asyn
   assert.match(organizer, /NumberField/);
 });
 
+test("图标按钮样式全局注入，侧栏卡片不依赖设置页先渲染", async () => {
+  const client = await readFile(clientPath, "utf8");
+  const settingsStart = client.indexOf("const ARCHIVE_SETTINGS_CSS = [");
+  const settingsCss = client.slice(settingsStart, client.indexOf('].join("");', settingsStart));
+
+  // 侧栏归档卡片与设置页共用图标按钮类，样式必须挂在启动时注入的全局 style 上。
+  assert.match(client, /dsh-archive-manager\/IconAction\.css/);
+  assert.match(client, /const ICON_ACTION_CSS = "\.dsham_iconAction\{[^"]*display:inline-flex/);
+  assert.doesNotMatch(settingsCss, /dsham_iconAction/);
+  assert.doesNotMatch(client, /dsham_archiveCardDelete/);
+});
+
+test("模态与侧栏确认卡片样式全局注入，侧栏删除不依赖设置页渲染 (Issue #59 / #60)", async () => {
+  const client = await readFile(clientPath, "utf8");
+  assert.match(client, /dsh-archive-manager\/Modal\.css/);
+  assert.match(client, /dsh-archive-manager\/SidebarPopover\.css/);
+  assert.match(client, /dsham_sidebarCardRoot/);
+  assert.match(client, /dsham_sidebarCardBtnCancel/);
+});
+
 test("删除与停止确认用红色描边按钮，对齐宿主警告样式", async () => {
   const client = await readFile(clientPath, "utf8");
 
