@@ -5,14 +5,14 @@ import test from "node:test";
 
 const clientPath = fileURLToPath(new URL("../src/client.ts", import.meta.url));
 
-test("归档会话使用卡片布局，并始终显示恢复与删除操作", async () => {
+test("旧侧栏自绘组件与样式已被完全清理，不再打入发布产物", async () => {
   const client = await readFile(clientPath, "utf8");
 
-  assert.match(client, /dsham_archiveCardActions/);
-  assert.match(client, /dsham_archiveCardMeta/);
-  assert.match(client, /onUnarchive\(node\.id\)/);
-  assert.match(client, /onDeleteSession\(node\.id, row\.title\)/);
-  assert.match(client, /background:var\(--dsw-alias-button-elevated-fill\)/);
+  assert.doesNotMatch(client, /dsham_archiveCardActions/);
+  assert.doesNotMatch(client, /dsham_archiveCardMeta/);
+  assert.doesNotMatch(client, /onUnarchive\(node\.id\)/);
+  assert.doesNotMatch(client, /onDeleteSession\(node\.id, row\.title\)/);
+  assert.doesNotMatch(client, /dshamRow_sessionRow/);
 });
 
 test("设置页不再桥接 Ant，控件直接使用宿主原语和令牌", async () => {

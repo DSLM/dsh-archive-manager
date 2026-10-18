@@ -193,27 +193,12 @@ test("目录镜像失败不影响源组件注册，清理部分镜像并在后�
 	}
 });
 
-test("官方样式已加载时，归档侧栏仍加载自己的样式", () => {
-	const previous = globalThis.document;
-	const tags = ["Rows", "WorkspacePicker", "WorkspaceBrowser"].map((name) => ({
-		dataset: { pluginCss: `@deepseek-ai/dsh-client-ui-workspace/${name}.module.css` }, textContent: "official"
-	}));
-	globalThis.document = {
-		querySelector(selector) { return tags.find((tag) => selector.includes(JSON.stringify(tag.dataset.pluginCss))) ?? null; },
-		createElement: () => ({ dataset: {}, style: {} }), head: { appendChild: (tag) => tags.push(tag) }
-	};
-	try {
-		const client = factories.get("@michengai/dsh-archive-manager")((id) => {
-			if (statics[id]) return statics[id];
-			throw new Error(`缺少静态模块 ${id}`);
-		});
-		assert.equal(tags.some((tag) => tag.textContent.includes(".qDHVXG_sectionHeader")), false, "菜单路径启动时不注入复制的侧栏样式");
-		client.__test.ensureLegacyWorkspaceCss();
-		assert.ok(tags.some((tag) => tag.textContent.includes(".qDHVXG_sectionHeader")), "旧侧栏不能因官方同名 CSS 标签而跳过自己的样式");
-		assert.equal(tags.filter((tag) => tag.textContent === "official").length, 3);
-	} finally {
-		globalThis.document = previous;
-	}
+test("已废弃的旧侧栏样式与注入函数已被彻底清理", () => {
+	const client = factories.get("@michengai/dsh-archive-manager")((id) => {
+		if (statics[id]) return statics[id];
+		throw new Error(`缺少静态模块 ${id}`);
+	});
+	assert.equal(typeof client.__test.ensureLegacyWorkspaceCss, "undefined", "新版不再暴露 ensureLegacyWorkspaceCss");
 });
 
 test("安装补丁保持官方 ui-workspace 启用", async () => {

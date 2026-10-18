@@ -160,8 +160,6 @@ test("删除文案中英键齐全，并统一使用子代理用语", async () =>
   assert.match(client, /isUnknownSessionError\(reason\)/);
   assert.match(client, /"archives.archiveFailed": "归档失败：{detail}"/);
   assert.match(client, /"archives.archiveFailed": "Could not archive the session: {detail}"/);
-  assert.match(client, /showArchivedToast\(formatArchiveError/);
-  assert.match(client, /showArchivedToast\(formatUnarchiveError/);
 });
 
 test("归档设置页筛选使用宿主官方原语 Menu，而不是原生 select 或 AntdSelect", async () => {
@@ -192,7 +190,7 @@ test("每个项目分组提供恢复全部与删除全部菜单", async () => {
   assert.match(client, /archives\.restoreProject/);
   assert.match(client, /archives\.deleteProject/);
   assert.match(client, /id: "restore",[\s\S]*?IconUnarchiveOutlineMedium/);
-  assert.match(client, /IconEllipsisOutlineMedium/);
+  assert.match(client, /moreIcon\(\)/);
   assert.match(client, /archivedBatchTargetForGroup\(group\.key\)/);
   assert.match(client, /archives\.deleteProjectDesc/);
 });
