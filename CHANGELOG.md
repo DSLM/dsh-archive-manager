@@ -4,6 +4,13 @@
 
 Published release notes are retained below; new versions are added without removing earlier entries.
 
+## 1.1.1 - 2026-10-18
+
+- In the sidebar session menu, "Delete session" confirmation is now a neat floating card anchored right next to that session row instead of a full-screen overlay, matching the native translucent dark blur and lighting of host dropdown menus (#60).
+- Fixed an issue where clicking "Delete session" from the sidebar without first opening the "Archived" settings page caused an unstyled confirmation dialog to drop to the bottom of the window (#59).
+- Fixed punctuation in non-Chinese confirmation dialog titles (English and Russian no longer display a full-width question mark), and ensured dialog contents stay fully visible near screen edges without clipping action buttons.
+- Improved keyboard navigation: opening the delete confirmation card focuses "Cancel" by default, pressing Escape or Tab works seamlessly within the card, and closing returns focus back to the session row.
+
 ## 1.1.0 - 2026-10-17
 
 - Supported hosts are now DeepSeek Harness `0.2.0-rc.1`, `0.2.0-rc.2`, `0.2.1-rc.1`, and `0.2.1-rc.2`. Intermediate `0.2.1-alpha.*` releases and hosts before `0.2.0` are rejected by the version gate and this plugin will not run. If you still use a `0.1.x` host, install plugin `1.0.20` instead of `@latest`. Existing archives, favorites, and settings are kept.

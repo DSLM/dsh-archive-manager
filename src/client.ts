@@ -4593,9 +4593,9 @@ export function startArchiveClient(require: HostRequire) {
 				hooks: { directoryFlow: browserFlowSource }
 			});
 			const sessionMenuSlot = "sidebar.workspaces.session.menu.item";
-			let deleteTarget: { sessionId: string; title: string; returnTo?: HTMLElement | null } | null = null;
+			let deleteTarget: { sessionId: string; title: string } | null = null;
 			const deleteListeners = new Set<() => void>();
-			const publishDeleteTarget = (next: { sessionId: string; title: string; returnTo?: HTMLElement | null } | null) => {
+			const publishDeleteTarget = (next: { sessionId: string; title: string } | null) => {
 				deleteTarget = next;
 				for (const listener of deleteListeners) listener();
 			};
@@ -4615,17 +4615,29 @@ export function startArchiveClient(require: HostRequire) {
 				const icon = (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconTrashOutlineRegular, { size: 14 });
 				const onSelect = () => {
 					setMenuOpen(false);
-					let returnTo: HTMLElement | null = null;
-					try {
-						const row = document.querySelector<HTMLElement>(`[data-row-key="session:${CSS.escape(sessionId)}"]`);
-						returnTo = row?.querySelector<HTMLElement>("button:not(:disabled)") ?? null;
-					} catch {
-						returnTo = null;
-					}
-					publishDeleteTarget({ sessionId, title, returnTo });
+					publishDeleteTarget({ sessionId, title });
 				};
 				if (typeof Item === "function") return (0, react_jsx_runtime.jsx)(Item, { danger: true, icon, onSelect, children: t("menu.deleteSession") });
 				return (0, react_jsx_runtime.jsx)("button", { type: "button", role: "menuitem", onClick: onSelect, children: t("menu.deleteSession") });
+			}
+			function focusSessionRow(sessionId: string) {
+				try {
+					const row = document.querySelector<HTMLElement>(`[data-row-key="session:${CSS.escape(sessionId)}"]`);
+					if (!row) return false;
+					const hadTabIndex = row.hasAttribute("tabindex");
+					if (!hadTabIndex) {
+						row.setAttribute("tabindex", "-1");
+						row.addEventListener("blur", () => row.removeAttribute("tabindex"), { once: true });
+					}
+					if (typeof _deepseek_ai_dsh_client_ui_primitives.focusWithoutRing === "function") {
+						_deepseek_ai_dsh_client_ui_primitives.focusWithoutRing(row);
+					} else {
+						row.focus();
+					}
+					return true;
+				} catch {
+					return false;
+				}
 			}
 			function DeleteSessionOverlay({ t }: { t: Translate }) {
 				const request = useDeleteRequest();
@@ -4714,14 +4726,24 @@ export function startArchiveClient(require: HostRequire) {
 						cardRef.current?.focus();
 					}
 
+					const sessionId = request.sessionId;
 					return () => {
-						// 真正关闭时恢复焦点
-						const returnTo = request.returnTo;
-						if (returnTo && returnTo.isConnected) {
-							if (typeof _deepseek_ai_dsh_client_ui_primitives.focusWithoutRing === "function") {
-								_deepseek_ai_dsh_client_ui_primitives.focusWithoutRing(returnTo);
-							} else {
-								returnTo.focus();
+						// 真正关闭时恢复焦点到会话行本身（临时借用 tabindex="-1"并在失焦后清理），避免掉入 body
+						const restored = focusSessionRow(sessionId);
+						if (!restored) {
+							// 若该行已销毁（如被删除成功），仅在有明确选中的当前会话时安全归位，避免把滚动区强行滚回第一行
+							const activeRow = document.querySelector<HTMLElement>("[role=\"treeitem\"][aria-selected=\"true\"]");
+							if (activeRow) {
+								const hadTabIndex = activeRow.hasAttribute("tabindex");
+								if (!hadTabIndex) {
+									activeRow.setAttribute("tabindex", "-1");
+									activeRow.addEventListener("blur", () => activeRow.removeAttribute("tabindex"), { once: true });
+								}
+								if (typeof _deepseek_ai_dsh_client_ui_primitives.focusWithoutRing === "function") {
+									_deepseek_ai_dsh_client_ui_primitives.focusWithoutRing(activeRow);
+								} else {
+									activeRow.focus();
+								}
 							}
 						}
 					};
