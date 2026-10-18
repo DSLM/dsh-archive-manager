@@ -4593,9 +4593,9 @@ export function startArchiveClient(require: HostRequire) {
 				hooks: { directoryFlow: browserFlowSource }
 			});
 			const sessionMenuSlot = "sidebar.workspaces.session.menu.item";
-			let deleteTarget: { sessionId: string; title: string } | null = null;
+			let deleteTarget: { sessionId: string; title: string; returnTo?: HTMLElement | null } | null = null;
 			const deleteListeners = new Set<() => void>();
-			const publishDeleteTarget = (next: { sessionId: string; title: string } | null) => {
+			const publishDeleteTarget = (next: { sessionId: string; title: string; returnTo?: HTMLElement | null } | null) => {
 				deleteTarget = next;
 				for (const listener of deleteListeners) listener();
 			};
@@ -4615,7 +4615,14 @@ export function startArchiveClient(require: HostRequire) {
 				const icon = (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconTrashOutlineRegular, { size: 14 });
 				const onSelect = () => {
 					setMenuOpen(false);
-					publishDeleteTarget({ sessionId, title });
+					let returnTo: HTMLElement | null = null;
+					try {
+						const row = document.querySelector<HTMLElement>(`[data-row-key="session:${CSS.escape(sessionId)}"]`);
+						returnTo = row?.querySelector<HTMLElement>("button:not(:disabled)") ?? null;
+					} catch {
+						returnTo = null;
+					}
+					publishDeleteTarget({ sessionId, title, returnTo });
 				};
 				if (typeof Item === "function") return (0, react_jsx_runtime.jsx)(Item, { danger: true, icon, onSelect, children: t("menu.deleteSession") });
 				return (0, react_jsx_runtime.jsx)("button", { type: "button", role: "menuitem", onClick: onSelect, children: t("menu.deleteSession") });
@@ -4627,19 +4634,24 @@ export function startArchiveClient(require: HostRequire) {
 				const [cardPos, setCardPos] = (0, react.useState)<{ top: number; left: number } | null>(null);
 				const cardRef = (0, react.useRef)<HTMLDivElement>(null);
 				const cancelBtnRef = (0, react.useRef)<HTMLButtonElement>(null);
+				const confirmBtnRef = (0, react.useRef)<HTMLButtonElement>(null);
 
 				(0, react.useLayoutEffect)(() => {
 					if (request === null || typeof document === "undefined") {
 						setCardPos(null);
 						return;
 					}
-					const targetRow = (() => {
+
+					let cachedRow: HTMLElement | null = null;
+					const getTargetRow = () => {
+						if (cachedRow && cachedRow.isConnected) return cachedRow;
 						try {
-							return document.querySelector<HTMLElement>(`[data-row-key="session:${CSS.escape(request.sessionId)}"]`);
+							cachedRow = document.querySelector<HTMLElement>(`[data-row-key="session:${CSS.escape(request.sessionId)}"]`);
 						} catch {
-							return null;
+							cachedRow = null;
 						}
-					})();
+						return cachedRow;
+					};
 
 					const updatePosition = () => {
 						const card = cardRef.current;
@@ -4647,10 +4659,14 @@ export function startArchiveClient(require: HostRequire) {
 						const cardHeight = card?.offsetHeight || 160;
 						const margin = 8;
 
+						const targetRow = getTargetRow();
+
 						if (!targetRow) {
 							const w = window.innerWidth;
 							const h = window.innerHeight;
-							setCardPos({ top: Math.max(16, (h - cardHeight) / 2), left: Math.max(16, (w - cardWidth) / 2) });
+							const fallbackTop = Math.max(16, (h - cardHeight) / 2);
+							const fallbackLeft = Math.max(16, (w - cardWidth) / 2);
+							setCardPos((prev) => prev !== null && prev.top === fallbackTop && prev.left === fallbackLeft ? prev : { top: fallbackTop, left: fallbackLeft });
 							return;
 						}
 
@@ -4667,7 +4683,8 @@ export function startArchiveClient(require: HostRequire) {
 						}
 						if (left < 16) left = 16;
 
-						setCardPos({ top, left });
+						// 函数式浅对比更新，避免 scroll 事件触发多余重渲染
+						setCardPos((prev) => prev !== null && prev.top === top && prev.left === left ? prev : { top, left });
 					};
 
 					updatePosition();
@@ -4687,18 +4704,76 @@ export function startArchiveClient(require: HostRequire) {
 					};
 				}, [request]);
 
+				// 1. 焦点生命周期：仅在弹窗打开/真正关闭时生效，不受 deleting 变化干扰
 				(0, react.useEffect)(() => {
 					if (request === null) return;
-					// 自动聚焦取消按钮
-					cancelBtnRef.current?.focus();
+					// 打开时优先聚焦取消按钮，如果聚焦失败则聚焦卡片容器
+					if (cancelBtnRef.current && !cancelBtnRef.current.disabled) {
+						cancelBtnRef.current.focus();
+					} else {
+						cardRef.current?.focus();
+					}
+
+					return () => {
+						// 真正关闭时恢复焦点
+						const returnTo = request.returnTo;
+						if (returnTo && returnTo.isConnected) {
+							if (typeof _deepseek_ai_dsh_client_ui_primitives.focusWithoutRing === "function") {
+								_deepseek_ai_dsh_client_ui_primitives.focusWithoutRing(returnTo);
+							} else {
+								returnTo.focus();
+							}
+						}
+					};
+				}, [request]);
+
+				// 2. 状态变化时焦点守护：deleting 变 true 时将焦点收拢至卡片容器，防止泄漏到卡片外部
+				(0, react.useEffect)(() => {
+					if (request === null) return;
+					if (deleting) {
+						cardRef.current?.focus();
+					}
+				}, [request, deleting]);
+
+				// 3. 键盘事件监听与完整 Tab 焦点陷阱
+				(0, react.useEffect)(() => {
+					if (request === null) return;
+
 					const onKey = (event: KeyboardEvent) => {
-						if (event.key !== "Escape") return;
-						event.preventDefault();
-						event.stopPropagation();
-						if ("stopImmediatePropagation" in event && typeof event.stopImmediatePropagation === "function") event.stopImmediatePropagation();
-						if (!deleting) {
-							setError(null);
-							publishDeleteTarget(null);
+						if (event.key === "Escape") {
+							event.preventDefault();
+							event.stopPropagation();
+							if ("stopImmediatePropagation" in event && typeof event.stopImmediatePropagation === "function") event.stopImmediatePropagation();
+							if (!deleting) {
+								setError(null);
+								publishDeleteTarget(null);
+							}
+							return;
+						}
+						// 完整 Tab 焦点陷阱：删除中拦截所有 Tab；非删除中在两个按钮与卡片间循环
+						if (event.key === "Tab") {
+							event.preventDefault();
+							if (deleting) {
+								cardRef.current?.focus();
+								return;
+							}
+							const cancelBtn = cancelBtnRef.current;
+							const confirmBtn = confirmBtnRef.current;
+							if (!cancelBtn || !confirmBtn) return;
+
+							if (event.shiftKey) {
+								if (document.activeElement === cancelBtn) {
+									confirmBtn.focus();
+								} else {
+									cancelBtn.focus();
+								}
+							} else {
+								if (document.activeElement === confirmBtn) {
+									cancelBtn.focus();
+								} else {
+									confirmBtn.focus();
+								}
+							}
 						}
 					};
 					window.addEventListener("keydown", onKey, true);
@@ -4735,6 +4810,7 @@ export function startArchiveClient(require: HostRequire) {
 							role: "dialog",
 							"aria-modal": true,
 							"aria-label": t("deleteSession.title"),
+							tabIndex: -1,
 							className: "dsham_sidebarCard",
 							style: cardPos ? { top: cardPos.top, left: cardPos.left, visibility: "visible" } : { visibility: "hidden", top: 0, left: 0 },
 							children: [
@@ -4768,6 +4844,7 @@ export function startArchiveClient(require: HostRequire) {
 											children: t("cancel")
 										}),
 										(0, react_jsx_runtime.jsx)("button", {
+											ref: confirmBtnRef,
 											type: "button",
 											className: "dsham_sidebarCardBtn dsham_sidebarCardBtnDanger",
 											disabled: deleting,
