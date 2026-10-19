@@ -4,6 +4,11 @@
 
 Published release notes are retained below; new versions are added without removing earlier entries.
 
+## 1.1.5 - 2026-10-19
+
+- Let the archive settings page fill the host content column by removing the 760px cap and the dead centering override.
+- Only decorate settings nav buttons that render the host `svg` as a direct child, so wrapped icons keep the host layout.
+
 ## 1.1.4 - 2026-10-19
 
 - Fixed the sidebar workspace "Archive all conversations" action opening via keyboard with a missing or wrong workspace binding, and made its count and disabled state follow live session and archive changes.
