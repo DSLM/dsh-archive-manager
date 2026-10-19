@@ -50,6 +50,22 @@ test("模态与侧栏确认卡片样式全局注入，侧栏删除不依赖设�
   assert.match(client, /dsham_sidebarCardBtnCancel/);
 });
 
+test("模态内容独立滚动，底部操作栏在短视口保持可见", async () => {
+  const client = await readFile(clientPath, "utf8");
+  const start = client.indexOf("const ARCHIVE_MODAL_CSS = ");
+  const css = client.slice(start, client.indexOf('\";', start));
+
+  // 外层 dialog 不滚动，滚动交给 body；footer 作为兄弟节点固定在外层。
+  assert.match(css, /\.dsham_modalDialog\{[^}]*overflow:hidden/);
+  assert.doesNotMatch(css, /\.dsham_modalDialog\{[^}]*overflow:auto/);
+  assert.match(css, /\.dsham_modalBody\{[^}]*min-height:0;overflow:auto/);
+  assert.match(css, /\.dsham_modalFooter\{[^}]*flex:none/);
+
+  const body = client.indexOf('className: "dsham_modalBody"');
+  const footer = client.indexOf('className: "dsham_modalFooter"');
+  assert.ok(body > 0 && footer > body, "footer 必须是 body 的兄弟节点，而不是滚动内容的一部分");
+});
+
 test("删除与停止确认用红色描边按钮，对齐宿主警告样式", async () => {
   const client = await readFile(clientPath, "utf8");
 

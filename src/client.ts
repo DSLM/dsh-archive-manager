@@ -51,7 +51,7 @@ export function startArchiveClient(require: HostRequire) {
 				(0, react_jsx_runtime.jsxs)("div", { role: "dialog", "aria-modal": true, "aria-label": typeof title === "string" ? title : undefined, className: clsx("dsham_modalDialog", className), style: { width: width ?? 560 }, children: [
 					(0, react_jsx_runtime.jsx)("h2", { children: title }),
 					description != null && (0, react_jsx_runtime.jsx)("p", { children: description }),
-					children,
+					children != null && (0, react_jsx_runtime.jsx)("div", { className: "dsham_modalBody", children }),
 					footer != null && (0, react_jsx_runtime.jsx)("div", { className: "dsham_modalFooter", children: footer })
 				] })
 			] });
@@ -270,7 +270,7 @@ export function startArchiveClient(require: HostRequire) {
 			document.head.appendChild(tag);
 		}
 		/** 模态与确认卡片基础样式全局注入，防止侧栏触发删除时因未进过设置页而无样式。 */
-		const ARCHIVE_MODAL_CSS = ".dsham_modalRoot{position:fixed;inset:0;z-index:1200;display:grid;place-items:center;padding:24px}.dsham_modalMask{position:absolute;inset:0;background:var(--dsw-alias-bg-mask-1,rgb(0 0 0 / 45%))}.dsham_modalDialog{position:relative;display:flex;flex-direction:column;gap:12px;max-width:calc(100vw - 48px);max-height:min(80vh,720px);padding:22px 24px 20px;overflow:auto;border:0;border-radius:var(--dsw-radius-panel,28px);background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-primary);box-shadow:var(--dsw-elevation-prominent,0 16px 40px rgb(0 0 0 / 24%))}.dsham_modalDialog h2{margin:0;font-size:16px;line-height:24px}.dsham_modalDialog>p{margin:0;color:var(--dsw-alias-label-secondary);font-size:13px;line-height:20px}.dsham_modalFooter{display:flex;align-items:center;justify-content:flex-end;gap:8px}";
+		const ARCHIVE_MODAL_CSS = ".dsham_modalRoot{position:fixed;inset:0;z-index:1200;display:grid;place-items:center;padding:24px}.dsham_modalMask{position:absolute;inset:0;background:var(--dsw-alias-bg-mask-1,rgb(0 0 0 / 45%))}.dsham_modalDialog{position:relative;display:flex;flex-direction:column;gap:12px;max-width:calc(100vw - 48px);max-height:min(80vh,720px);padding:22px 24px 20px;overflow:hidden;border:0;border-radius:var(--dsw-radius-panel,28px);background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-primary);box-shadow:var(--dsw-elevation-prominent,0 16px 40px rgb(0 0 0 / 24%))}.dsham_modalDialog h2{margin:0;font-size:16px;line-height:24px}.dsham_modalDialog>p{margin:0;color:var(--dsw-alias-label-secondary);font-size:13px;line-height:20px}.dsham_modalBody{display:flex;flex-direction:column;gap:12px;flex:1 1 auto;min-height:0;overflow:auto;overscroll-behavior:contain}.dsham_modalFooter{display:flex;flex:none;align-items:center;justify-content:flex-end;gap:8px}";
 		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify("dsh-archive-manager/Modal.css") + "]") === null) {
 			const tag = document.createElement("style");
 			tag.dataset.plugin = "@michengai/dsh-archive-manager";
