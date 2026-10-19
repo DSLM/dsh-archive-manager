@@ -105,10 +105,11 @@ test("老归档缺少投影时由宿主重建，并在新老客户端会话服�
   assert.match(client, /repaired archived projections but session list refresh failed/);
 });
 
-test("归档设置页收紧顶部留白，侧栏入口使用简短归档标签", async () => {
+test("归档设置页占满宿主内容区，侧栏入口使用简短归档标签", async () => {
   const client = await readFile(clientPath, "utf8");
 
-  assert.match(client, /margin:0 auto/);
+  assert.match(client, /\.dsham_settings\{[^}]*width:100%/);
+  assert.doesNotMatch(client, /\.dsham_settings\{[^}]*max-width:760px/);
   assert.match(client, /label: \(\) => ctx\.locale\.bind\(NS\)\("archived\.badge"\)/);
 });
 
