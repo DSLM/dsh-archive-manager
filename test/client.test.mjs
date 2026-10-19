@@ -329,6 +329,7 @@ test("设置导航图标使用独立 mask 注入，不改写宿主 svg", async (
 			setAttribute(name, value) { this.attributes.set(name, String(value)); },
 			removeAttribute(name) { this.attributes.delete(name); },
 			querySelector(selector) {
+				if (selector === ":scope > svg") return svg;
 				if (selector === "svg") return svg;
 				if (selector === ".dsham_nav_icon_archived") return this.children.find((node) => node.className === "dsham_nav_icon_archived") ?? null;
 				return null;

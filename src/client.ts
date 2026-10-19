@@ -1390,7 +1390,8 @@ export function startArchiveClient(require: HostRequire) {
 		*/
 		function applySettingsNavIcon(button: HTMLElement, label: string): boolean {
 			if (!isOwnSettingsNavRow(button.textContent, label)) return false;
-			if (button.querySelector("svg") === null) return false;
+			// 只认宿主直接渲染在按钮里的图标；包裹型图标插入额外节点会打乱布局。
+			if (button.querySelector(":scope > svg") === null) return false;
 			if (button.getAttribute(SETTINGS_NAV_ICON_MARKER) === "archived" && button.querySelector(`.${SETTINGS_NAV_ICON_CLASS}`) !== null) return false;
 			button.setAttribute(SETTINGS_NAV_ICON_MARKER, "archived");
 			let icon = button.querySelector<HTMLElement>(`.${SETTINGS_NAV_ICON_CLASS}`);
