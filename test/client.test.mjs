@@ -278,6 +278,23 @@ test("批量归档失败时保持确认框打开并显示错误", () => {
 	assert.equal(state.error, "archives.archiveFailed: host rejected");
 });
 
+test("工作区归档严格只包含常规任务，排除IM渠道、定时任务、子代理及已归档会话", () => {
+	const archived = new Set(["archived-1"]);
+	const sessionMap = {
+		"normal-1": { origin: "chat", blank: false },
+		"blank-1": { origin: "chat", blank: true },
+		"subagent-1": { origin: "subagent", blank: false },
+		"im:weixin_123": { origin: "channel", blank: false },
+		"dsh-automation-session-456": { origin: "automation", blank: false }
+	};
+	assert.equal(t.isWorkspaceTaskCandidate("normal-1", sessionMap, archived), true);
+	assert.equal(t.isWorkspaceTaskCandidate("blank-1", sessionMap, archived), false);
+	assert.equal(t.isWorkspaceTaskCandidate("archived-1", sessionMap, archived), false);
+	assert.equal(t.isWorkspaceTaskCandidate("subagent-1", sessionMap, archived), false);
+	assert.equal(t.isWorkspaceTaskCandidate("im:weixin_123", sessionMap, archived), false);
+	assert.equal(t.isWorkspaceTaskCandidate("dsh-automation-session-456", sessionMap, archived), false);
+});
+
 test("legacy forked row stylesheet is completely removed from source and build", async () => {
 	const source = await readFile(fileURLToPath(new URL("../src/client.ts", import.meta.url)), "utf8");
 	const built = await readFile(CLIENT_BUNDLE, "utf8");

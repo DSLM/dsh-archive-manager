@@ -770,7 +770,32 @@ export function startArchiveClient(require: HostRequire) {
 					children: [(0, react_jsx_runtime.jsxs)("div", { className: "dsham_settingsTitleRow", children: [(0, react_jsx_runtime.jsx)("h2", { children: t("archives.title") }), (0, react_jsx_runtime.jsxs)("div", { className: "dsham_settingsLinks", children: [(0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Button, { variant: "outline", size: "sm", "aria-label": t("archives.viewProject"), icon: (0, react_jsx_runtime.jsx)(GithubMark16, {}), onClick: () => window.open("https://github.com/MichengAI/dsh-archive-manager", "_blank", "noreferrer"), children: t("archives.viewProject") }), (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Button, { variant: "outline", size: "sm", "aria-label": t("archives.feedback"), icon: (0, react_jsx_runtime.jsx)(FeedbackIcon, {}), onClick: () => window.open("https://github.com/MichengAI/dsh-archive-manager/issues", "_blank", "noreferrer"), children: t("archives.feedback") })] })] }), (0, react_jsx_runtime.jsx)("p", { className: "dsham_settingsIntro", children: t("archives.description") })]
 					}), react.createElement("div", tabsShell(busy || unarchivingSessionIds.size > 0, (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.SegmentedTabs, {
 						className: "dsham_archiveTabs", label: t("archives.title"), value: archiveTab === "unarchived" ? "unarchived" : "archived", onChange: (value: string) => switchTab(value === "unarchived" ? "unarchived" : "archived"),
-						items: [{ value: "archived", label: t("archives.tab.archived"), id: "dsham-tab-archived", panelId: "dsham-archive-panel" }, { value: "unarchived", label: t("archives.tab.unarchived"), id: "dsham-tab-unarchived", panelId: "dsham-archive-panel" }]
+					items: [
+						{
+							value: "archived",
+							label: (0, react_jsx_runtime.jsxs)("span", {
+								className: "dsham_tabLabel",
+								children: [
+									(0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconArchiveOutlineMedium, { size: 14 }),
+									(0, react_jsx_runtime.jsx)("span", { children: t("archives.tab.archived") })
+								]
+							}),
+							id: "dsham-tab-archived",
+							panelId: "dsham-archive-panel"
+						},
+						{
+							value: "unarchived",
+							label: (0, react_jsx_runtime.jsxs)("span", {
+								className: "dsham_tabLabel",
+								children: [
+									(0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconFolderCloseMedium, { size: 14 }),
+									(0, react_jsx_runtime.jsx)("span", { children: t("archives.tab.unarchived") })
+								]
+							}),
+							id: "dsham-tab-unarchived",
+							panelId: "dsham-archive-panel"
+						}
+					]
 					})))]
 				}), (0, react_jsx_runtime.jsxs)("div", { id: "dsham-archive-panel", role: "region", "aria-label": t(archiveTab === "unarchived" ? "archives.tab.unarchived" : "archives.tab.archived"), children: [(0, react_jsx_runtime.jsxs)("div", {
 					className: "dsham_settingsToolbar",
@@ -1043,6 +1068,19 @@ export function startArchiveClient(require: HostRequire) {
 			if (stray.length > 0) groups.push(buildGroup("", void 0, void 0, void 0, UNGROUPED_LABEL, ungroupedOrder === void 0 ? stray : orderedUngrouped(stray, ungroupedOrder), ungroupedOrder === void 0 ? "recency" : "account"));
 			return groups;
 		}
+		/** 判断会话是否属于当前工作区主任务侧栏的候选（排除已归档、IM 渠道、定时任务、子代理及未开始的空白占位会话）。 */
+		function isWorkspaceTaskCandidate(id: string, sessionMap: Record<string, { origin?: string; blank?: boolean }> | undefined, archived: Set<string>): boolean {
+			if (!id || archived.has(id)) return false;
+			// 排除 IM 渠道协同会话（归属「频道」独立视图）
+			if (id.startsWith("im:")) return false;
+			// 排除定时自动化任务会话（归属「定时」独立视图）
+			if (id.startsWith("dsh-automation-")) return false;
+			// 排除子代理派生任务（原生侧栏默认隐藏）
+			if (sessionMap?.[id]?.origin === "subagent") return false;
+			// 排除未发生对话的空白占位会话（原生侧栏默认隐藏）
+			if (sessionMap?.[id]?.blank) return false;
+			return true;
+		}
 		/** 返回工作区中尚未归档的唯一会话数量。 */
 		function archiveableWorkspaceSessionCount(workspace: ClientWorkspace, archivedSessionIds: readonly string[] | Set<string>) {
 			const archived = archivedSessionIds instanceof Set ? archivedSessionIds : new Set(archivedSessionIds);
@@ -1313,7 +1351,16 @@ export function startArchiveClient(require: HostRequire) {
 			return t("archives.timestamp", { date: t("date.ymd", { y: date.getFullYear(), m: date.getMonth() + 1, d: date.getDate() }), time });
 		}
 		//#region dsh-archive-manager: settings section
-		const ARCHIVE_TABS_CSS = ".dsham_archiveTabsLocked{opacity:.5}";
+		const ARCHIVE_TABS_CSS = [
+			".dsham_archiveTabsLocked{opacity:.5}",
+			".dsham_archiveTabs{display:grid!important;box-sizing:border-box!important;height:32px!important;min-height:32px!important;max-height:32px!important;padding:2px!important;border-radius:var(--dsw-radius-sm,8px)!important;border:0.5px solid var(--dsw-alias-border-l2)!important;background:var(--dsw-alias-bg-layer-1)!important}",
+			".dsham_archiveTabs>span[aria-hidden=\"true\"],.dsham_archiveTabs>[class*=\"indicator\"]{inset:2px auto 2px 2px!important;border-radius:6px!important;border:0.5px solid var(--dsw-alias-border-l3,rgba(255,255,255,.12))!important;background:var(--dsw-alias-bg-layer-3,rgba(255,255,255,.08))!important;box-shadow:none!important}",
+			".dsham_archiveTabs [role=tab]{display:inline-flex!important;align-items:center!important;justify-content:center!important;gap:6px!important;height:28px!important;padding:0 12px!important;border-radius:6px!important;font-size:13px!important;line-height:20px!important;color:var(--dsw-alias-label-secondary)!important;text-align:center!important;box-sizing:border-box!important;transition:color 150ms ease!important}",
+			".dsham_archiveTabs [role=tab]:hover{color:var(--dsw-alias-label-primary)!important}",
+			".dsham_archiveTabs [role=tab][aria-selected=\"true\"]{color:var(--dsw-alias-label-primary)!important;font-weight:600!important}",
+			".dsham_tabLabel{display:inline-flex;align-items:center;justify-content:center;gap:6px}",
+			".dsham_tabLabel svg{flex:none;display:block}"
+		].join("");
 		const ARCHIVE_SETTINGS_CSS = [
 			".dsham_settings{container-type:inline-size;min-width:0;box-sizing:border-box;width:min(100%,760px);margin:0 auto;padding:0 0 32px;color:var(--dsw-alias-label-primary)}",
 			".dsham_settingsHeader{display:flex;flex-direction:column;align-items:stretch;gap:16px;margin-bottom:16px}",
@@ -1775,11 +1822,11 @@ export function startArchiveClient(require: HostRequire) {
 			"delete.pending": "正在删除工作区…",
 			"menu.fork": "分叉会话",
 			"menu.archiveSession": "归档会话",
-			"menu.archiveWorkspace": "归档全部聊天",
-			"archiveWorkspace.title": "归档 {n} 个聊天？",
-			"archiveWorkspace.desc": "这会将“{name}”中的聊天归档。之后你可以在已归档的聊天中找到它们。",
+			"menu.archiveWorkspace": "归档会话",
+			"archiveWorkspace.title": "归档 {n} 个会话？",
+			"archiveWorkspace.desc": "这会将“{name}”中的会话归档。之后可以在“设置 → 归档会话”中找到它们。",
 			"archiveWorkspace.confirm": "全部归档",
-			"archiveWorkspace.pending": "正在归档聊天…",
+			"archiveWorkspace.pending": "正在归档会话…",
 			"actions.workspace.aria": "工作区“{name}”的操作",
 			"actions.session.aria": "会话“{name}”的操作",
 			"actions.newSession.aria": "在“{name}”中新建会话",
@@ -1933,11 +1980,11 @@ export function startArchiveClient(require: HostRequire) {
 			"delete.pending": "Deleting workspace…",
 			"menu.fork": "Fork session",
 			"menu.archiveSession": "Archive session",
-			"menu.archiveWorkspace": "Archive all chats",
-			"archiveWorkspace.title": "Archive {n} chats?",
-			"archiveWorkspace.desc": "This archives the chats in “{name}”. You can find them later in Archived chats.",
+			"menu.archiveWorkspace": "Archive all conversations",
+			"archiveWorkspace.title": "Archive {n} conversations?",
+			"archiveWorkspace.desc": "This archives all conversations in “{name}”. You can find them later in Archived sessions.",
 			"archiveWorkspace.confirm": "Archive all",
-			"archiveWorkspace.pending": "Archiving chats…",
+			"archiveWorkspace.pending": "Archiving conversations…",
 			"actions.workspace.aria": "Workspace actions for {name}",
 			"actions.session.aria": "Session actions for {name}",
 			"actions.newSession.aria": "New session in {name}",
@@ -2090,11 +2137,11 @@ export function startArchiveClient(require: HostRequire) {
 			"delete.pending": "Удаление рабочего пространства…",
 			"menu.fork": "Создать ветку сессии",
 			"menu.archiveSession": "Заархивировать сессию",
-			"menu.archiveWorkspace": "Заархивировать все чаты",
-			"archiveWorkspace.title": "Архивировать {n} чатов?",
-			"archiveWorkspace.desc": "Это заархивирует чаты в «{name}». Их можно найти позже в заархивированных чатах.",
+			"menu.archiveWorkspace": "Архивировать все сессии",
+			"archiveWorkspace.title": "Архивировать {n} сессий?",
+			"archiveWorkspace.desc": "Это заархивирует сессии в «{name}». Их можно найти позже в разделе «Архив».",
 			"archiveWorkspace.confirm": "Архивировать все",
-			"archiveWorkspace.pending": "Архивация чатов…",
+			"archiveWorkspace.pending": "Архивация сессий…",
 			"actions.workspace.aria": "Действия рабочего пространства для {name}",
 			"actions.session.aria": "Действия сессии для {name}",
 			"actions.newSession.aria": "Новая сессия в {name}",
@@ -2617,7 +2664,360 @@ export function startArchiveClient(require: HostRequire) {
 					]
 				});
 			}
-			/** 官方列表声明了会话菜单插槽时只追加删除。插槽还没出现时只等待。 */
+			let archiveWsTarget: { workspaceId: string; title: string; count: number } | null = null;
+			const archiveWsListeners = new Set<() => void>();
+			const publishArchiveWsTarget = (next: { workspaceId: string; title: string; count: number } | null) => {
+				archiveWsTarget = next;
+				for (const listener of archiveWsListeners) listener();
+			};
+			function useArchiveWsRequest() {
+				return react.useSyncExternalStore(
+					(listener: () => void) => {
+						archiveWsListeners.add(listener);
+						return () => { archiveWsListeners.delete(listener); };
+					},
+					() => archiveWsTarget,
+					() => archiveWsTarget
+				);
+			}
+			function focusWorkspaceRow(workspaceId: string) {
+				try {
+					const row = document.querySelector<HTMLElement>(`[data-row-key="workspace:${CSS.escape(workspaceId)}"]`);
+					if (!row) return false;
+					const hadTabIndex = row.hasAttribute("tabindex");
+					if (!hadTabIndex) {
+						row.setAttribute("tabindex", "-1");
+						row.addEventListener("blur", () => row.removeAttribute("tabindex"), { once: true });
+					}
+					if (typeof _deepseek_ai_dsh_client_ui_primitives.focusWithoutRing === "function") {
+						_deepseek_ai_dsh_client_ui_primitives.focusWithoutRing(row);
+					} else {
+						row.focus();
+					}
+					return true;
+				} catch {
+					return false;
+				}
+			}
+			function ArchiveWorkspaceOverlay({ t }: { t: Translate }) {
+				const request = useArchiveWsRequest();
+				const [archiving, setArchiving] = (0, react.useState)(false);
+				const [error, setError] = (0, react.useState)<string | null>(null);
+				const [cardPos, setCardPos] = (0, react.useState)<{ top: number; left: number } | null>(null);
+				const cardRef = (0, react.useRef)<HTMLDivElement>(null);
+				const cancelBtnRef = (0, react.useRef)<HTMLButtonElement>(null);
+				const confirmBtnRef = (0, react.useRef)<HTMLButtonElement>(null);
+
+				(0, react.useLayoutEffect)(() => {
+					if (request === null || typeof document === "undefined") {
+						setCardPos(null);
+						return;
+					}
+
+					let cachedRow: HTMLElement | null = null;
+					const getTargetRow = () => {
+						if (cachedRow && cachedRow.isConnected) return cachedRow;
+						try {
+							cachedRow = document.querySelector<HTMLElement>(`[data-row-key="workspace:${CSS.escape(request.workspaceId)}"]`);
+						} catch {
+							cachedRow = null;
+						}
+						return cachedRow;
+					};
+
+					const updatePosition = () => {
+						const card = cardRef.current;
+						const cardWidth = card?.offsetWidth || 290;
+						const cardHeight = card?.offsetHeight || 160;
+						const margin = 8;
+
+						const targetRow = getTargetRow();
+						if (!targetRow) {
+							const w = window.innerWidth;
+							const h = window.innerHeight;
+							const fallbackTop = Math.max(16, (h - cardHeight) / 2);
+							const fallbackLeft = Math.max(16, (w - cardWidth) / 2);
+							setCardPos((prev) => prev !== null && prev.top === fallbackTop && prev.left === fallbackLeft ? prev : { top: fallbackTop, left: fallbackLeft });
+							return;
+						}
+
+						const rect = targetRow.getBoundingClientRect();
+						let top = rect.top - 4;
+						if (top + cardHeight > window.innerHeight - 16) {
+							top = window.innerHeight - 16 - cardHeight;
+						}
+						if (top < 16) top = 16;
+
+						let left = rect.right + margin;
+						if (left + cardWidth > window.innerWidth - 16) {
+							left = rect.left - cardWidth - margin;
+						}
+						if (left < 16) left = 16;
+
+						setCardPos((prev) => prev !== null && prev.top === top && prev.left === left ? prev : { top, left });
+					};
+
+					updatePosition();
+					window.addEventListener("scroll", updatePosition, true);
+					window.addEventListener("resize", updatePosition);
+
+					let resizeObserver: ResizeObserver | null = null;
+					if (typeof ResizeObserver !== "undefined" && cardRef.current) {
+						resizeObserver = new ResizeObserver(updatePosition);
+						resizeObserver.observe(cardRef.current);
+					}
+
+					return () => {
+						resizeObserver?.disconnect();
+						window.removeEventListener("scroll", updatePosition, true);
+						window.removeEventListener("resize", updatePosition);
+					};
+				}, [request]);
+
+				(0, react.useEffect)(() => {
+					if (request === null) return;
+					if (cancelBtnRef.current && !cancelBtnRef.current.disabled) {
+						cancelBtnRef.current.focus();
+					} else {
+						cardRef.current?.focus();
+					}
+					const wsId = request.workspaceId;
+					return () => {
+						focusWorkspaceRow(wsId);
+					};
+				}, [request]);
+
+				(0, react.useEffect)(() => {
+					if (request === null) return;
+					if (archiving) {
+						cardRef.current?.focus();
+					}
+				}, [request, archiving]);
+
+				(0, react.useEffect)(() => {
+					if (request === null) return;
+					const onKey = (event: KeyboardEvent) => {
+						if (event.key === "Escape") {
+							event.preventDefault();
+							event.stopPropagation();
+							if ("stopImmediatePropagation" in event && typeof event.stopImmediatePropagation === "function") event.stopImmediatePropagation();
+							if (!archiving) {
+								setError(null);
+								publishArchiveWsTarget(null);
+							}
+							return;
+						}
+						if (event.key === "Tab") {
+							event.preventDefault();
+							if (archiving) {
+								cardRef.current?.focus();
+								return;
+							}
+							const cancelBtn = cancelBtnRef.current;
+							const confirmBtn = confirmBtnRef.current;
+							if (!cancelBtn || !confirmBtn) return;
+							if (event.shiftKey) {
+								document.activeElement === cancelBtn ? confirmBtn.focus() : cancelBtn.focus();
+							} else {
+								document.activeElement === confirmBtn ? cancelBtn.focus() : confirmBtn.focus();
+							}
+						}
+					};
+					window.addEventListener("keydown", onKey, true);
+					return () => window.removeEventListener("keydown", onKey, true);
+				}, [request, archiving]);
+
+				if (request === null) return null;
+
+				const close = () => {
+					if (!archiving) {
+						setError(null);
+						publishArchiveWsTarget(null);
+					}
+				};
+
+				const confirm = () => {
+					setArchiving(true);
+					setError(null);
+					const items = ctx.workspaces.list?.getSnapshot?.()?.items ?? [];
+					const workspace = items.find((item) => item.workspaceId === request.workspaceId);
+					const sessionMap = ctx.sessions.list?.getSnapshot?.()?.byId ?? {};
+					const archived = new Set(ctx.workspaces.list?.getSnapshot?.()?.archivedSessionIds ?? []);
+					const candidateIds = (workspace?.sessionIds ?? []).filter((id) => isWorkspaceTaskCandidate(id, sessionMap, archived));
+
+					archiveSessionsViaOfficial(ctx.workspaces, candidateIds, refreshSessionList).then(() => {
+						setArchiving(false);
+						publishArchiveWsTarget(null);
+					}).catch((err) => {
+						setArchiving(false);
+						setError(err instanceof Error ? err.message : String(err));
+					});
+				};
+
+				return (0, react_jsx_runtime.jsxs)("div", {
+					className: "dsham_sidebarCardRoot",
+					children: [
+						(0, react_jsx_runtime.jsx)("div", {
+							className: "dsham_sidebarCardBackdrop",
+							onClick: close
+						}),
+						(0, react_jsx_runtime.jsxs)("div", {
+							ref: cardRef,
+							role: "dialog",
+							"aria-modal": true,
+							"aria-label": t("menu.archiveWorkspace"),
+							tabIndex: -1,
+							className: "dsham_sidebarCard",
+							style: cardPos ? { top: cardPos.top, left: cardPos.left, visibility: "visible" } : { visibility: "hidden", top: 0, left: 0 },
+							children: [
+								(0, react_jsx_runtime.jsx)("h3", {
+									className: "dsham_sidebarCardTitle",
+									children: t("archiveWorkspace.title", { n: request.count })
+								}),
+								(0, react_jsx_runtime.jsx)("p", {
+									className: "dsham_sidebarCardDesc",
+									children: t("archiveWorkspace.desc", { name: request.title })
+								}),
+								archiving && (0, react_jsx_runtime.jsx)("div", {
+									className: "dsham_sidebarCardDesc",
+									role: "status",
+									children: t("archiveWorkspace.pending")
+								}),
+								error !== null && (0, react_jsx_runtime.jsx)("div", {
+									className: "dsham_sidebarCardError",
+									role: "alert",
+									children: error
+								}),
+								(0, react_jsx_runtime.jsxs)("div", {
+									className: "dsham_sidebarCardFooter",
+									children: [
+										(0, react_jsx_runtime.jsx)("button", {
+											ref: cancelBtnRef,
+											type: "button",
+											className: "dsham_sidebarCardBtn dsham_sidebarCardBtnCancel",
+											disabled: archiving,
+											onClick: close,
+											children: t("cancel")
+										}),
+										(0, react_jsx_runtime.jsx)("button", {
+											ref: confirmBtnRef,
+											type: "button",
+											className: "dsham_sidebarCardBtn dsham_sidebarCardBtnDanger",
+											disabled: archiving,
+											onClick: confirm,
+											children: t("archiveWorkspace.confirm")
+										})
+									]
+								})
+							]
+						})
+					]
+				});
+			}
+			function setupWorkspaceMenuInjector(t: Translate) {
+				if (typeof document === "undefined" || typeof document.addEventListener !== "function" || typeof MutationObserver === "undefined") return () => {};
+
+				let lastClickedWorkspace: { workspaceId: string; title: string } | null = null;
+
+				const onPointerDown = (event: PointerEvent) => {
+					const target = event.target as HTMLElement | null;
+					if (!target) return;
+					const btn = target.closest("button");
+					if (!btn) return;
+					const row = btn.closest<HTMLElement>('[data-row-key^="workspace:"]');
+					if (!row) return;
+					const key = row.getAttribute("data-row-key")?.replace(/^workspace:/, "");
+					if (!key) return;
+					const titleEl = row.querySelector(".title") ?? row.querySelector("[class*='title']");
+					const title = titleEl?.textContent?.trim() || key;
+					lastClickedWorkspace = { workspaceId: key, title };
+				};
+
+				document.addEventListener("pointerdown", onPointerDown, true);
+
+				const checkAndInject = () => {
+					const menus = document.querySelectorAll<HTMLElement>('[role="menu"]');
+					for (const menu of menus) {
+						if (menu.querySelector('[data-dsham-archive-workspace="true"]')) continue;
+
+						const items = Array.from(menu.querySelectorAll<HTMLButtonElement>('button[role="menuitem"]'));
+						if (items.length === 0) continue;
+
+						const deleteItem = items.find((btn) => {
+							const text = btn.textContent ?? "";
+							return text.includes("删除工作区") || text.includes("Delete workspace") || text.includes("Удалить рабочее");
+						});
+
+						if (!deleteItem) continue;
+
+						const normalItem = items.find((btn) => btn !== deleteItem) ?? deleteItem;
+						const deleteWrap = deleteItem.parentElement;
+						if (!deleteWrap) continue;
+
+						const currentWs = lastClickedWorkspace;
+						if (!currentWs) continue;
+
+						const itemsList = ctx.workspaces.list?.getSnapshot?.()?.items ?? [];
+						const workspace = itemsList.find((item) => item.workspaceId === currentWs.workspaceId);
+						const sessionMap = ctx.sessions.list?.getSnapshot?.()?.byId ?? {};
+						const archived = new Set(ctx.workspaces.list?.getSnapshot?.()?.archivedSessionIds ?? []);
+						const candidateIds = (workspace?.sessionIds ?? []).filter((id) => isWorkspaceTaskCandidate(id, sessionMap, archived));
+						const count = candidateIds.length;
+
+						const archiveWrap = document.createElement("div");
+						archiveWrap.className = deleteWrap.className;
+
+						const archiveBtn = document.createElement("button");
+						archiveBtn.type = "button";
+						archiveBtn.setAttribute("role", "menuitem");
+						archiveBtn.dataset.dshamArchiveWorkspace = "true";
+						// 使用普通项（重命名）的类名，确保绝不带危险红（danger）样式
+						archiveBtn.className = normalItem.className.replace(/\b(?:is-danger|danger)\b/g, "").trim();
+
+						const iconRef = normalItem.querySelector("span");
+						const labelRef = normalItem.querySelectorAll("span")[1];
+
+						const iconSpan = document.createElement("span");
+						iconSpan.setAttribute("aria-hidden", "true");
+						if (iconRef?.className) iconSpan.className = iconRef.className;
+						iconSpan.innerHTML = `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 3.5h11v2.5h-11z"/><path d="M3.5 6v7.5h9V6"/><path d="M6.5 8.5h3"/></svg>`;
+
+						const textSpan = document.createElement("span");
+						if (labelRef?.className) textSpan.className = labelRef.className;
+						textSpan.textContent = t("menu.archiveWorkspace");
+
+						archiveBtn.append(iconSpan, textSpan);
+						archiveWrap.append(archiveBtn);
+
+						if (count === 0) {
+							archiveBtn.disabled = true;
+							archiveBtn.style.opacity = "0.5";
+							archiveBtn.style.cursor = "not-allowed";
+						}
+
+						archiveBtn.addEventListener("click", (e) => {
+							e.preventDefault();
+							e.stopPropagation();
+							document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }));
+							publishArchiveWsTarget({
+								workspaceId: currentWs.workspaceId,
+								title: currentWs.title,
+								count
+							});
+						});
+
+						deleteWrap.parentNode?.insertBefore(archiveWrap, deleteWrap);
+					}
+				};
+
+				const observer = new MutationObserver(checkAndInject);
+				observer.observe(document.body, { childList: true, subtree: true });
+
+				return () => {
+					document.removeEventListener("pointerdown", onPointerDown, true);
+					observer.disconnect();
+				};
+			}
 			function hostSidebarDeclaresSessionMenu() {
 				if (typeof ctx.slots.entries !== "function") return false;
 				return ctx.slots.entries("sidebar.workspaces").some((entry) => entry.children?.[sessionMenuSlot] !== undefined);
@@ -2625,6 +3025,7 @@ export function startArchiveClient(require: HostRequire) {
 			let sidebarMode: "menu" | "waiting" | undefined;
 			let disposeMenu: (() => void) | undefined;
 			let disposeDialog: (() => void) | undefined;
+			let disposeArchiveDialog: (() => void) | undefined;
 			/** 支持的宿主都声明了会话菜单插槽。插槽还没出现时只等待，不再盖掉官方侧栏。 */
 			const reconcileSidebar = () => {
 				const next = hostSidebarDeclaresSessionMenu() ? "menu" : "waiting";
@@ -2638,14 +3039,21 @@ export function startArchiveClient(require: HostRequire) {
 						locale: NS,
 						inject: () => ({})
 					}, DeleteSessionMenuItem));
-					disposeDialog ??= ctx.slots.inject("shell.overlay", () => ctx.slots.register({
+				disposeDialog ??= ctx.slots.inject("shell.overlay", () => ctx.slots.register({
 						name: "shell.overlay",
 						id: "archive-manager.delete-session",
 						locale: NS,
 						inject: () => ({ t: ctx.locale.bind(NS) })
 					}, DeleteSessionOverlay));
+				disposeArchiveDialog ??= ctx.slots.inject("shell.overlay", () => ctx.slots.register({
+						name: "shell.overlay",
+						id: "archive-manager.archive-workspace",
+						locale: NS,
+						inject: () => ({ t: ctx.locale.bind(NS) })
+					}, ArchiveWorkspaceOverlay));
 			};
 			reconcileSidebar();
+			ctx.effect(() => setupWorkspaceMenuInjector(ctx.locale.bind(NS)), "archive-manager: workspace menu injector");
 			const unsubscribeSidebar = typeof ctx.on === "function" ? ctx.on("slots/changed", (key: string) => {
 				if (key !== "sidebar.workspaces") return;
 				try { reconcileSidebar(); }
@@ -2655,6 +3063,7 @@ export function startArchiveClient(require: HostRequire) {
 				unsubscribeSidebar?.();
 				disposeMenu?.();
 				disposeDialog?.();
+				disposeArchiveDialog?.();
 			}, "archive-manager: sidebar mode");
 
 			ctx.slots.inject("settings.section", () => ctx.slots.register({
@@ -2706,6 +3115,7 @@ export function startArchiveClient(require: HostRequire) {
 			pruneArchivedSelection,
 			toggleArchivedSelection,
 			archivedDeleteFeedback,
+			isWorkspaceTaskCandidate,
 			archiveableWorkspaceSessionCount,
 			archiveWorkspaceDialogTarget,
 			archiveWorkspaceDialogFailureState,
