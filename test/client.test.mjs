@@ -137,9 +137,10 @@ test("bundle materializes with apply/inject and the __test surface", () => {
 	assert.equal(typeof t.deriveSearchResults, "function");
 	assert.equal(typeof t.displayTitle, "function");
 	assert.equal(typeof t.isUnknownSessionError, "function");
-	assert.equal(typeof t.archiveableWorkspaceSessionCount, "function");
-	assert.equal(typeof t.archiveWorkspaceDialogTarget, "function");
-	assert.equal(typeof t.archiveWorkspaceDialogFailureState, "function");
+	assert.equal(typeof t.isWorkspaceTaskCandidate, "function");
+	assert.equal(typeof t.isWorkspaceDeleteMenuItem, "function");
+	assert.equal(typeof t.applySettingsNavIcon, "function");
+	assert.equal(typeof t.restoreSettingsNavIcon, "function");
 });
 
 test("设置页批量恢复串行调用官方 unarchiveSession", async () => {
@@ -257,42 +258,155 @@ test("legacy workspace view prefs migrate onto the archive-manager persist key",
 	);
 });
 
-test("工作区没有可归档会话时不提供批量归档入口或确认框", () => {
-	const workspace = { workspaceId: "w1", sessionIds: ["s1", "s1", "s2"] };
-	assert.equal(t.archiveableWorkspaceSessionCount(workspace, []), 2);
-	assert.equal(t.archiveableWorkspaceSessionCount(workspace, ["s1"]), 1);
-	assert.equal(t.archiveableWorkspaceSessionCount(workspace, ["s1", "s2"]), 0);
-	assert.equal(t.archiveWorkspaceDialogTarget([workspace], "w1", "项目", ["s1", "s2"]), null);
-	assert.deepEqual(t.archiveWorkspaceDialogTarget([workspace], "w1", "项目", ["s1"]), {
-		workspaceId: "w1",
-		title: "项目",
-		count: 1
-	});
-});
-
-test("批量归档失败时保持确认框打开并显示错误", () => {
-	const target = { workspaceId: "w1", title: "项目", count: 2 };
-	const state = t.archiveWorkspaceDialogFailureState(target, new Error("host rejected"), (key, values) => `${key}: ${values.detail}`);
-	assert.equal(state.target, target);
-	assert.equal(state.archiving, false);
-	assert.equal(state.error, "archives.archiveFailed: host rejected");
-});
-
 test("工作区归档严格只包含常规任务，排除IM渠道、定时任务、子代理及已归档会话", () => {
 	const archived = new Set(["archived-1"]);
 	const sessionMap = {
 		"normal-1": { origin: "chat", blank: false },
 		"blank-1": { origin: "chat", blank: true },
 		"subagent-1": { origin: "subagent", blank: false },
-		"im:weixin_123": { origin: "channel", blank: false },
-		"dsh-automation-session-456": { origin: "automation", blank: false }
+		"im-origin-1": { origin: "im", blank: false },
+		"im:weixin_123": { origin: "chat", blank: false },
+		"dsh-automation-session-456": { origin: "chat", blank: false }
 	};
 	assert.equal(t.isWorkspaceTaskCandidate("normal-1", sessionMap, archived), true);
 	assert.equal(t.isWorkspaceTaskCandidate("blank-1", sessionMap, archived), false);
 	assert.equal(t.isWorkspaceTaskCandidate("archived-1", sessionMap, archived), false);
 	assert.equal(t.isWorkspaceTaskCandidate("subagent-1", sessionMap, archived), false);
+	assert.equal(t.isWorkspaceTaskCandidate("im-origin-1", sessionMap, archived), false);
 	assert.equal(t.isWorkspaceTaskCandidate("im:weixin_123", sessionMap, archived), false);
 	assert.equal(t.isWorkspaceTaskCandidate("dsh-automation-session-456", sessionMap, archived), false);
+	assert.equal(t.isWorkspaceTaskCandidate("missing-1", sessionMap, archived), false, "侧栏未渲染的会话不属于所见范围");
+});
+
+test("删除工作区菜单项优先按文案识别，文案变化时用 danger 类兜底", () => {
+	const item = (textContent, className = "") => ({ textContent, className });
+	assert.equal(t.isWorkspaceDeleteMenuItem(item("删除工作区")), true);
+	assert.equal(t.isWorkspaceDeleteMenuItem(item("Delete workspace")), true);
+	assert.equal(t.isWorkspaceDeleteMenuItem(item("DELETE WORKSPACE")), true);
+	assert.equal(t.isWorkspaceDeleteMenuItem(item("Удалить рабочее пространство")), true);
+	assert.equal(t.isWorkspaceDeleteMenuItem(item("重命名", "Menu_item__a1")), false);
+	assert.equal(t.isWorkspaceDeleteMenuItem(item("Rename", "Menu_item__a1"), false), false);
+	assert.equal(t.isWorkspaceDeleteMenuItem(item("Delete", "Menu_danger__a1")), true, "未知语言可由 danger 类兜底");
+	assert.equal(t.isWorkspaceDeleteMenuItem(item("Delete", "Menu_danger__a1"), false), false, "禁用兜底时不得误判");
+	assert.equal(t.isWorkspaceDeleteMenuItem(item("Delete", "Menu_dangerous__a1")), false, "类名包含 danger 子串不得误判");
+});
+
+test("设置导航图标使用独立 mask 注入，不改写宿主 svg", async () => {
+	const source = await readFile(fileURLToPath(new URL("../src/client.ts", import.meta.url)), "utf8");
+	const built = await readFile(CLIENT_BUNDLE, "utf8");
+	for (const text of [source, built]) {
+		assert.match(text, /dsham-nav-icon/, "必须带独立标记属性");
+		assert.match(text, /dsham_nav_icon_archived/, "必须使用独立 mask 图标类");
+		assert.match(text, /--dsham-nav-icon-mask/, "图标必须以 mask 方式绘制");
+		assert.match(text, /svg\{display:none!important\}/, "必须隐藏宿主 svg");
+	}
+	assert.match(source, /width:calc\(\(100% - 4px\)\/2\)!important/, "分段指示器必须与 2px 内边距对齐");
+
+	const previousCreate = document.createElement;
+	document.createElement = (tag) => {
+		const node = {
+			tagName: String(tag).toUpperCase(),
+			className: "",
+			attributes: new Map(),
+			parent: null,
+			setAttribute(name, value) { this.attributes.set(name, String(value)); },
+			remove() {
+				if (this.parent === null) return;
+				const index = this.parent.children.indexOf(this);
+				if (index >= 0) this.parent.children.splice(index, 1);
+				this.parent = null;
+			},
+		};
+		return node;
+	};
+	try {
+		const svg = { tagName: "svg" };
+		const button = {
+			textContent: "归档会话",
+			attributes: new Map(),
+			children: [svg],
+			getAttribute(name) { return this.attributes.get(name) ?? null; },
+			setAttribute(name, value) { this.attributes.set(name, String(value)); },
+			removeAttribute(name) { this.attributes.delete(name); },
+			querySelector(selector) {
+				if (selector === "svg") return svg;
+				if (selector === ".dsham_nav_icon_archived") return this.children.find((node) => node.className === "dsham_nav_icon_archived") ?? null;
+				return null;
+			},
+			prepend(node) { this.children.unshift(node); node.parent = this; },
+		};
+		assert.equal(t.applySettingsNavIcon(button, "归档会话"), true);
+		assert.equal(button.getAttribute("data-dsham-nav-icon"), "archived");
+		assert.equal(button.children[0].className, "dsham_nav_icon_archived");
+		assert.equal(button.children[0].attributes.get("aria-hidden"), "true");
+		assert.equal(svg.tagName, "svg", "不得改写宿主 svg");
+		assert.equal(t.applySettingsNavIcon(button, "归档会话"), false, "重复同步必须幂等");
+		assert.equal(t.applySettingsNavIcon(button, "其他入口"), false, "只处理本插件入口");
+		t.restoreSettingsNavIcon(button);
+		assert.equal(button.getAttribute("data-dsham-nav-icon"), null);
+		assert.equal(button.querySelector(".dsham_nav_icon_archived"), null);
+	} finally {
+		document.createElement = previousCreate;
+	}
+});
+
+test("设置导航图标样式在安装时全局注入，卸载时清理", () => {
+	const previous = {
+		getElementById: document.getElementById,
+		createElement: document.createElement,
+		head: document.head,
+		observer: globalThis.MutationObserver,
+		raf: globalThis.requestAnimationFrame,
+	};
+	const style = { id: "", textContent: "", removed: false, remove() { this.removed = true; } };
+	let appended = false;
+	document.getElementById = () => null;
+	document.createElement = (tag) => (tag === "style" ? style : { id: "" });
+	document.head = { append(node) { assert.equal(node, style); appended = true; } };
+	globalThis.MutationObserver = class {
+		constructor(callback) { this.callback = callback; }
+		observe() {}
+		disconnect() { this.disconnected = true; }
+	};
+	globalThis.requestAnimationFrame = (fn) => { fn(); return 1; };
+	let disposer;
+	try {
+		t.installSettingsNavIcon({
+			effect: (run) => { disposer = run(); },
+			locale: { bind: () => () => "归档会话" },
+		});
+		assert.equal(appended, true, "样式必须在插件安装时就注入，而不是等归档页渲染");
+		assert.equal(style.id, "dsham-nav-icon-style");
+		assert.match(style.textContent, /dsham_nav_icon_archived/);
+		disposer();
+		assert.equal(style.removed, true, "卸载时必须移除注入样式");
+	} finally {
+		document.getElementById = previous.getElementById;
+		document.createElement = previous.createElement;
+		document.head = previous.head;
+		if (previous.observer === undefined) delete globalThis.MutationObserver;
+		else globalThis.MutationObserver = previous.observer;
+		if (previous.raf === undefined) delete globalThis.requestAnimationFrame;
+		else globalThis.requestAnimationFrame = previous.raf;
+	}
+});
+
+test("DOM 监听只处理触及目标选择器的变更批次", () => {
+	const menu = {};
+	const element = ({ matches = () => false, descendant = () => null, ancestor = () => null }) => ({
+		nodeType: 1,
+		matches,
+		querySelector: descendant,
+		closest: ancestor,
+	});
+	assert.equal(t.mutationTouches([{ type: "childList", addedNodes: [element({ matches: () => true })] }], '[role="menu"]'), true);
+	assert.equal(t.mutationTouches([{ type: "childList", addedNodes: [element({ descendant: () => ({}) })] }], '[role="menu"]'), true);
+	assert.equal(t.mutationTouches([{ type: "childList", addedNodes: [element({ ancestor: () => menu })] }], '[role="menu"]'), true);
+	assert.equal(t.mutationTouches([{ type: "childList", addedNodes: [element({})] }], '[role="menu"]'), false, "无关节点不应触发扫描");
+	assert.equal(t.mutationTouches([{ type: "childList", addedNodes: [{ nodeType: 3 }] }], '[role="menu"]'), false, "文本节点无需扫描");
+	assert.equal(t.mutationTouches([{ type: "characterData", target: { parentElement: { closest: () => menu } } }], '[role="menu"]'), true);
+	assert.equal(t.mutationTouches([{ type: "characterData", target: { parentElement: { closest: () => null } } }], '[role="menu"]'), false);
+	assert.equal(t.mutationTouches([{ type: "characterData", target: { parentElement: null } }], '[role="menu"]'), false);
 });
 
 test("legacy forked row stylesheet is completely removed from source and build", async () => {

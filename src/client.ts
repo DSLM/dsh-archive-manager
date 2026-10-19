@@ -1071,31 +1071,25 @@ export function startArchiveClient(require: HostRequire) {
 		/** 判断会话是否属于当前工作区主任务侧栏的候选（排除已归档、IM 渠道、定时任务、子代理及未开始的空白占位会话）。 */
 		function isWorkspaceTaskCandidate(id: string, sessionMap: Record<string, { origin?: string; blank?: boolean }> | undefined, archived: Set<string>): boolean {
 			if (!id || archived.has(id)) return false;
+			// 侧栏只渲染有摘要的会话；缺失摘要的 ID 不属于“所见”，不能参与批量归档。
+			const summary = sessionMap?.[id];
+			if (summary === undefined) return false;
+			// 与 dsh-im-connect / dsh-automation 的权威判定保持一致：IM 与子代理看 origin，
+			// 定时任务看 dsh-automation-session- 前缀（当前宿主不会给定时会话写 origin）。
+			if (summary.origin === "im" || summary.origin === "subagent") return false;
 			// 排除 IM 渠道协同会话（归属「频道」独立视图）
 			if (id.startsWith("im:")) return false;
-			// 排除定时自动化任务会话（归属「定时」独立视图）
+			// 排除定时自动化任务会话（归属「定时」独立视图）；旧版无前缀会话的运行集合无法跨插件读取。
 			if (id.startsWith("dsh-automation-")) return false;
-			// 排除子代理派生任务（原生侧栏默认隐藏）
-			if (sessionMap?.[id]?.origin === "subagent") return false;
 			// 排除未发生对话的空白占位会话（原生侧栏默认隐藏）
-			if (sessionMap?.[id]?.blank) return false;
+			if (summary.blank) return false;
 			return true;
 		}
-		/** 返回工作区中尚未归档的唯一会话数量。 */
-		function archiveableWorkspaceSessionCount(workspace: ClientWorkspace, archivedSessionIds: readonly string[] | Set<string>) {
-			const archived = archivedSessionIds instanceof Set ? archivedSessionIds : new Set(archivedSessionIds);
-			return [...new Set(workspace.sessionIds)].filter((sessionId) => !archived.has(sessionId)).length;
-		}
-		/** 仅在工作区仍有活跃会话时创建批量归档确认目标。 */
-		function archiveWorkspaceDialogTarget(workspaces: readonly ClientWorkspace[], workspaceId: string, title: string, archivedSessionIds: readonly string[] | Set<string>) {
-			const workspace = workspaces.find((item) => item.workspaceId === workspaceId);
-			if (workspace === void 0) return null;
-			const count = archiveableWorkspaceSessionCount(workspace, archivedSessionIds);
-			return count === 0 ? null : { workspaceId, title, count };
-		}
-		/** 请求失败时保留确认目标，方便用户查看错误后重试。 */
-		function archiveWorkspaceDialogFailureState(target: { workspaceId: string; title: string; count: number }, reason: unknown, t: Translate) {
-			return { target, archiving: false, error: formatArchiveError(reason, t) };
+		/** 识别工作区操作菜单里的“删除工作区”项；文案缺失时用 danger 类名兜底。 */
+		function isWorkspaceDeleteMenuItem(item: { textContent: string | null; className: string }, allowDangerFallback = true): boolean {
+			const text = (item.textContent ?? "").toLowerCase();
+			if (text.includes("删除工作区") || text.includes("delete workspace") || text.includes("удалить рабочее")) return true;
+			return allowDangerFallback && /(?:^|[_\s-])danger(?:$|[_\s-])/i.test(item.className);
 		}
 		/** 只把侧栏已支持的待处理交互类型交给行渲染，避免未知类型触发断言。 */
 		function visiblePendingKind(kind: string | undefined) {
@@ -1353,14 +1347,110 @@ export function startArchiveClient(require: HostRequire) {
 		//#region dsh-archive-manager: settings section
 		const ARCHIVE_TABS_CSS = [
 			".dsham_archiveTabsLocked{opacity:.5}",
-			".dsham_archiveTabs{display:grid!important;box-sizing:border-box!important;height:32px!important;min-height:32px!important;max-height:32px!important;padding:2px!important;border-radius:var(--dsw-radius-sm,8px)!important;border:0.5px solid var(--dsw-alias-border-l2)!important;background:var(--dsw-alias-bg-layer-1)!important}",
-			".dsham_archiveTabs>span[aria-hidden=\"true\"],.dsham_archiveTabs>[class*=\"indicator\"]{inset:2px auto 2px 2px!important;border-radius:6px!important;border:0.5px solid var(--dsw-alias-border-l3,rgba(255,255,255,.12))!important;background:var(--dsw-alias-bg-layer-3,rgba(255,255,255,.08))!important;box-shadow:none!important}",
+			".dsham_archiveTabs{display:grid!important;box-sizing:border-box!important;height:32px!important;min-height:32px!important;max-height:32px!important;padding:2px!important;border:0!important;border-radius:var(--dsw-radius-sm,8px)!important;box-shadow:inset 0 0 0 .5px var(--dsw-alias-border-l2)!important;background:var(--dsw-alias-bg-layer-1)!important}",
+			".dsham_archiveTabs>span[aria-hidden=\"true\"],.dsham_archiveTabs>[class*=\"indicator\"]{inset:2px auto 2px 2px!important;width:calc((100% - 4px)/2)!important;border-radius:6px!important;border:0.5px solid var(--dsw-alias-border-l3,rgba(255,255,255,.12))!important;background:var(--dsw-alias-bg-layer-3,rgba(255,255,255,.08))!important;box-shadow:none!important}",
 			".dsham_archiveTabs [role=tab]{display:inline-flex!important;align-items:center!important;justify-content:center!important;gap:6px!important;height:28px!important;padding:0 12px!important;border-radius:6px!important;font-size:13px!important;line-height:20px!important;color:var(--dsw-alias-label-secondary)!important;text-align:center!important;box-sizing:border-box!important;transition:color 150ms ease!important}",
 			".dsham_archiveTabs [role=tab]:hover{color:var(--dsw-alias-label-primary)!important}",
 			".dsham_archiveTabs [role=tab][aria-selected=\"true\"]{color:var(--dsw-alias-label-primary)!important;font-weight:600!important}",
 			".dsham_tabLabel{display:inline-flex;align-items:center;justify-content:center;gap:6px}",
 			".dsham_tabLabel svg{flex:none;display:block}"
 		].join("");
+		// 设置导航图标：不改写宿主 svg，改用独立 mask span，避免第三方皮肤隐藏 svg 子节点时入口图标消失。
+		const SETTINGS_NAV_ICON_MARKER = "data-dsham-nav-icon";
+		const SETTINGS_NAV_ICON_CLASS = "dsham_nav_icon_archived";
+		const SETTINGS_NAV_ROW_SELECTOR = '[role="dialog"] nav button';
+		const ARCHIVE_NAV_ICON_CSS = [
+			`[${SETTINGS_NAV_ICON_MARKER}="archived"]>svg{display:none!important}`,
+			`.${SETTINGS_NAV_ICON_CLASS}{--dsham-nav-icon-mask:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2016%2016%22%3E%3Cg%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.3%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M13.5%202.5H2.5C1.94772%202.5%201.5%202.94772%201.5%203.5V4.5C1.5%205.05228%201.94772%205.5%202.5%205.5H13.5C14.0523%205.5%2014.5%205.05228%2014.5%204.5V3.5C14.5%202.94772%2014.0523%202.5%2013.5%202.5Z%22%2F%3E%3Cpath%20d%3D%22M2.5%205.5V13.5C2.5%2013.7652%202.60536%2014.0196%202.79289%2014.2071C2.98043%2014.3946%203.23478%2014.5%203.5%2014.5H12.5C12.7652%2014.5%2013.0196%2014.3946%2013.2071%2014.2071C13.3946%2014.0196%2013.5%2013.7652%2013.5%2013.5V5.5%22%2F%3E%3Cpath%20d%3D%22M6.5%209.5H9.5%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E");display:inline-block;flex:none;width:16px;height:16px;background:currentColor;-webkit-mask:var(--dsham-nav-icon-mask) center/contain no-repeat;mask:var(--dsham-nav-icon-mask) center/contain no-repeat}`
+		].join("");
+		/** 设置导航行是否就是本插件的“归档会话”入口。 */
+		function isOwnSettingsNavRow(rowText: string | null | undefined, label: string): boolean {
+			const wanted = String(label ?? "").trim();
+			return wanted.length > 0 && String(rowText ?? "").trim() === wanted;
+		}
+		/** 判断变更批次是否触及指定选择器（含其后代），避免流式输出时每帧全量扫描。 */
+		function mutationTouches(records: readonly MutationRecord[], selector: string): boolean {
+			for (const record of records) {
+				if (record.type === "characterData") {
+					const parent = record.target.parentElement;
+					if (parent !== null && parent.closest(selector) !== null) return true;
+					continue;
+				}
+				for (const node of record.addedNodes) {
+					if (node.nodeType !== 1) continue;
+					const element = node as Element;
+					if (element.matches(selector) || element.querySelector(selector) !== null || element.closest(selector) !== null) return true;
+				}
+			}
+			return false;
+		}
+		/**
+		* 用独立 mask 图标覆盖设置导航入口图标。
+		* 宿主 svg 保持原样，避免与皮肤的内容级图标识别/隐藏规则互相覆盖。
+		*/
+		function applySettingsNavIcon(button: HTMLElement, label: string): boolean {
+			if (!isOwnSettingsNavRow(button.textContent, label)) return false;
+			if (button.querySelector("svg") === null) return false;
+			if (button.getAttribute(SETTINGS_NAV_ICON_MARKER) === "archived" && button.querySelector(`.${SETTINGS_NAV_ICON_CLASS}`) !== null) return false;
+			button.setAttribute(SETTINGS_NAV_ICON_MARKER, "archived");
+			let icon = button.querySelector<HTMLElement>(`.${SETTINGS_NAV_ICON_CLASS}`);
+			if (icon === null) {
+				icon = document.createElement("span");
+				icon.className = SETTINGS_NAV_ICON_CLASS;
+				icon.setAttribute("aria-hidden", "true");
+				button.prepend(icon);
+			}
+			return true;
+		}
+		/** 卸载时移除注入节点，恢复宿主原始导航图标。 */
+		function restoreSettingsNavIcon(button: HTMLElement): boolean {
+			button.removeAttribute(SETTINGS_NAV_ICON_MARKER);
+			const icon = button.querySelector<HTMLElement>(`.${SETTINGS_NAV_ICON_CLASS}`);
+			icon?.remove();
+			return true;
+		}
+		/** 监听设置弹层导航，语言或 DOM 变化后重新匹配本插件入口。 */
+		function installSettingsNavIcon(ctx: ClientContext) {
+			if (typeof document === "undefined" || typeof MutationObserver === "undefined") return;
+			ctx.effect(() => {
+				// 导航图标在设置弹层打开时就要可见，不能依赖归档页自身是否已渲染。
+				const styleId = "dsham-nav-icon-style";
+				let style = document.getElementById(styleId) as HTMLStyleElement | null;
+				if (style === null) {
+					style = document.createElement("style");
+					style.id = styleId;
+					style.textContent = ARCHIVE_NAV_ICON_CSS;
+					(document.head ?? document.documentElement).append(style);
+				} else if (style.textContent !== ARCHIVE_NAV_ICON_CSS) {
+					style.textContent = ARCHIVE_NAV_ICON_CSS;
+				}
+				let disposed = false;
+				let scheduled = false;
+				const sync = () => {
+					scheduled = false;
+					if (disposed) return;
+					const label = ctx.locale.bind(NS)("archived.badge");
+					for (const row of document.querySelectorAll<HTMLElement>(SETTINGS_NAV_ROW_SELECTOR)) applySettingsNavIcon(row, label);
+				};
+				const schedule = () => {
+					if (scheduled || disposed) return;
+					scheduled = true;
+					if (typeof requestAnimationFrame === "function") requestAnimationFrame(sync);
+					else setTimeout(sync, 16);
+				};
+				sync();
+				const observer = new MutationObserver((records) => {
+					if (mutationTouches(records, '[role="dialog"] nav')) schedule();
+				});
+				observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+				return () => {
+					disposed = true;
+					observer.disconnect();
+					for (const row of document.querySelectorAll<HTMLElement>(`[${SETTINGS_NAV_ICON_MARKER}]`)) restoreSettingsNavIcon(row);
+					style?.remove();
+				};
+			}, "archive-manager: settings nav icon");
+		}
 		const ARCHIVE_SETTINGS_CSS = [
 			".dsham_settings{container-type:inline-size;min-width:0;box-sizing:border-box;width:min(100%,760px);margin:0 auto;padding:0 0 32px;color:var(--dsw-alias-label-primary)}",
 			".dsham_settingsHeader{display:flex;flex-direction:column;align-items:stretch;gap:16px;margin-bottom:16px}",
@@ -1822,7 +1912,7 @@ export function startArchiveClient(require: HostRequire) {
 			"delete.pending": "正在删除工作区…",
 			"menu.fork": "分叉会话",
 			"menu.archiveSession": "归档会话",
-			"menu.archiveWorkspace": "归档会话",
+			"menu.archiveWorkspace": "归档全部会话",
 			"archiveWorkspace.title": "归档 {n} 个会话？",
 			"archiveWorkspace.desc": "这会将“{name}”中的会话归档。之后可以在“设置 → 归档会话”中找到它们。",
 			"archiveWorkspace.confirm": "全部归档",
@@ -2850,7 +2940,7 @@ export function startArchiveClient(require: HostRequire) {
 						publishArchiveWsTarget(null);
 					}).catch((err) => {
 						setArchiving(false);
-						setError(err instanceof Error ? err.message : String(err));
+						setError(formatArchiveError(err, t));
 					});
 				};
 
@@ -2918,8 +3008,44 @@ export function startArchiveClient(require: HostRequire) {
 				if (typeof document === "undefined" || typeof document.addEventListener !== "function" || typeof MutationObserver === "undefined") return () => {};
 
 				let lastClickedWorkspace: { workspaceId: string; title: string } | null = null;
+				let injectDisposed = false;
+				const injectedItems = new Map<HTMLButtonElement, { workspaceId: string }>();
+				let revalidateQueued = false;
 
-				const onPointerDown = (event: PointerEvent) => {
+				/** 工作区当前可批量归档的会话 ID；菜单注入、点击与后续刷新共用同一判定。 */
+				const workspaceCandidateIds = (workspaceId: string): string[] => {
+					const items = ctx.workspaces.list?.getSnapshot?.()?.items ?? [];
+					const workspace = items.find((item) => item.workspaceId === workspaceId);
+					if (workspace === undefined) return [];
+					const sessionMap = ctx.sessions.list?.getSnapshot?.()?.byId ?? {};
+					const archived = new Set(ctx.workspaces.list?.getSnapshot?.()?.archivedSessionIds ?? []);
+					return workspace.sessionIds.filter((id) => isWorkspaceTaskCandidate(id, sessionMap, archived));
+				};
+				/** 会话或归档状态变化时，刷新已注入菜单项的可用状态，避免菜单打开期间计数过期。 */
+				const revalidateItems = () => {
+					revalidateQueued = false;
+					if (injectDisposed) return;
+					for (const [button, entry] of injectedItems) {
+						if (!button.isConnected) {
+							injectedItems.delete(button);
+							continue;
+						}
+						const disabled = workspaceCandidateIds(entry.workspaceId).length === 0;
+						button.disabled = disabled;
+						button.style.opacity = disabled ? "0.5" : "";
+						button.style.cursor = disabled ? "not-allowed" : "";
+					}
+				};
+				const scheduleRevalidate = () => {
+					if (injectedItems.size === 0 || revalidateQueued || injectDisposed) return;
+					revalidateQueued = true;
+					const run = () => revalidateItems();
+					if (typeof requestAnimationFrame === "function") requestAnimationFrame(run);
+					else setTimeout(run, 16);
+				};
+
+				/** 记录触发菜单的工作区；指针与键盘激活共用（Enter/Space 只发 click，不发 pointerdown）。 */
+				const rememberWorkspace = (event: Event) => {
 					const target = event.target as HTMLElement | null;
 					if (!target) return;
 					const btn = target.closest("button");
@@ -2933,9 +3059,14 @@ export function startArchiveClient(require: HostRequire) {
 					lastClickedWorkspace = { workspaceId: key, title };
 				};
 
-				document.addEventListener("pointerdown", onPointerDown, true);
+				document.addEventListener("pointerdown", rememberWorkspace, true);
+				document.addEventListener("click", rememberWorkspace, true);
 
 				const checkAndInject = () => {
+					if (injectDisposed) return;
+					for (const [button] of injectedItems) {
+						if (!button.isConnected) injectedItems.delete(button);
+					}
 					const menus = document.querySelectorAll<HTMLElement>('[role="menu"]');
 					for (const menu of menus) {
 						if (menu.querySelector('[data-dsham-archive-workspace="true"]')) continue;
@@ -2943,10 +3074,8 @@ export function startArchiveClient(require: HostRequire) {
 						const items = Array.from(menu.querySelectorAll<HTMLButtonElement>('button[role="menuitem"]'));
 						if (items.length === 0) continue;
 
-						const deleteItem = items.find((btn) => {
-							const text = btn.textContent ?? "";
-							return text.includes("删除工作区") || text.includes("Delete workspace") || text.includes("Удалить рабочее");
-						});
+						// 文案匹配优先；宿主改文案或新增语言时，用最后一级的 danger 项兜底。
+						const deleteItem = items.find((btn) => isWorkspaceDeleteMenuItem(btn, false)) ?? items.find((btn) => isWorkspaceDeleteMenuItem(btn, true));
 
 						if (!deleteItem) continue;
 
@@ -2957,11 +3086,7 @@ export function startArchiveClient(require: HostRequire) {
 						const currentWs = lastClickedWorkspace;
 						if (!currentWs) continue;
 
-						const itemsList = ctx.workspaces.list?.getSnapshot?.()?.items ?? [];
-						const workspace = itemsList.find((item) => item.workspaceId === currentWs.workspaceId);
-						const sessionMap = ctx.sessions.list?.getSnapshot?.()?.byId ?? {};
-						const archived = new Set(ctx.workspaces.list?.getSnapshot?.()?.archivedSessionIds ?? []);
-						const candidateIds = (workspace?.sessionIds ?? []).filter((id) => isWorkspaceTaskCandidate(id, sessionMap, archived));
+						const candidateIds = workspaceCandidateIds(currentWs.workspaceId);
 						const count = candidateIds.length;
 
 						const archiveWrap = document.createElement("div");
@@ -2971,8 +3096,8 @@ export function startArchiveClient(require: HostRequire) {
 						archiveBtn.type = "button";
 						archiveBtn.setAttribute("role", "menuitem");
 						archiveBtn.dataset.dshamArchiveWorkspace = "true";
-						// 使用普通项（重命名）的类名，确保绝不带危险红（danger）样式
-						archiveBtn.className = normalItem.className.replace(/\b(?:is-danger|danger)\b/g, "").trim();
+						// 复用普通项的类名；即使兜底项是 danger，也剔除 danger 类，避免归档项显示为危险红。
+						archiveBtn.className = normalItem.className.split(/\s+/).filter((name) => !/(?:^|[_-])danger(?:$|[_-])/i.test(name)).join(" ");
 
 						const iconRef = normalItem.querySelector("span");
 						const labelRef = normalItem.querySelectorAll("span")[1];
@@ -2980,7 +3105,7 @@ export function startArchiveClient(require: HostRequire) {
 						const iconSpan = document.createElement("span");
 						iconSpan.setAttribute("aria-hidden", "true");
 						if (iconRef?.className) iconSpan.className = iconRef.className;
-						iconSpan.innerHTML = `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 3.5h11v2.5h-11z"/><path d="M3.5 6v7.5h9V6"/><path d="M6.5 8.5h3"/></svg>`;
+						iconSpan.innerHTML = `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M13.5 2.5H2.5C1.94772 2.5 1.5 2.94772 1.5 3.5V4.5C1.5 5.05228 1.94772 5.5 2.5 5.5H13.5C14.0523 5.5 14.5 5.05228 14.5 4.5V3.5C14.5 2.94772 14.0523 2.5 13.5 2.5Z"/><path d="M2.5 5.5V13.5C2.5 13.7652 2.60536 14.0196 2.79289 14.2071C2.98043 14.3946 3.23478 14.5 3.5 14.5H12.5C12.7652 14.5 13.0196 14.3946 13.2071 14.2071C13.3946 14.0196 13.5 13.7652 13.5 13.5V5.5"/><path d="M6.5 9.5H9.5"/></svg>`;
 
 						const textSpan = document.createElement("span");
 						if (labelRef?.className) textSpan.className = labelRef.className;
@@ -2998,24 +3123,51 @@ export function startArchiveClient(require: HostRequire) {
 						archiveBtn.addEventListener("click", (e) => {
 							e.preventDefault();
 							e.stopPropagation();
+							// 菜单打开期间会话/归档状态可能变化，点击时重新计算，避免确认框计数过期。
+							const freshCount = workspaceCandidateIds(currentWs.workspaceId).length;
+							if (freshCount === 0) return;
 							document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }));
 							publishArchiveWsTarget({
 								workspaceId: currentWs.workspaceId,
 								title: currentWs.title,
-								count
+								count: freshCount
 							});
 						});
 
 						deleteWrap.parentNode?.insertBefore(archiveWrap, deleteWrap);
+						injectedItems.set(archiveBtn, { workspaceId: currentWs.workspaceId });
 					}
 				};
 
-				const observer = new MutationObserver(checkAndInject);
+				let injectQueued = false;
+				const scheduleInject = () => {
+					if (injectQueued || injectDisposed) return;
+					injectQueued = true;
+					const run = () => {
+						injectQueued = false;
+						if (injectDisposed) return;
+						checkAndInject();
+					};
+					// 流式输出会持续触发 DOM 变更，按帧合并，避免每个变更批次全量扫描菜单。
+					if (typeof requestAnimationFrame === "function") requestAnimationFrame(run);
+					else setTimeout(run, 16);
+				};
+				const observer = new MutationObserver((records) => {
+					if (mutationTouches(records, '[role="menu"]')) scheduleInject();
+				});
 				observer.observe(document.body, { childList: true, subtree: true });
+				const unsubscribeSessions = ctx.sessions.list?.subscribe?.(scheduleRevalidate);
+				const unsubscribeWorkspaces = ctx.workspaces.list?.subscribe?.(scheduleRevalidate);
 
 				return () => {
-					document.removeEventListener("pointerdown", onPointerDown, true);
+					injectDisposed = true;
+					document.removeEventListener("pointerdown", rememberWorkspace, true);
+					document.removeEventListener("click", rememberWorkspace, true);
 					observer.disconnect();
+					unsubscribeSessions?.();
+					unsubscribeWorkspaces?.();
+					injectedItems.clear();
+					for (const item of document.querySelectorAll<HTMLElement>('[data-dsham-archive-workspace="true"]')) item.parentElement?.remove();
 				};
 			}
 			function hostSidebarDeclaresSessionMenu() {
@@ -3054,6 +3206,7 @@ export function startArchiveClient(require: HostRequire) {
 			};
 			reconcileSidebar();
 			ctx.effect(() => setupWorkspaceMenuInjector(ctx.locale.bind(NS)), "archive-manager: workspace menu injector");
+			installSettingsNavIcon(ctx);
 			const unsubscribeSidebar = typeof ctx.on === "function" ? ctx.on("slots/changed", (key: string) => {
 				if (key !== "sidebar.workspaces") return;
 				try { reconcileSidebar(); }
@@ -3116,9 +3269,11 @@ export function startArchiveClient(require: HostRequire) {
 			toggleArchivedSelection,
 			archivedDeleteFeedback,
 			isWorkspaceTaskCandidate,
-			archiveableWorkspaceSessionCount,
-			archiveWorkspaceDialogTarget,
-			archiveWorkspaceDialogFailureState,
+			isWorkspaceDeleteMenuItem,
+			applySettingsNavIcon,
+			restoreSettingsNavIcon,
+			installSettingsNavIcon,
+			mutationTouches,
 			activeSessionActivity,
 			activeSessionRefusal,
 			activeArchiveFromMessage,
