@@ -139,6 +139,7 @@ test("bundle materializes with apply/inject and the __test surface", () => {
 	assert.equal(typeof t.isUnknownSessionError, "function");
 	assert.equal(typeof t.isWorkspaceTaskCandidate, "function");
 	assert.equal(typeof t.isWorkspaceDeleteMenuItem, "function");
+	assert.equal(typeof t.workspaceMenuTriggerFrom, "function");
 	assert.equal(typeof t.applySettingsNavIcon, "function");
 	assert.equal(typeof t.restoreSettingsNavIcon, "function");
 });
@@ -258,7 +259,7 @@ test("legacy workspace view prefs migrate onto the archive-manager persist key",
 	);
 });
 
-test("工作区归档严格只包含常规任务，排除IM渠道、定时任务、子代理及已归档会话", () => {
+test("工作区归档与官方侧栏一致：保留 IM 与定时任务，排除子代理、空白和已归档会话", () => {
 	const archived = new Set(["archived-1"]);
 	const sessionMap = {
 		"normal-1": { origin: "chat", blank: false },
@@ -272,9 +273,9 @@ test("工作区归档严格只包含常规任务，排除IM渠道、定时任务
 	assert.equal(t.isWorkspaceTaskCandidate("blank-1", sessionMap, archived), false);
 	assert.equal(t.isWorkspaceTaskCandidate("archived-1", sessionMap, archived), false);
 	assert.equal(t.isWorkspaceTaskCandidate("subagent-1", sessionMap, archived), false);
-	assert.equal(t.isWorkspaceTaskCandidate("im-origin-1", sessionMap, archived), false);
-	assert.equal(t.isWorkspaceTaskCandidate("im:weixin_123", sessionMap, archived), false);
-	assert.equal(t.isWorkspaceTaskCandidate("dsh-automation-session-456", sessionMap, archived), false);
+	assert.equal(t.isWorkspaceTaskCandidate("im-origin-1", sessionMap, archived), true, "IM 会话不再排除");
+	assert.equal(t.isWorkspaceTaskCandidate("im:weixin_123", sessionMap, archived), true, "IM 渠道会话不再排除");
+	assert.equal(t.isWorkspaceTaskCandidate("dsh-automation-session-456", sessionMap, archived), true, "定时任务不再排除");
 	assert.equal(t.isWorkspaceTaskCandidate("missing-1", sessionMap, archived), false, "侧栏未渲染的会话不属于所见范围");
 });
 
@@ -289,6 +290,21 @@ test("删除工作区菜单项优先按文案识别，文案变化时用 danger 
 	assert.equal(t.isWorkspaceDeleteMenuItem(item("Delete", "Menu_danger__a1")), true, "未知语言可由 danger 类兜底");
 	assert.equal(t.isWorkspaceDeleteMenuItem(item("Delete", "Menu_danger__a1"), false), false, "禁用兜底时不得误判");
 	assert.equal(t.isWorkspaceDeleteMenuItem(item("Delete", "Menu_dangerous__a1")), false, "类名包含 danger 子串不得误判");
+});
+
+test("工作区菜单上下文只认工作区行，会话行输入会清空", () => {
+	const row = (key, title) => ({
+		getAttribute: (name) => name === "data-row-key" ? key : null,
+		querySelector: (selector) => selector.includes("title") ? { textContent: title } : null,
+	});
+	const targetIn = (element) => ({ closest: (selector) => selector === "[data-row-key]" ? element : null });
+	assert.deepEqual(t.workspaceMenuTriggerFrom(targetIn(row("workspace:w1", " proj-a "))), { workspaceId: "w1", title: "proj-a" });
+	assert.deepEqual(t.workspaceMenuTriggerFrom(targetIn({ getAttribute: () => "workspace:w2", querySelector: () => null })), { workspaceId: "w2", title: "w2" });
+	assert.equal(t.workspaceMenuTriggerFrom(targetIn(row("session:s1", "chat"))), null, "会话行不得复用上一个工作区");
+	assert.equal(t.workspaceMenuTriggerFrom(targetIn(row("overflow:w1", "more"))), null);
+	assert.equal(t.workspaceMenuTriggerFrom(targetIn(row("workspace:", "empty"))), null);
+	assert.equal(t.workspaceMenuTriggerFrom({ closest: () => null }), null, "菜单与空白区域必须清空上下文");
+	assert.equal(t.workspaceMenuTriggerFrom(null), null);
 });
 
 test("设置导航图标使用独立 mask 注入，不改写宿主 svg", async () => {

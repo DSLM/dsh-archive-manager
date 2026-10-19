@@ -1068,22 +1068,36 @@ export function startArchiveClient(require: HostRequire) {
 			if (stray.length > 0) groups.push(buildGroup("", void 0, void 0, void 0, UNGROUPED_LABEL, ungroupedOrder === void 0 ? stray : orderedUngrouped(stray, ungroupedOrder), ungroupedOrder === void 0 ? "recency" : "account"));
 			return groups;
 		}
-		/** 判断会话是否属于当前工作区主任务侧栏的候选（排除已归档、IM 渠道、定时任务、子代理及未开始的空白占位会话）。 */
+		/**
+		 * 判断会话是否属于当前工作区主任务侧栏的候选。
+		 * 与官方 `sessionVisible` 对齐：排除已归档、子代理、未开始的空白占位和缺失摘要。
+		 * IM 渠道与定时任务不再排除，这两类会话会随对应插件放开进入主侧栏。
+		 */
 		function isWorkspaceTaskCandidate(id: string, sessionMap: Record<string, { origin?: string; blank?: boolean }> | undefined, archived: Set<string>): boolean {
 			if (!id || archived.has(id)) return false;
 			// 侧栏只渲染有摘要的会话；缺失摘要的 ID 不属于“所见”，不能参与批量归档。
 			const summary = sessionMap?.[id];
 			if (summary === undefined) return false;
-			// 与 dsh-im-connect / dsh-automation 的权威判定保持一致：IM 与子代理看 origin，
-			// 定时任务看 dsh-automation-session- 前缀（当前宿主不会给定时会话写 origin）。
-			if (summary.origin === "im" || summary.origin === "subagent") return false;
-			// 排除 IM 渠道协同会话（归属「频道」独立视图）
-			if (id.startsWith("im:")) return false;
-			// 排除定时自动化任务会话（归属「定时」独立视图）；旧版无前缀会话的运行集合无法跨插件读取。
-			if (id.startsWith("dsh-automation-")) return false;
-			// 排除未发生对话的空白占位会话（原生侧栏默认隐藏）
+			// 子代理不是主任务会话，官方侧栏也不渲染。
+			if (summary.origin === "subagent") return false;
+			// 排除未发生对话的空白占位会话（原生侧栏默认隐藏）。
 			if (summary.blank) return false;
 			return true;
+		}
+		/**
+		 * 从点击目标定位侧栏工作区行，供工作区菜单注入使用。
+		 * 只认最近的 `data-row-key` 行：会话行、溢出项或空白区域一律返回 null，
+		 * 避免上一次点击工作区留下的上下文串到单条会话的 `...` 菜单。
+		 */
+		function workspaceMenuTriggerFrom(target: Element | null): { workspaceId: string; title: string } | null {
+			const row = target?.closest<HTMLElement>("[data-row-key]") ?? null;
+			if (row === null) return null;
+			const key = row.getAttribute("data-row-key") ?? "";
+			if (!key.startsWith("workspace:")) return null;
+			const workspaceId = key.slice("workspace:".length);
+			if (!workspaceId) return null;
+			const titleEl = row.querySelector<HTMLElement>(".title") ?? row.querySelector<HTMLElement>("[class*='title']");
+			return { workspaceId, title: titleEl?.textContent?.trim() || workspaceId };
 		}
 		/** 识别工作区操作菜单里的“删除工作区”项；文案缺失时用 danger 类名兜底。 */
 		function isWorkspaceDeleteMenuItem(item: { textContent: string | null; className: string }, allowDangerFallback = true): boolean {
@@ -3037,19 +3051,13 @@ export function startArchiveClient(require: HostRequire) {
 					else setTimeout(run, 16);
 				};
 
-				/** 记录触发菜单的工作区；指针与键盘激活共用（Enter/Space 只发 click，不发 pointerdown）。 */
+				/**
+				 * 记录触发菜单的工作区；指针与键盘激活共用（Enter/Space 只发 click，不发 pointerdown）。
+				 * 点击任何非工作区行（尤其是会话行）或空白区域时立即清空，防止旧上下文把
+				 * 「归档全部会话」注入到单条会话的操作菜单。
+				 */
 				const rememberWorkspace = (event: Event) => {
-					const target = event.target as HTMLElement | null;
-					if (!target) return;
-					const btn = target.closest("button");
-					if (!btn) return;
-					const row = btn.closest<HTMLElement>('[data-row-key^="workspace:"]');
-					if (!row) return;
-					const key = row.getAttribute("data-row-key")?.replace(/^workspace:/, "");
-					if (!key) return;
-					const titleEl = row.querySelector(".title") ?? row.querySelector("[class*='title']");
-					const title = titleEl?.textContent?.trim() || key;
-					lastClickedWorkspace = { workspaceId: key, title };
+					lastClickedWorkspace = workspaceMenuTriggerFrom(event.target as Element | null);
 				};
 
 				document.addEventListener("pointerdown", rememberWorkspace, true);
@@ -3263,6 +3271,7 @@ export function startArchiveClient(require: HostRequire) {
 			archivedDeleteFeedback,
 			isWorkspaceTaskCandidate,
 			isWorkspaceDeleteMenuItem,
+			workspaceMenuTriggerFrom,
 			applySettingsNavIcon,
 			restoreSettingsNavIcon,
 			installSettingsNavIcon,
