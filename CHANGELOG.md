@@ -4,6 +4,13 @@
 
 Published release notes are retained below; new versions are added without removing earlier entries.
 
+## 1.1.3 - 2026-10-19
+
+- Added "Archive conversations" to the native sidebar workspace actions menu (`...`), safely injected above "Delete workspace" with native styling, icons, and automatic disabled state when no archivable sessions remain.
+- Confirmation is presented as a frosted-glass card (`ArchiveWorkspaceOverlay`) anchored right beside the targeted workspace row, featuring full keyboard accessibility (Tab / Shift+Tab looping, Escape to dismiss, and focus restoration to the workspace row).
+- Strictly aligned batch archiving scope with visible sidebar task sessions: automatically excludes unstarted blank draft sessions (`blank: true`), IM channel sessions (WeChat, QQ, Discord routed to the Channels rail), automation scheduled sessions (routed to the Schedules rail), and child subagents.
+- Enhanced the segmented tabs ("Archived / Unarchived") in Archive Settings with native 14px status outline icons and normalized overall control height to standard 32px matching host inputs and dropdowns.
+
 ## 1.1.2 - 2026-10-18
 
 - Synchronously remove official projection cache records (`session_projcache/sessions/<id>.json`) when permanently deleting a session, preventing orphaned files from lingering on disk and re-importing as blank ghost entries upon host launch (#65).
