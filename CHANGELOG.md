@@ -4,7 +4,7 @@
 
 Published release notes are retained below; new versions are added without removing earlier entries.
 
-## Unreleased
+## 1.1.6 - 2026-10-19
 
 - Fixed the "Archive all conversations" action appearing in a single session's action menu. The workspace menu context is now recorded only from workspace rows and cleared by session rows, other rows, or empty areas, so a stale workspace binding can no longer leak into a session menu.
 - "Archive all conversations" now matches the official sidebar visibility: IM channel and scheduled-task sessions are no longer excluded; only archived, subagent, blank placeholder, and missing-summary sessions are skipped.
