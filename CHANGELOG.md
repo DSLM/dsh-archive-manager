@@ -4,6 +4,15 @@
 
 Published release notes are retained below; new versions are added without removing earlier entries.
 
+## 1.1.4 - 2026-10-19
+
+- Fixed the sidebar workspace "Archive all conversations" action opening via keyboard with a missing or wrong workspace binding, and made its count and disabled state follow live session and archive changes.
+- Bulk archiving now strictly targets regular tasks visible in the main sidebar, excluding IM channels, scheduled automation, subagents, blank drafts, and sessions without a loaded summary; the workspace delete item is also recognized when its copy changes.
+- Archive failures now use localized messages and keep the retry path.
+- The settings entry now uses an independent mask icon so third-party skins cannot hide the host SVG, and the Archived/Unarchived segmented indicator aligns with the 2px inset.
+- Fixed settings modals hiding their footer below the fold on short viewports or long previews by moving content into its own scroll area while keeping the title and actions visible.
+- Removed obsolete workspace dialog helpers and their tests.
+
 ## 1.1.3 - 2026-10-19
 
 - Added "Archive conversations" to the native sidebar workspace actions menu (`...`), safely injected above "Delete workspace" with native styling, icons, and automatic disabled state when no archivable sessions remain.
