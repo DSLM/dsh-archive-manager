@@ -165,6 +165,12 @@ dsh --profile web --dump-config
 
 配置中应包含 `ui-workspace-archive-manager`，且不应再禁用官方 `workspace` 或 `session-projection-cache`。若还留着 `archive-manager-host` 的禁用覆盖，可以删掉。当前 DSH 宿主已无官方 `ui-settings-unarchive-sessions` 入口，本插件不再对其 disable（否则 dump-config 会告警条目不存在）。若 profile 的 `cordis.patch.yml` 仍禁用 `workspace`、`session-projection-cache` 或 `ui-workspace`，请移除这些覆盖，再重启。
 
+### 从旧版升级后，停用时标题还会丢吗？
+
+修复版不再接管官方投影缓存表。启用时会核验历史插件缓存对应的会话身份，并将可接受的记录交接给官方缓存；旧缓存文件保留，不会自动删除。**之前已停用旧版的用户，需要至少启用一次修复版完成交接**，不能只在禁用状态下替换安装包。
+
+交接失败可在后续启用时重试。官方后端不接受的 key（例如含冒号的会话 ID）不会强行迁入，仍保留在旧插件域；这些会话恢复宿主原生缓存行为，不代表其聊天日志被删除。完整边界见[更新日志](CHANGELOG.zh-CN.md)。
+
 ### 归档和删除有什么区别？
 
 归档只是收起会话，可以恢复。**永久删除无法撤销**，并可能一并清理该会话的附件；不会删除你的项目工作目录。删除前会要求确认。

@@ -161,6 +161,12 @@ dsh --profile web --dump-config
 
 The configuration should include `ui-workspace-archive-manager` and must not disable official `workspace` or `session-projection-cache`. A leftover `archive-manager-host` override can be removed. On current DSH hosts the official `ui-settings-unarchive-sessions` entry is gone, so this plugin no longer disables it (doing so only warned that the patch entry was missing). If your profile's `cordis.patch.yml` still disables `workspace`, `session-projection-cache`, or `ui-workspace`, remove those overrides and restart.
 
+### Does disabling the fixed version lose session titles?
+
+The fixed version no longer takes over the official projection-cache table. On activation it checks session identity and hands compatible historical plugin checkpoints back to the official cache, retaining the original cache files. **If you disabled an older version, activate the fixed version at least once to perform this handoff**; replacing the package while it stays disabled cannot run the migration.
+
+Failed handoffs can retry on later activation. Keys rejected by the official backend, such as session IDs containing colons, remain in the old plugin domain rather than being forced into the official cache. Those sessions return to native host cache behavior; their conversation logs are not deleted. See the [changelog](CHANGELOG.md) for details.
+
 ### How is archiving different from deletion?
 
 Archiving puts a conversation away so you can restore it later. **Permanent deletion cannot be undone** and may also remove that session's attachments. It does not delete your project working directory. Deletion requires confirmation.

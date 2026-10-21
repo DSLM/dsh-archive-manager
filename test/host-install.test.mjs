@@ -117,7 +117,7 @@ test("归档能力经真实网关从官方 workspace 实例派发", async () => 
 	assert.deepEqual(await call("workspaceRegistry/archivedSessionMetadata", {}), { ok: true, value: { items: [] } });
 	assert.deepEqual(await call("workspaceRegistry/favoriteSessions", {}), { ok: true, value: { favoriteSessionIds: [] } });
 	assert.equal((await call("workspaceRegistry/diagnoseSession", { input: { sessionId: "missing" } })).ok, true);
-	assert.notEqual(cache.table, officialTable);
+	assert.equal(cache.table, officialTable);
 
 	await fiber.dispose();
 	assert.equal(Reflect.get(registry, "typertRemote"), undefined, "卸下后不得留下绑定");
@@ -161,7 +161,7 @@ test("安全缓存域打开失败时，官方缓存仍支持删除且停用后�
 	assert.equal(host.cache.put, officialPut);
 	assert.equal(host.cache.table, officialTable);
 	const reenabled = await host.enable();
-	assert.notEqual(host.cache.table, officialTable, "恢复存储后可以重新启用安全域");
+	assert.equal(host.cache.table, officialTable, "恢复存储后重新启用仍使用官方域");
 	await reenabled.dispose();
 });
 

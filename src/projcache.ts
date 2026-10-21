@@ -1,11 +1,11 @@
 import type { Context } from "@deepseek-ai/cordis";
 import type { Session } from "@deepseek-ai/dsh-session";
 import type { CheckpointRecord, CheckpointIdentity, Config } from "@deepseek-ai/dsh-session-projection-cache";
-import type { DomainSpec, Domain, KvTable } from "@deepseek-ai/dsh-storage-domain";
+import type { DomainSpec, KvTable } from "@deepseek-ai/dsh-storage-domain";
 
 // 上游以 TypeScript private 声明的扩展点在 JS 运行时仍可访问。
 // 仅此处描述已由多版本回归覆盖的内部契约，避免把整个宿主退化为无类型对象。
-type CacheTable = Pick<KvTable<string, CheckpointRecord>, "get" | "entries" | "keys" | "put" | "delete" | "size"> & { has(id: string): boolean };
+type CacheTable = Pick<KvTable<string, CheckpointRecord>, "get" | "entries" | "keys" | "put" | "update" | "delete" | "size">;
 interface CacheCompat extends Omit<SessionProjectionCache, "write"> {
  ctx: Context;
  write(session: Session): Promise<void>;
@@ -29,9 +29,8 @@ import { defineDomain, domainTable } from "@deepseek-ai/dsh-storage-domain";
 import { trackTombstone } from "./tombstone.js";
 
 /**
- * 当前投影缓存写入独立的 v2 域，避免 DSH alpha.2 将包含冒号的逻辑会话 ID
- * 直接映射为 Windows 文件名。旧名 v1 与旧名 v2 域只在启动时读取并补缺迁入，
- * 迁移不删除原始缓存，任意中断都可在后续启动继续。
+ * 历史版本曾写入独立安全域。现在仅保留这些声明及键映射用于只读交接，
+ * 日常写入完全交还官方域；交接不删除来源记录，可在后续启动重试。
  */
 const storedCheckpointRecord = checkpointRecord.extend({
 	sessionId: checkpointIdentity.shape.cwd.unwrap()
@@ -46,7 +45,7 @@ const safeDomainInput = {
 };
 const safeProjectionCacheDomainSpec = defineDomain(safeDomainInput);
 
-/** The last official whole-file cache format used by DSH rc.2. */
+/** 历史官方整文件格式，仅保留导出契约，不再尝试重复打开官方域。 */
 const legacyOptionalIdentityFields: Partial<Record<"isSeeded" | "inheritedEventCount", true>> = {};
 for (const field of ["isSeeded", "inheritedEventCount"] as const) {
 	// rc.2 的身份 schema 尚未定义这些字段；向 Zod 传入不存在的字段会在
@@ -87,7 +86,7 @@ function unwrapStoredCheckpoint<T extends { identity: unknown; rows: unknown }>(
 	return { identity: stored.identity, rows: stored.rows };
 }
 
-/** Map the Session-id table contract onto path-safe physical keys. */
+/** 历史安全表适配器；保留旧导出，正式安装路径不再使用它接管缓存。 */
 class SafeSessionTable {
 	declare table: KvTable<string, StoredCheckpoint>;
 	constructor(table: KvTable<string, StoredCheckpoint>) {
@@ -178,8 +177,8 @@ function normalizeLegacyRecord(record: unknown): CheckpointRecord | undefined {
 	if (identity.isSeeded === true) {
 		if (!validOffset) return void 0;
 		checkpointRecord.parse(record);
-// 旧宿主 schema 会剔除未知身份字段，校验后保留原记录。
-return record as CheckpointRecord;
+		// 旧宿主 schema 会剔除未知身份字段，校验后保留原记录。
+		return record as CheckpointRecord;
 	}
 	if (identity.isSeeded !== void 0 && identity.isSeeded !== false) return void 0;
 	if (inheritedEventCount !== void 0 && inheritedEventCount !== 0) return void 0;
@@ -195,194 +194,182 @@ return record as CheckpointRecord;
 	return normalized as CheckpointRecord;
 }
 
-async function importMissingRecords(ctx: Context, target: CacheTable, records: readonly (readonly [string, unknown])[], label: string) {
-	let imported = 0;
-	for (const [sessionId, record] of records) {
-		if (target.has(sessionId)) continue;
-		try {
-			const normalized = normalizeLegacyRecord(record);
-			if (normalized === void 0) {
-				ctx.logger.warn(`archive-manager projcache: ${label} row "${sessionId}" import skipped because its lifecycle identity is incomplete`);
-				continue;
-			}
-			await target.put(sessionId, normalized);
-			imported += 1;
-		} catch (error) {
-			ctx.logger.warn(`archive-manager projcache: ${label} row "${sessionId}" import failed: ${String(error)}`);
-		}
-	}
-	return imported;
+/** 迁移只读会话头；播种会话另读取句柄的继承切点，不读取正文。 */
+export interface MigrationPersistence {
+	stat(id: string): Promise<{ header: { id: string; version?: number; createdAt: number; cwd?: string; isSeeded?: boolean } } | undefined>;
+	open?(id: string, mode: "read"): Promise<{ inheritedEventCount: number; close(): Promise<void> }>;
 }
 
-/**
- * 合并归档管理器旧名 v2、旧名 v1、官方新版逐会话与旧版整文件缓存。目标域记录
- * 最高优先，随后按新旧顺序只补缺失记录；任一来源失败时仍继续尝试另一个来源。
- */
-async function importPreviousProjectionCache(ctx: Context, target: CacheTable, currentTable?: CacheTable) {
-	const sameSpec = projectionCacheDomainSpec.version === legacyProjectionCacheDomainSpec.version
-		&& projectionCacheDomainSpec.layout === (legacyProjectionCacheDomainSpec as DomainSpec).layout;
-	const legacySafeV2 = await readLegacySafeRecords(ctx, legacySafeV2ProjectionCacheDomainSpec, "archive-manager v2");
-	const legacySafe = await readLegacySafeRecords(ctx, legacySafeProjectionCacheDomainSpec, "archive-manager v1");
-	// overlay 安装时官方域仍在使用，直接借用其表，不重复打开或关闭宿主持有的域。
-	const legacy = sameSpec && currentTable !== undefined
-		? { opened: true, records: [...currentTable.entries()] }
-		: await readSourceRecords(ctx, legacyProjectionCacheDomainSpec, "legacy v3");
-	let imported = 0;
-	if (legacySafeV2.opened) imported += await importMissingRecords(ctx, target, legacySafeV2.records, "archive-manager v2");
-	if (legacySafe.opened) imported += await importMissingRecords(ctx, target, legacySafe.records, "archive-manager v1");
-	if (!sameSpec) {
-		const current = currentTable !== undefined
-			? { opened: true, records: [...currentTable.entries()] }
-			: await readSourceRecords(ctx, projectionCacheDomainSpec, "current");
-		if (current.opened) imported += await importMissingRecords(ctx, target, current.records, "current");
+function sameIdentity(left: CheckpointIdentity, right: CheckpointIdentity): boolean {
+	return left.createdAt === right.createdAt && left.cwd === right.cwd
+		&& left.formatVersion === right.formatVersion
+		&& (left.isSeeded ?? false) === (right.isSeeded ?? false)
+		&& (left.inheritedEventCount ?? 0) === (right.inheritedEventCount ?? 0);
+}
+
+/** 同版本投影仅接受更高序号；不同版本不猜测谁更新。 */
+function mergeCheckpoint(current: CheckpointRecord | undefined, incoming: CheckpointRecord): CheckpointRecord {
+	// 历史记录无法证明格式语义时，不降级同生命周期的当前格式缓存。
+	if (current !== undefined && incoming.identity.formatVersion === undefined
+		&& current.identity.formatVersion !== undefined
+		&& current.identity.createdAt === incoming.identity.createdAt
+		&& current.identity.cwd === incoming.identity.cwd
+		&& (current.identity.isSeeded ?? false) === (incoming.identity.isSeeded ?? false)) return current;
+	if (current === undefined || !sameIdentity(current.identity, incoming.identity)) return incoming;
+	const rows = { ...current.rows };
+	let changed = false;
+	for (const [key, row] of Object.entries(incoming.rows)) {
+		const previous = rows[key];
+		if (previous === undefined || (previous.ver === row.ver && previous.seq < row.seq)) {
+			rows[key] = row;
+			changed = true;
+		}
 	}
-	if (legacy.opened) imported += await importMissingRecords(ctx, target, legacy.records, "legacy v3");
+	return changed ? { identity: current.identity, rows } : current;
+}
+
+/** 只向官方表交接旧插件缓存；不再打开或重定向官方域，也不删除来源数据。 */
+async function importPreviousProjectionCache(ctx: Context, target: CacheTable, persistence?: MigrationPersistence, guards?: GuardState) {
+	if (persistence === undefined) return 0;
+	const sources = [
+		await readLegacySafeRecords(ctx, safeProjectionCacheDomainSpec, "archive-manager current"),
+		await readLegacySafeRecords(ctx, legacySafeV2ProjectionCacheDomainSpec, "archive-manager v2"),
+		// 逐记录后端会把不同版本当缺行，打开成功也须单独读取 v1。
+		await readLegacySafeRecords(ctx, legacySafeProjectionCacheDomainSpec, "archive-manager v1"),
+	];
+	let imported = 0;
+	for (const source of sources) for (const [id, raw] of source.records) {
+		// 当前 per-record 后端拒绝冒号等物理键；旧行保留在来源域，不另建替代缓存。
+		if (projectionCacheDomainSpec.layout === "per-record" && !/^[A-Za-z0-9_-]+$/.test(id)) continue;
+		guards?.revisions.set(id, 0);
+		const revision = 0;
+		const unchanged = () => !guards?.deleted.has(id) && (guards?.revisions.get(id) ?? 0) === revision;
+		try {
+			const record = normalizeLegacyRecord(raw);
+			if (record === undefined || !unchanged()) continue;
+			const snapshot = await persistence.stat(id);
+			const header = snapshot?.header;
+			if (!header || header.id !== id || header.createdAt !== record.identity.createdAt
+				|| header.cwd !== record.identity.cwd
+				|| (header.isSeeded ?? false) !== (record.identity.isSeeded ?? false)
+				|| (record.identity.formatVersion !== undefined && record.identity.formatVersion !== header.version)) continue;
+			if (header.isSeeded) {
+				if (!persistence.open) continue;
+				const handle = await persistence.open(id, "read");
+				try { if (handle.inheritedEventCount !== record.identity.inheritedEventCount) continue; }
+				finally { await handle.close(); }
+			}
+			if (!unchanged()) continue;
+			const existing = target.get(id);
+			if (existing !== undefined && mergeCheckpoint(existing, record) === existing) continue;
+			// update 的回调在官方写队列内部读取最新值，包含安装前已排队的写入。
+			try {
+				await target.update(id, current => unchanged() ? mergeCheckpoint(current, record) : current);
+			} catch (error) {
+				if (!(error instanceof Error) || Reflect.get(error, "code") !== "missing-key") throw error;
+				// 新写入会同步增加 revision；缺行回退期间发生过写入则留给官方结果。
+				if (!unchanged()) continue;
+				await target.put(id, record);
+			}
+			imported += 1;
+		} catch (error) {
+			ctx.logger.warn(`archive-manager projcache: historical row "${id}" handoff failed: ${String(error)}`);
+		} finally {
+			guards?.revisions.delete(id);
+		}
+	}
 	return imported;
 }
-//#region lib/types/index.js
-/**
- * dsh-archive-manager projcache 半边。
- *
- * `ArchiveProjectionCache` 继承上游 `SessionProjectionCache`，保留服务名
- * `sessionProjectionCache` 与 fail-soft 写路径，但写入独立、路径安全的
- * `session_projcache_archive_manager_v2` 域。旧名 v1 与 v2 域只在启动时
- * 读取并补缺迁入；归档管理的
- * `deleteSession` 增加三处守护：
- *
- * - `delete(id)` - 永久移除兼容域中该会话经 SHA-256 映射的缓存投影行，
- *   写入前先登记墓碑。
- * - `whenIdle()` - 全部在途公开写入落定后 resolve。
- * - 墓碑挡住已删除会话的写入：迟到的写入要么被直接拦截，要么在
- *   落定后补删自己的残留行，不会复活已删除的缓存条目。守护覆盖
- *   `write()`（dispose 写后路径）与 `put()`（rc.2 的 `putSoft` 最终调用
- *   它，alpha.2 的 `coldSnapshot` 则直接调用它），两代落盘路径都纳入
- *   `whenIdle` 跟踪。
- *
- * 默认导出是 Service 子类（与上游 `@deepseek-ai/dsh-session-projection-cache`
- * 包同形），profile 补丁可直接替换 `session-projection-cache` 服务行，
- * 无需其他接线改动。
- */
-var ArchiveProjectionCache = class extends CacheBase {
-	/** 已永久删除的会话：其投影缓存行不再允许写入。 */
-	deletedSessionIds = /* @__PURE__ */ new Set<string>();
-	/** 墓碑插入顺序，用于在上限处淘汰最旧项。 */
-	deletedSessionOrder: string[] = [];
-	deletedSessionTombstoneLimit = 4096;
-	/** 在途写入的队尾（只含已落定的 promise）。 */
-	writeTail = Promise.resolve();
-	constructor(ctx: Context, config: Config) {
-		super(ctx, config);
-	}
-	/**
-	 * Replace the official cache domain with the path-safe compatibility
-	 * domain, then preserve the upstream listener/write implementation.
-	 */
+/** 保留旧导出入口，但初始化和持久化均使用官方服务实现。 */
+class ArchiveProjectionCache extends CacheBase {
+	static inject = [...SessionProjectionCache.inject, "sessionPersistence"];
+	declare delete: (id: string) => Promise<void>;
+	declare whenIdle: () => Promise<void>;
+	declare clearTombstone: (id: string) => void;
 	async [Service.init]() {
-		const domain = await this.ctx.storageDomain.open(safeProjectionCacheDomainSpec);
-		this.ctx.effect(() => () => domain.close(), "sessionProjectionCache.domainClose");
-		const table = new SafeSessionTable(domain.table("sessions"));
-		this.table = table;
-		await importPreviousProjectionCache(this.ctx, table);
-		this.installWritePath();
+		await super[Service.init]();
+		const uninstall = await installArchiveProjectionCache(this, Reflect.get(this.ctx, "sessionPersistence") as MigrationPersistence | undefined);
+		this.ctx.effect(() => uninstall, "archive-manager.projcacheGuards");
 	}
-	/** 跟踪公开写入路径，避免依赖上游私有 `flushSoft` 的实现细节。 */
-	write(session: Session) {
-		const task = this.writeCore(session);
-		this.writeTail = Promise.allSettled([this.writeTail, task]).then(() => void 0);
-		return task;
-	}
-	/**
-	 * 墓碑正确性依赖：super.write(session) 一次整体写入，返回后不再有后续异步落盘。
-	 * 若上游改成多阶段异步，(C) 补删会漏掉后续写入，deletedSessionIds 挡不住复活。
-	 */
-	async writeCore(session: Session) {
-		if (this.deletedSessionIds.has(session.id)) return;
-		await super.write(session);
-		if (this.deletedSessionIds.has(session.id)) await this.requireTable().delete(session.id);
-	}
-	put(id: string, identity: CheckpointIdentity, rows: CheckpointRecord["rows"]) {
-		// alpha.2 coldSnapshot unconditionally chains `.catch()` onto put().
-		// A blocked write must therefore preserve the upstream Promise contract.
-		if (this.deletedSessionIds.has(id)) return Promise.resolve();
-		const task = this.putCore(id, identity, rows);
-		this.writeTail = Promise.allSettled([this.writeTail, task]).then(() => void 0);
-		return task;
-	}
-	async putCore(id: string, identity: CheckpointIdentity, rows: CheckpointRecord["rows"]) {
-		await super.put(id, identity, rows);
-		if (this.deletedSessionIds.has(id)) await this.requireTable().delete(id);
-	}
-	/**
-	 * 全部被跟踪的在途写入落定后 resolve（含失败）。空闲缓存上调用立即返回。
-	 * @returns 跟踪写入落定后的 resolution。
-	 */
-	whenIdle() {
-		return this.writeTail;
-	}
-	/**
-	 * 永久移除一个会话的缓存投影行。
-	 * 同时清理当前表与底层原生表（如官方 session_projcache 域），防止残留孤儿文件。
-	 * @param id - 要删除缓存行的会话。
-	 * @returns 行删除完成后的 resolution。
-	 */
-	async delete(id: string) {
-		trackTombstone(this.deletedSessionIds, this.deletedSessionOrder, id, this.deletedSessionTombstoneLimit);
-		const tasks = [this.requireTable().delete(id)];
-		const secondary = (this as { secondaryTable?: CacheTable }).secondaryTable;
-		if (secondary !== undefined && typeof secondary.delete === "function") {
-			tasks.push(secondary.delete(id).catch(() => false));
-		}
-		await Promise.all(tasks);
-	}
-	/** 撤销墓碑（供测试与同 id 新生命周期复用路径使用）。 */
-	clearTombstone(id: string) {
-		this.deletedSessionIds.delete(id);
-		const idx = this.deletedSessionOrder.indexOf(id);
-		if (idx !== -1) this.deletedSessionOrder.splice(idx, 1);
-	}
-};
-//#endregion
-// 独立接收对象把在途任务固定在安装时的表和墓碑上；恢复官方实例不改变其异步续体。
-const projectionGuards = new WeakMap<object, () => Promise<void>>();
-/** 安全域无法打开时仍须安装删除墓碑和写入屏障，复用官方缓存表。 */
-export function installArchiveProjectionCacheGuards(cache: object, table?: CacheTable, secondaryTable?: CacheTable): () => Promise<void> {
-	const target = ((Reflect.get(cache, symbols.original) as object | undefined) ?? cache) as CacheCompat & Record<string | symbol, unknown>;
+}
+/** 删除版本也用于迁移：并发写入后，旧缓存不得再覆盖该会话。 */
+interface GuardState {
+	uninstall(): Promise<void>;
+	deleted: Set<string>;
+	revisions: Map<string, number>;
+}
+const projectionGuards = new WeakMap<object, GuardState>();
+
+/** 只包装删除所需入口，保留宿主的初始化、读取、表和原始写入实现。 */
+export function installArchiveProjectionCacheGuards(cache: object): () => Promise<void> {
+	const target = ((Reflect.get(cache, symbols.original) as object | undefined) ?? cache) as CacheCompat & Record<string, unknown>;
 	const existing = projectionGuards.get(target);
-	if (existing) return existing;
-	const fields = {
-		table: table ?? target.table,
-		secondaryTable: secondaryTable !== (table ?? target.table) ? secondaryTable : undefined,
-		deletedSessionIds: new Set<string>(), deletedSessionOrder: [] as string[],
-		deletedSessionTombstoneLimit: 4096, writeTail: Promise.resolve(),
-	};
-	const receiver = Object.create(target, Object.fromEntries(Object.entries(fields).map(([name, value]) => [name, { value, writable: true, configurable: true }]))) as CacheCompat & Record<string, unknown>;
-	const restoredMethods: { name: string; descriptor: PropertyDescriptor | undefined }[] = [];
+	if (existing) return existing.uninstall;
+	const table = target.requireTable();
+	const originalWrite = target.write;
+	const originalPut = target.put;
+	const deleted = new Set<string>();
+	const order: string[] = [];
+	const revisions = new Map<string, number>();
+	let tail = Promise.resolve();
 	let active = true;
+	const track = <T>(task: Promise<T>): Promise<T> => {
+		tail = Promise.allSettled([tail, task]).then(() => void 0);
+		return task;
+	};
+	const changed = (id: string) => {
+		if (revisions.has(id)) revisions.set(id, revisions.get(id)! + 1);
+	};
+	const put = (id: string, identity: CheckpointIdentity, rows: CheckpointRecord["rows"]): Promise<void> => {
+		changed(id);
+		if (deleted.has(id)) return Promise.resolve();
+		// 原始 put 在首次 await 前进入官方表的串行队列，delete 紧随其后排队。
+		return track(Reflect.apply(originalPut, receiver, [id, identity, rows]) as Promise<void>);
+	};
+	// 在途 write 恢复后仍使用安装时的 put 守护，避免 flush 后的嵌套写入复活墓碑。
+	const writeTable = Object.create(table, { put: { value: (id: string, record: CheckpointRecord) =>
+		deleted.has(id) ? Promise.resolve() : table.put(id, record) } }) as CacheTable;
+	const receiver = Object.create(target, {
+		put: { value: put, configurable: true },
+		requireTable: { value: () => writeTable },
+	}) as CacheCompat;
+	const methods = {
+		write(session: Session): Promise<void> {
+			if (deleted.has(session.id)) return Promise.resolve();
+			return track(Reflect.apply(originalWrite, receiver, [session]) as Promise<void>);
+		},
+		put,
+		delete(id: string): Promise<void> {
+			changed(id);
+			trackTombstone(deleted, order, id, 4096);
+			return track(table.delete(id).then(() => void 0));
+		},
+		whenIdle: () => tail,
+		clearTombstone(id: string) {
+			changed(id);
+			deleted.delete(id);
+			const index = order.indexOf(id);
+			if (index !== -1) order.splice(index, 1);
+		},
+	};
+	const restored: { name: string; descriptor?: PropertyDescriptor; wrapper: unknown }[] = [];
 	const restore = () => {
 		active = false;
-		for (const item of [...restoredMethods].reverse()) {
-			if (item.descriptor) Object.defineProperty(target, item.name, item.descriptor);
-			else delete target[item.name];
+		for (const { name, descriptor, wrapper } of [...restored].reverse()) {
+			if (target[name] !== wrapper) continue;
+			if (descriptor) Object.defineProperty(target, name, descriptor);
+			else delete target[name];
 		}
 	};
 	try {
-		for (const name of Object.getOwnPropertyNames(ArchiveProjectionCache.prototype)) {
-			if (name === "constructor") continue;
-			const method = Reflect.get(ArchiveProjectionCache.prototype, name);
-			if (typeof method !== "function") continue;
-			Object.defineProperty(receiver, name, { value: method, writable: true, configurable: true });
+		for (const [name, method] of Object.entries(methods)) {
 			const previous = target[name];
-			restoredMethods.push({ name, descriptor: Object.getOwnPropertyDescriptor(target, name) });
-			target[name] = (...args: unknown[]) => {
-				// 已保存的旧入口也不能在卸载后继续向即将关闭的安全域写入。
-				if (!active) {
-					if (typeof previous === "function") return Reflect.apply(previous, target, args);
-					throw new Error("archive-manager: projection cache guards are stopped");
-				}
-				const result = Reflect.apply(method, receiver, args);
-				if (name === "delete") receiver.writeTail = Promise.allSettled([receiver.writeTail, result]).then(() => void 0);
-				return result;
+			const wrapper = (...args: unknown[]) => {
+				if (!active && typeof previous === "function") return Reflect.apply(previous, target, args);
+				return Reflect.apply(method, target, args);
 			};
+			restored.push({ name, descriptor: Object.getOwnPropertyDescriptor(target, name), wrapper });
+			target[name] = wrapper;
 		}
 	} catch (error) {
 		restore();
@@ -391,51 +378,23 @@ export function installArchiveProjectionCacheGuards(cache: object, table?: Cache
 	let disposal: Promise<void> | undefined;
 	const uninstall = () => {
 		if (disposal) return disposal;
-		const drain = receiver.writeTail as Promise<void>;
+		const drain = tail;
 		restore();
 		projectionGuards.delete(target);
-		// 外层 write 的任务也覆盖其 await 之后才进入的嵌套 put，无需追逐新队尾。
 		return disposal = drain;
 	};
-	projectionGuards.set(target, uninstall);
+	projectionGuards.set(target, { uninstall, deleted, revisions });
 	return uninstall;
 }
-const projectionOverlay = Symbol.for("dsh-archive-manager.projcache-overlay");
-/**
- * 把安全缓存域装到官方 `sessionProjectionCache` 实例上。
- * 停用时恢复官方表，不关掉官方服务。
- */
-export async function installArchiveProjectionCache(cache: object): Promise<() => Promise<void>> {
-	// 服务代理会把 ctx 切换到调用方，接管与恢复必须使用有存储权限的原始实例。
-	const target = ((Reflect.get(cache, symbols.original) as object | undefined) ?? cache) as CacheCompat & Record<string | symbol, unknown>;
-	if (target[projectionOverlay] === true) return async () => {};
-	const domain = await target.ctx.storageDomain.open(safeProjectionCacheDomainSpec);
-	let installed = false;
-	const previousTable = target.table;
-	let uninstallGuards: (() => Promise<void>) | undefined;
+/** 安装删除守护；官方投影表及其读写路径保持原样。 */
+export async function installArchiveProjectionCache(cache: object, persistence?: MigrationPersistence): Promise<() => Promise<void>> {
+	const target = ((Reflect.get(cache, symbols.original) as object | undefined) ?? cache) as CacheCompat;
+	const uninstall = installArchiveProjectionCacheGuards(cache);
 	try {
-		const table = new SafeSessionTable(domain.table("sessions"));
-		await importPreviousProjectionCache(target.ctx, table, previousTable);
-		uninstallGuards = installArchiveProjectionCacheGuards(cache, table, previousTable);
-		target.table = table;
-		target[projectionOverlay] = true;
-		installed = true;
-		let disposal: Promise<void> | undefined;
-		return () => disposal ??= (async () => {
-			if (target[projectionOverlay] !== true) return;
-			const drain = uninstallGuards!();
-			target.table = previousTable;
-			delete target[projectionOverlay];
-			await drain;
-			await domain.close();
-		})();
+		await importPreviousProjectionCache(target.ctx, target.requireTable(), persistence, projectionGuards.get(target));
+		return uninstall;
 	} catch (error) {
-		if (!installed) {
-			const drain = uninstallGuards?.();
-			target.table = previousTable;
-			delete target[projectionOverlay];
-			try { await drain; } finally { await domain.close(); }
-		}
+		await uninstall();
 		throw error;
 	}
 }

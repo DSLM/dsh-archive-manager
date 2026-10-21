@@ -1,12 +1,12 @@
 import type { Context } from "@deepseek-ai/cordis";
 import { bindArchiveManagerRemote, installArchiveWorkspace, tolerateStaleFileUploadResolver } from "./workspace.js";
-import { installArchiveProjectionCache, installArchiveProjectionCacheGuards } from "./projcache.js";
+import { installArchiveProjectionCache, installArchiveProjectionCacheGuards, type MigrationPersistence } from "./projcache.js";
 
 /**
  * 根宿主安装入口。官方 workspace 与 sessionProjectionCache 保持运行，
  * 归档能力装在它们的实例上；本服务停用时卸下，workspaceController 仍能创建工作区。
  */
-const inject = ["workspaceRegistry", "sessionProjectionCache", "typert"];
+const inject = ["workspaceRegistry", "sessionProjectionCache", "sessionPersistence", "typert"];
 
 async function apply(ctx: Context) {
 	// 与子类入口同样在服务上装冲突容忍：热重载后残留的 fileUploads 解析器可被替换。
@@ -30,9 +30,9 @@ async function apply(ctx: Context) {
 	};
 	try {
 		try {
-			uninstallCache = await installArchiveProjectionCache(cache);
+			uninstallCache = await installArchiveProjectionCache(cache, Reflect.get(ctx, "sessionPersistence") as MigrationPersistence);
 		} catch (error) {
-			ctx.logger?.warn?.(`archive-manager: projection cache overlay skipped: ${String(error)}`);
+			ctx.logger?.warn?.(`archive-manager: projection cache handoff skipped: ${String(error)}`);
 			uninstallCache = installArchiveProjectionCacheGuards(cache);
 		}
 		unbindRemote = bindArchiveManagerRemote(ctx);
