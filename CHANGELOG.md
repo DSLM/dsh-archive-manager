@@ -13,6 +13,7 @@ Published release notes are retained below; new versions are added without remov
 - Batch archive and restore share one serial loop. When one session gets an official error, the list or confirmation card keeps that reason and the rest continue. Successful items are not repeated. Batch delete still uses the official scoped call.
 - Batch results no longer show a permanent zero for unprocessed items. The retry count is the failed items, so the organizer summary matches the retry button.
 - Keep only the tombstones and in-flight write barrier needed for permanent deletion. Disabling removes those guards without closing the official cache service. The barrier tracks only tasks that entered through the guards; official cache writes started before activation cannot be reliably drained and may leave an orphan cache row after disabling in an exceptional interleaving. Closing this gap requires host-side write-drain support.
+- Session repair parses individual Zstandard frames using an explicit boundary scanner, ensuring reliable single-frame header extraction and verification across Node 24.22+ and earlier versions.
 - Upgrade note: users who disabled an older version must activate the fixed version at least once to hand off old records. Keys rejected by the official backend, such as IDs containing colons, remain in the legacy domain and return to native host behavior instead of receiving a replacement cache.
 
 ## 1.1.6 - 2026-10-19

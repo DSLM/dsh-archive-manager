@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { zstdCompressSync } from "node:zlib";
-import { childCatalogFact, decodeRepairLog, normalizeAutomationSources, classifySessionError } from "../src/session-repair.ts";
+import { childCatalogFact, decompressFrame, decodeRepairLog, normalizeAutomationSources, classifySessionError } from "../src/session-repair.ts";
 test("直属子会话证据保留创建时间和继承截点之后的描述符", () => {
   const fact = childCatalogFact({ id: "child", createdAt: 5 }, [{ type: "subagent/descriptor", seq: 1, data: { old: true } }, { type: "subagent/descriptor", seq: 4, data: { mode: "one-shot" } }], 3);
   assert.deepEqual(fact, { childId: "child", childCreatedAt: 5, descriptorCount: 1, descriptor: { mode: "one-shot" } });
@@ -227,8 +227,11 @@ test("压缩修复必须独立写入头帧，并可纠正此前生成的单帧�
     await plan.publish(plan.token, async () => {
     });
     const { zstdDecompressSync } = await import("node:zlib");
+    const { decompressFrame } = await import("../lib/session-repair.js");
     const output = await readFile(target);
-    assert.equal(zstdDecompressSync(output).toString("utf8").trim().split("\n").length, 1, "第一帧必须只有头部");
+    const firstFrame = decompressFrame(output, 1024 * 1024);
+    assert.equal(firstFrame.buffer.toString("utf8").trim().split("\n").length, 1, "第一帧必须只有头部");
+    assert.ok(firstFrame.engine.bytesWritten < output.length, "必须包含独立的第二帧");
     const plain = decodeRepairLog(output, true).map(JSON.stringify).join("\n") + "\n";
     const altered = zstdCompressSync(Buffer.from(plain.replace("正文", "新的正文")));
     await writeFile(target, altered);
@@ -238,7 +241,8 @@ test("压缩修复必须独立写入头帧，并可纠正此前生成的单帧�
     const correction = await prepareAutomationRepair({ directory, target, sessionId: "a", format: fakeFormat });
     await correction.publish(correction.token, async () => {
     });
-    assert.equal(zstdDecompressSync(await readFile(target)).toString("utf8").trim().split("\n").length, 1);
+    const correctedFirstFrame = decompressFrame(await readFile(target), 1024 * 1024);
+    assert.equal(correctedFirstFrame.buffer.toString("utf8").trim().split("\n").length, 1);
     await assert.rejects(prepareAutomationRepair({ directory, target, sessionId: "a", format: fakeFormat }), /无需|匹配|已有/);
   } finally {
     await rm(directory, { recursive: true, force: true });

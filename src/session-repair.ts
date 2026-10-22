@@ -9,11 +9,47 @@ import * as zlib from 'node:zlib';
 export { classifySessionError } from './archive-discovery.js';
 const LIMIT = 32 * 1024 * 1024;
 /** Node 22 声明遗漏 info: true 的返回重载；按实际返回值验证后使用。 */
-function decompressFrame(bytes: Buffer, maxOutputLength: number) {
-  const result = record(zlib.zstdDecompressSync(bytes, { info: true, maxOutputLength }));
-  const engine = record(result.engine);
-  if (!Buffer.isBuffer(result.buffer) || typeof engine.bytesWritten !== 'number') throw new Error('压缩帧返回格式无效');
-  return { buffer: result.buffer, engine: { bytesWritten: engine.bytesWritten } };
+/** 读取首个独立 Zstandard 帧的边界，避免 Node 24.22+ 一次性解压所有连续帧。 */
+export function scanFirstZstdFrame(buffer: Buffer): { start: number; end: number } | undefined {
+  if (buffer.length < 4 || buffer.readUInt32LE(0) !== 4247762216) return undefined;
+  let offset = 4;
+  if (offset >= buffer.length) return undefined;
+  const descriptor = buffer.readUInt8(offset++);
+  if ((descriptor & 24) !== 0) return undefined;
+  const contentSizeFlag = descriptor >>> 6;
+  const singleSegment = (descriptor & 32) !== 0;
+  const checksum = (descriptor & 4) !== 0;
+  const dictionaryFlag = descriptor & 3;
+  const dictionaryBytes = dictionaryFlag === 3 ? 4 : dictionaryFlag;
+  const contentSizeBytes = contentSizeFlag === 0 ? (singleSegment ? 1 : 0) : (1 << contentSizeFlag);
+  const remainingHeaderBytes = (singleSegment ? 0 : 1) + dictionaryBytes + contentSizeBytes;
+  if (buffer.length - offset < remainingHeaderBytes) return undefined;
+  offset += remainingHeaderBytes;
+  for (;;) {
+    if (buffer.length - offset < 3) return undefined;
+    const blockHeader = buffer.readUIntLE(offset, 3);
+    offset += 3;
+    const lastBlock = (blockHeader & 1) !== 0;
+    const blockType = (blockHeader >>> 1) & 3;
+    const blockSize = blockHeader >>> 3;
+    if (blockType === 3) return undefined;
+    const payloadBytes = blockType === 1 ? 1 : blockSize;
+    if (buffer.length - offset < payloadBytes) return undefined;
+    offset += payloadBytes;
+    if (lastBlock) break;
+  }
+  if (checksum) {
+    if (buffer.length - offset < 4) return undefined;
+    offset += 4;
+  }
+  return { start: 0, end: offset };
+}
+/** 按单帧边界解压首帧，兼容 Node 22 与 Node 24 全版本。 */
+export function decompressFrame(bytes: Buffer, maxOutputLength: number) {
+  const frame = scanFirstZstdFrame(bytes);
+  const target = frame ? bytes.subarray(0, frame.end) : bytes;
+  const buffer = zlib.zstdDecompressSync(target, { maxOutputLength });
+  return { buffer, engine: { bytesWritten: frame ? frame.end : bytes.length } };
 }
 const digest = (bytes: Buffer) => createHash('sha256').update(bytes).digest('hex');
 /** 严格读取所有独立压缩帧；拒绝残缺末尾，避免把截断误当修复。 */
