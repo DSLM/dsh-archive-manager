@@ -445,7 +445,10 @@ export function tolerateStaleFileUploadResolver(ctx: Context) {
 	registerAgentResolver[fileUploadResolverRestart] = true;
 	uploads.registerAgentResolver = registerAgentResolver;
 }
-var ArchiveWorkspaceRegistry = class extends (WorkspaceRegistry as unknown as WorkspaceConstructor) {
+type RestorableWorkspaceConstructor = new (ctx: Context) => InstanceType<WorkspaceConstructor> & {
+	unarchiveSession(sessionId: string): Promise<unknown>;
+};
+var ArchiveWorkspaceRegistry = class extends (WorkspaceRegistry as unknown as RestorableWorkspaceConstructor) {
 	static inject = [
 		"storageDomain",
 		"sessionPersistence",
@@ -837,10 +840,7 @@ var ArchiveWorkspaceRegistry = class extends (WorkspaceRegistry as unknown as Wo
 	}
 	/** 官方负责移出归档集合。这里只补远程接口需要的当前集合，不补工作区记账。 */
 	async unarchiveSession(sessionId: string) {
-		const parent = WorkspaceRegistry.prototype as unknown as {
-			unarchiveSession(this: object, id: string): Promise<void>;
-		};
-		await parent.unarchiveSession.call(this, sessionId);
+		await super.unarchiveSession(sessionId);
 		return { archivedSessionIds: [...this.requireState().archivedSessionIds] };
 	}
 	/**
@@ -1350,6 +1350,8 @@ export function installArchiveWorkspace(registry: object): () => void {
 		}
 	}
 	const restoreRemote = bindOverlayRemote(registry);
+	const originalUnarchive = target.unarchiveSession as (this: object, id: string) => Promise<unknown>;
+	const unarchiveDescriptor = Object.getOwnPropertyDescriptor(target, "unarchiveSession");
 	const restoredMethods: { name: string; hadOwn: boolean; previous: unknown }[] = [];
 	const copiedMethods: string[] = [];
 	for (const name of Object.getOwnPropertyNames(ArchiveWorkspaceRegistry.prototype)) {
@@ -1357,7 +1359,18 @@ export function installArchiveWorkspace(registry: object): () => void {
 		const method = Reflect.get(ArchiveWorkspaceRegistry.prototype, name);
 		if (typeof method !== "function") continue;
 		restoredMethods.push({ name, hadOwn: Object.hasOwn(target, name), previous: target[name] });
-		target[name] = method;
+		if (name === "unarchiveSession") {
+			// 保留安装前的有效入口（可能由别的插件包装），只追加远程返回契约。
+			Object.defineProperty(target, name, {
+				configurable: unarchiveDescriptor?.configurable ?? true,
+				enumerable: unarchiveDescriptor?.enumerable ?? true,
+				writable: true,
+				value: async function (this: InstanceType<WorkspaceConstructor>, sessionId: string) {
+					await originalUnarchive.call(this, sessionId);
+					return { archivedSessionIds: [...this.requireState().archivedSessionIds] };
+				},
+			});
+		} else target[name] = method;
 		copiedMethods.push(name);
 	}
 	const restoreMarkers = markOverlayMethods(registry, ARCHIVE_REMOTE_METHODS.filter((method) => copiedMethods.includes(method)));
@@ -1367,7 +1380,8 @@ export function installArchiveWorkspace(registry: object): () => void {
 		restoreMarkers();
 		restoreRemote();
 		for (const item of restoredMethods.reverse()) {
-			if (item.hadOwn) target[item.name] = item.previous;
+			if (item.name === "unarchiveSession" && unarchiveDescriptor !== undefined) Object.defineProperty(target, item.name, unarchiveDescriptor);
+			else if (item.hadOwn) target[item.name] = item.previous;
 			else delete target[item.name];
 		}
 		for (const key of addedFields) delete target[key];
