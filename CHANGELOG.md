@@ -10,6 +10,7 @@ Published release notes are retained below; new versions are added without remov
 - On activation, hand historical plugin checkpoints back to the official cache after checking session identity. Keep newer same-version official projections and official rows with different projection versions. Failed handoffs can retry on later activation; source cache files are retained.
 - Archive and restore now use the official workspace APIs. Archiving an unknown session reports the official error instead of being skipped, and restore no longer reattaches a session that the workspace no longer lists. The plugin no longer blocks the official workspace update from dropping a member that has no path index.
 - Batch archive and restore share one serial loop. When one session gets an official error, the list or confirmation card keeps that reason and the rest continue. Successful items are not repeated. Batch delete still uses the official scoped call.
+- Batch results no longer show a permanent zero for unprocessed items. The retry count is the failed items, so the organizer summary matches the retry button.
 - Keep only the tombstones and in-flight write barrier needed for permanent deletion. Disabling removes those guards without closing the official cache service.
 - Upgrade note: users who disabled an older version must activate the fixed version at least once to hand off old records. Keys rejected by the official backend, such as IDs containing colons, remain in the legacy domain and return to native host behavior instead of receiving a replacement cache.
 

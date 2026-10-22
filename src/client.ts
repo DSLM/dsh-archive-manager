@@ -746,7 +746,6 @@ export function startArchiveClient(require: HostRequire) {
 						succeeded: result.deletedSessionIds,
 						skipped: result.skippedSessionIds,
 						failures: result.failures,
-						unprocessed: [],
 						remaining,
 						refreshError: "refreshError" in result && typeof result.refreshError === "string" ? result.refreshError : null,
 						kind: "delete",

@@ -36,7 +36,6 @@ test("批量失败记下原因并继续后续，重试只重复失败项", async
   assert.deepEqual(calls, ["a", "b", "c"]);
   assert.deepEqual(result.succeeded, ["a", "c"]);
   assert.deepEqual(result.remaining, ["b"]);
-  assert.deepEqual(result.unprocessed, []);
   assert.equal(result.failures[0].sessionId, "b");
   assert.equal(result.failures[0].message, "写入失败");
   assert.equal(refreshed, 1);

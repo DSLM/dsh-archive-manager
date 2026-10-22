@@ -498,7 +498,7 @@ test("归档处理完成后不等列表刷新就关闭确认框", async () => {
 		organizeBatch: async (_kind, _ids, options) => {
 			options.onProgress({ total: 1, done: 1, succeeded: 1, skipped: 0, failed: 0 });
 			await new Promise(resolve => { releaseRefresh = resolve; });
-			return { succeeded: ["one"], skipped: [], failures: [], remaining: [], unprocessed: [], refreshError: null };
+			return { succeeded: ["one"], skipped: [], failures: [], remaining: [], refreshError: null };
 		},
 		t: key => key
 	};
@@ -617,7 +617,7 @@ test("整理页收藏、闲置预览、部分失败重试及撤回形成完整�
   await panel().props.onUndo(); render();
   assert.equal(state.archivedSessionIds.includes("b"), false);
   let stopped = 0;
-  props.organizeBatch = async (_kind, ids) => ({ succeeded: [], skipped: [], failures: [{ sessionId: ids[0], message: `cannot archive session '${ids[0]}': the session is active (turn)` }], remaining: ids, unprocessed: [] });
+  props.organizeBatch = async (_kind, ids) => ({ succeeded: [], skipped: [], failures: [{ sessionId: ids[0], message: `cannot archive session '${ids[0]}': the session is active (turn)` }], remaining: ids });
   props.archiveSession = async (_id, options) => { assert.equal(options.stopActivity, true); stopped++; };
   render();
   await nodes(tree).find(node => node.props["aria-label"] === "archives.archiveSelected").props.onClick(); render();

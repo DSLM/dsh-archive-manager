@@ -125,7 +125,7 @@ Compact project groups can be collapsed. Stars and restore/archive icons appear 
 
 - Use the star on either tab and the **Favorites only** dropdown to find important chats. Favorites persist on the host across archive, restore, and browser changes. Reopen management to see changes made in other pages. Unknown or unreadable sessions retain their stored favorite IDs; cleanup requires confirmed artifact absence.
 - On Unarchived, enter 1–36,500 whole idle days and preview candidates under the current filters. Deselect individual candidates before confirmation. Favorites, the current chat, running sessions (including subagents), and pending interactions are protected; sessions without a valid activity time are excluded.
-- Archive rechecks favorites and activity. Batch archive, restore, and delete report successful, skipped, failed, and remaining items; the first failure stops the batch. Retry only the remainder. Delete retries still require confirmation.
+- Archive rechecks favorites and activity. Batch archive, restore, and delete report progress plus successful, skipped, and failed counts. A failure does not stop the rest; retry only the failed items. Delete retries still require confirmation.
 - **Undo this archive** restores sessions archived by the current batch, including successful retries. It is available only while the current management page remains open; refreshing or closing clears it. Permanent deletion cannot be undone.
 - Favorites can still be archived manually. Protection applies to idle cleanup only. There is no scheduled or automatic background cleanup.
 

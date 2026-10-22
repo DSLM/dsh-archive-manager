@@ -34,7 +34,7 @@ export interface ArchiveState { archivedSessionIds: string[] }
 export interface BatchProgress { total: number; done: number; succeeded: number; skipped: number; failed: number }
 export interface BatchResult {
   requested: string[]; succeeded: string[]; skipped: string[];
-  failures: Failure[]; unprocessed: string[]; remaining: string[]; refreshError: string | null;
+  failures: Failure[]; remaining: string[]; refreshError: string | null;
 }
 export interface BatchOptions { onProgress?: (progress: BatchProgress) => void; refresh?: () => void | Promise<unknown> }
 export interface OrganizeOptions extends BatchOptions {
