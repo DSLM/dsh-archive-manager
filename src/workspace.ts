@@ -12,7 +12,7 @@ import { childCatalogFact, prepareAutomationRepair, type RepairFormat } from "./
 import { repairInputSchema, classifySessionError, detailsInputSchema, countConversationTurns, discoveryInvocations, searchInputSchema, previewInputSchema, extractConversation, findContentMatch, previewConversation } from "./archive-discovery.js";
 import { lstat, rm } from "node:fs/promises";
 import { basename, dirname, isAbsolute, join, resolve } from "node:path";
-import { WorkspaceRegistry } from "@deepseek-ai/dsh-workspace";
+import { WorkspaceRegistry, WorkspaceActiveSessionError } from "@deepseek-ai/dsh-workspace";
 import { bindTypertRemote, Remote } from "@deepseek-ai/dsh-typert-protocol";
 import { sessionDir } from "@deepseek-ai/dsh-spill-local";
 import { trackTombstone } from "./tombstone.js";
@@ -415,21 +415,8 @@ async function hostRepairFormat(format: RepairFormat | undefined, children: read
 		return bound.createRestore(header, { recovery: "recoverable", validation: "transformed" });
 	} } as unknown as RepairFormat;
 }
-let activeSessionError: (new (sessionId: string, activity: readonly unknown[]) => Error) | null | undefined;
-async function activeSessionErrorType() {
-	if (activeSessionError !== undefined) return activeSessionError ?? undefined;
-	const workspace = await import("@deepseek-ai/dsh-workspace");
-	activeSessionError = typeof workspace.WorkspaceActiveSessionError === "function"
-		? workspace.WorkspaceActiveSessionError as unknown as new (sessionId: string, activity: readonly unknown[]) => Error
-		: null;
-	return activeSessionError ?? undefined;
-}
 function projectionSnapshot(cache: { cachedSnapshot(header: Header, keys?: readonly string[]): unknown }, header: Header) {
 	return cache.cachedSnapshot(header);
-}
-function hostEvent(ctx: HostContext, name: "waterfall" | "parallel") {
-	const caller = (ctx as HostContext & { waterfall?: unknown; parallel?: unknown })[name];
-	return typeof caller === "function" ? caller as (this: HostContext, ...args: unknown[]) => Promise<unknown> : undefined;
 }
 const fileUploadResolverRestart = Symbol.for("dsh-archive-manager.file-upload-resolver-restart");
 const staleFileUploadResolver = "file-upload: Agent resolver is already registered";
@@ -881,36 +868,28 @@ var ArchiveWorkspaceRegistry = class extends (WorkspaceRegistry as unknown as Wo
 			if (this.requireState().archivedSessionIds.includes(sessionId)) return;
 			if (!(await this.sessionKnown(sessionId))) return;
 			const stopActivity = options?.stopActivity === true;
-			const ActiveSession = await activeSessionErrorType();
-			if (!stopActivity && ActiveSession !== undefined) {
+			if (!stopActivity) {
 				const activity = await this.sessionActivity(sessionId);
-				if (activity.length > 0) throw new ActiveSession(sessionId, activity);
+				if (activity.length > 0) throw new WorkspaceActiveSessionError(SessionRuntime.SessionId(sessionId), activity);
 			}
 			const state = this.requireState();
-			const pinnedSessionIds = Array.isArray(state.pinnedSessionIds)
-				? state.pinnedSessionIds.filter((id) => id !== sessionId)
-				: undefined;
 			await this.setState({
 				...state,
 				archivedSessionIds: [...state.archivedSessionIds, sessionId],
-				...(pinnedSessionIds === undefined ? {} : { pinnedSessionIds }),
+				pinnedSessionIds: state.pinnedSessionIds.filter((id) => id !== sessionId),
 			});
-			if (stopActivity && ActiveSession !== undefined) await this.stopSessionActivity(sessionId);
+			if (stopActivity) await this.stopSessionActivity(sessionId);
 		});
 	}
 	/** 宿主用 waterfall 报告仍在运行的回合、子代理、任务和提醒。 */
 	async sessionActivity(sessionId: string) {
-		const waterfall = hostEvent(this.ctx, "waterfall");
-		if (waterfall === undefined) return [];
-		const activity = await waterfall.call(this.ctx, "workspace/session-activity", { sessionId }, () => Promise.resolve([]));
+		const activity = await this.ctx.waterfall("workspace/session-activity", { sessionId: SessionRuntime.SessionId(sessionId) }, () => Promise.resolve([]));
 		return Array.isArray(activity) ? activity : [];
 	}
 	/** 归档已经写入后再请求停止；提供方失败只记日志，不撤回归档。 */
 	async stopSessionActivity(sessionId: string) {
-		const parallel = hostEvent(this.ctx, "parallel");
-		if (parallel === undefined) return;
 		try {
-			await parallel.call(this.ctx, "workspace/session-stop", { sessionId });
+			await this.ctx.parallel("workspace/session-stop", { sessionId: SessionRuntime.SessionId(sessionId) });
 		} catch (error) {
 			const failures = error instanceof AggregateError ? error.errors : [error];
 			for (const failure of failures) {

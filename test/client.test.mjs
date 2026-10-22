@@ -507,6 +507,23 @@ test("bindObservable preserves receiver-sensitive alpha store methods", () => {
 	assert.equal(observed, 42);
 });
 
+test("归档导航绑定走 effect，即使上下文带 inject 也不调用它", async () => {
+	let injected = 0;
+	const effects = [];
+	const ctx = {
+		get: () => undefined,
+		sessions: {},
+		workspaces: {},
+		slots: { inject: () => () => {}, register: () => () => {} },
+		effect(_fn, label) { effects.push(label); return () => {}; },
+		inject() { injected += 1; return () => {}; },
+	};
+	const dispose = await bundle.apply(ctx);
+	assert.equal(injected, 0);
+	assert.ok(effects.includes("archive-manager: explicit archived navigation"));
+	await dispose();
+});
+
 test("侧栏不再替换官方列表，打开和分叉交给宿主导航", async () => {
 	const registrations = new Map();
 	const ctx = {

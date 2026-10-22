@@ -2368,7 +2368,7 @@ export function startArchiveClient(require: HostRequire) {
 				ruName: "Архив сессий",
 				createIcon: createPluginUpdateIcon
 			}), "dsh-archive-manager: plugin update ui");
-			// 侧栏先注册；导航适配等官方 uiWorkspace 出现再绑，否则打开归档会被官方清掉。
+			// 侧栏先注册；导航适配在客户端 effect 中绑定。客户端门面没有 inject。
 			const uiWorkspaceAt = () => ctx.get("uiWorkspace");
 			const archiveViewState = {};
 			let archiveNavigation: ReturnType<typeof allowArchivedNavigation> | undefined;
@@ -2379,8 +2379,7 @@ export function startArchiveClient(require: HostRequire) {
 				});
 				return () => archiveNavigation?.dispose();
 			};
-			if (typeof ctx.inject === "function") ctx.inject(["uiWorkspace"], (ready) => attachArchiveNavigation(ready.uiWorkspace ?? uiWorkspaceAt()));
-			else ctx.effect(() => attachArchiveNavigation(uiWorkspaceAt()), "archive-manager: explicit archived navigation");
+			ctx.effect(() => attachArchiveNavigation(uiWorkspaceAt()), "archive-manager: explicit archived navigation");
 			const openConversation = (sessionId: string) => {
 				if (archiveNavigation === undefined) throw new ArchiveNavigationError("navigationUnavailable");
 				sidebarReveal.request(sessionId);

@@ -155,6 +155,7 @@ function buildRoot({
 		initialized: true,
 		workspaceIds: Object.keys(workspacesCanonical),
 		archivedSessionIds: [...archived],
+		pinnedSessionIds: [],
 	};
 	const domain = new FakeDomain({ workspaces: table }, global);
 	const persistence = {
@@ -466,7 +467,7 @@ test("恢复不在工作区记账的会话时按 cwd 重新挂回原工作区", 
 	assert.ok(registry.get(A).sessionIds.includes(s1));
 });
 
-test("archive drops a recorded pin and leaves hosts without pins unchanged", async () => {
+test("archive drops a recorded pin and does not invent a missing pin list", async () => {
 	const pinned = buildRoot({
 		headers: [header(s1, cwdA), header(s2, cwdA)],
 		workspaces: { [A]: workspace("D:\\proj-a", [s1, s2]) },
@@ -480,14 +481,24 @@ test("archive drops a recorded pin and leaves hosts without pins unchanged", asy
 		headers: [header(s1, cwdA)],
 		workspaces: { [A]: workspace("D:\\proj-a", [s1]) },
 	});
+	delete legacy.global.pinnedSessionIds;
 	const legacyRegistry = await mountWorkspaceRegistry(legacy);
-	await legacyRegistry.archiveSession(s1);
-	assert.equal(Object.hasOwn(legacy.global, "pinnedSessionIds"), false);
+	await assert.rejects(legacyRegistry.archiveSession(s1), TypeError);
 });
 
-test("running sessions use the host activity gate when that error type exists", async () => {
+test("archive asks the host activity dispatcher instead of skipping when it is missing", async () => {
+	const env = buildRoot({
+		headers: [header(s1, cwdA)],
+		workspaces: { [A]: workspace("D:\\proj-a", [s1]) },
+	});
+	const registry = await mountWorkspaceRegistry(env);
+	env.ctx.waterfall = undefined;
+	await assert.rejects(registry.archiveSession(s1), TypeError);
+	assert.deepEqual(env.global.archivedSessionIds, []);
+});
+
+test("running sessions use the host activity gate", async () => {
 	const workspacePackage = await import("@deepseek-ai/dsh-workspace");
-	if (typeof workspacePackage.WorkspaceActiveSessionError !== "function") return;
 	const env = buildRoot({
 		headers: [header(s1, cwdA)],
 		workspaces: { [A]: workspace("D:\\proj-a", [s1]) },
