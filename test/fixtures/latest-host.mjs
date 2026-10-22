@@ -79,7 +79,7 @@ async function setup(t, compression = "none") {
 		compression,
 	});
 	const records = new Map();
-	const state = { initialized: true, workspaceIds: [], archivedSessionIds: [] };
+	const state = { initialized: true, workspaceIds: [], archivedSessionIds: [], pinnedSessionIds: [] };
 	const table = {
 		get size() {
 			return records.size;
