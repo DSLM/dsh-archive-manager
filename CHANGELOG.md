@@ -4,7 +4,7 @@
 
 Published release notes are retained below; new versions are added without removing earlier entries.
 
-## Unreleased
+## 1.1.7 - 2026-10-22
 
 - Fixed session titles or blank-session visibility changing after disabling Archive Manager (#71). The plugin no longer replaces the official projection-cache table; ordinary cache reads and writes remain host-owned.
 - On activation, hand historical plugin checkpoints back to the official cache after checking session identity. Keep newer same-version official projections and official rows with different projection versions. Failed handoffs can retry on later activation; source cache files are retained.
