@@ -25,7 +25,7 @@ test("收藏接口严格校验类型、长度及状态集合", () => {
   assert.equal(favoriteStateSchema.safeParse(null).success, false);
 });
 
-test("批量失败保留成功、失败和未处理清单，刷新仍执行，重试不重复成功项", async () => {
+test("批量失败记下原因并继续后续，重试只重复失败项", async () => {
   const calls = [], progress = [];
   let refreshed = 0;
   const result = await runSessionBatch(["a", "a", "b", "c"], async (id) => {
@@ -33,16 +33,17 @@ test("批量失败保留成功、失败和未处理清单，刷新仍执行，�
     if (id === "b") throw new Error("写入失败");
     return true;
   }, { onProgress: (value) => progress.push(value), refresh: async () => { refreshed++; } });
-  assert.deepEqual(calls, ["a", "b"]);
-  assert.deepEqual(result.succeeded, ["a"]);
-  assert.deepEqual(result.remaining, ["b", "c"]);
-  assert.deepEqual(result.unprocessed, ["c"]);
+  assert.deepEqual(calls, ["a", "b", "c"]);
+  assert.deepEqual(result.succeeded, ["a", "c"]);
+  assert.deepEqual(result.remaining, ["b"]);
+  assert.deepEqual(result.unprocessed, []);
   assert.equal(result.failures[0].sessionId, "b");
+  assert.equal(result.failures[0].message, "写入失败");
   assert.equal(refreshed, 1);
-  assert.equal(progress.at(-1).done, 2);
+  assert.equal(progress.at(-1).done, 3);
   const retried = await runSessionBatch(result.remaining, async (id) => { calls.push(id); return true; });
-  assert.deepEqual(retried.succeeded, ["b", "c"]);
-  assert.deepEqual(calls, ["a", "b", "b", "c"]);
+  assert.deepEqual(retried.succeeded, ["b"]);
+  assert.deepEqual(calls, ["a", "b", "c", "b"]);
 });
 
 test("已归档、消失及新近活跃项可跳过，撤回仅使用真实成功集合", async () => {

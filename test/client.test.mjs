@@ -189,7 +189,7 @@ test("设置页与侧栏批量归档串行调用官方 archiveSession", async ()
 	assert.deepEqual(result.archivedSessionIds, ["s1", "s2"]);
 });
 
-test("batch archive stops on failure and leaves earlier sessions archived", async () => {
+test("批量归档记下单条失败并继续后续", async () => {
 	const archived = [];
 	const calls = [];
 	const workspaces = {
@@ -200,29 +200,30 @@ test("batch archive stops on failure and leaves earlier sessions archived", asyn
 			if (!archived.includes(id)) archived.push(id);
 		}
 	};
-	await assert.rejects(
-		() => t.archiveSessionsViaOfficial(workspaces, ["s1", "s2", "s3"], async () => {}),
-		/host rejected s2/,
-	);
-	assert.deepEqual(calls, ["s1", "s2"]);
-	assert.deepEqual(archived, ["s1"]);
+	const result = await t.archiveSessionsViaOfficial(workspaces, ["s1", "s2", "s3"], async () => {});
+	assert.deepEqual(calls, ["s1", "s2", "s3"]);
+	assert.deepEqual(archived, ["s1", "s3"]);
+	assert.deepEqual(result.archivedSessionIdsAdded, ["s1", "s3"]);
+	assert.deepEqual(result.failures, [{ sessionId: "s2", message: "host rejected s2" }]);
 });
 
-test("active archive errors keep the session id that was being archived", async () => {
+test("运行中的会话记入失败并保留会话 ID，不中断后续", async () => {
+	const archived = [];
 	const workspaces = {
-		list: { getSnapshot: () => ({ archivedSessionIds: [] }) },
-		async archiveSession() {
-			const error = new Error("active");
-			error.name = "WorkspaceActiveSessionError";
-			error.activity = [{ kind: "turn" }];
-			throw error;
+		list: { getSnapshot: () => ({ archivedSessionIds: [...archived] }) },
+		async archiveSession(id) {
+			if (id === "s9") {
+				const error = new Error("active");
+				error.name = "WorkspaceActiveSessionError";
+				error.activity = [{ kind: "turn" }];
+				throw error;
+			}
+			archived.push(id);
 		}
 	};
-	await assert.rejects(() => t.archiveSessionsViaOfficial(workspaces, ["s9"]), (error) => {
-		assert.equal(error.sessionId, "s9");
-		assert.deepEqual(t.activeSessionRefusal(error), { sessionId: "s9", kinds: ["turn"] });
-		return true;
-	});
+	const result = await t.archiveSessionsViaOfficial(workspaces, ["s9", "s1"]);
+	assert.deepEqual(result.failures, [{ sessionId: "s9", message: "active" }]);
+	assert.deepEqual(result.archivedSessionIdsAdded, ["s1"]);
 });
 
 test("active archive refusals expose their activity kinds", () => {

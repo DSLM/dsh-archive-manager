@@ -11,7 +11,7 @@ import { createDiscoveryTools, discoveryCss, discoveryZh, discoveryEn, discovery
 import { compareTurnCounts, copySessionText, discoveryInvocations, matchesUpdatedRange, validUpdatedRange, sessionDetailCandidates } from "./archive-discovery.js";
 import { allowArchivedNavigation, openArchivedConversation, formatArchiveNavigationError, ArchiveNavigationError, currentSessionId } from "./archive-experience.js";
 import { observePluginUpdate } from "./plugin-update-ui.js";
-import { favoriteInvocations, idleArchiveCandidate, createSessionOrganizer } from "./archive-organizer.js";
+import { favoriteInvocations, idleArchiveCandidate, createSessionOrganizer, runSessionBatch } from "./archive-organizer.js";
 import { createOrganizerPanel, organizerZh, organizerEn, organizerRu } from "./archive-organizer-ui.js";
 import { createPortal } from "react-dom";
 import { SelectionCheckbox } from "./plugin-ui.js";
@@ -279,7 +279,7 @@ export function startArchiveClient(require: HostRequire) {
 			document.head.appendChild(tag);
 		}
 		/** 侧边栏行内就地确认卡片样式：完全对齐官方原生 MenuSurface 材质与无箭头悬浮设计 */
-		const SIDEBAR_POPOVER_CSS = ".dsham_sidebarCardRoot{position:fixed;inset:0;z-index:1200;pointer-events:none}.dsham_sidebarCardBackdrop{position:fixed;inset:0;pointer-events:auto;background:transparent}.dsham_sidebarCard{position:fixed;pointer-events:auto;box-sizing:border-box;width:290px;max-height:calc(100vh - 32px);overflow-y:auto;padding:16px 18px 14px;border-radius:var(--dsw-radius-lg,14px);background:var(--dsw-menu-surface-fill);backdrop-filter:var(--dsw-menu-backdrop-filter,blur(40px) saturate(150%));-webkit-backdrop-filter:var(--dsw-menu-backdrop-filter,blur(40px) saturate(150%));border:none;box-shadow:var(--dsw-elevation-prominent);color:var(--dsw-alias-label-primary);display:flex;flex-direction:column;gap:8px}.dsham_sidebarCardTitle{margin:0;font-size:14px;font-weight:600;line-height:20px;color:var(--dsw-alias-label-primary)}.dsham_sidebarCardDesc{margin:0;font-size:13px;line-height:18px;color:var(--dsw-alias-label-secondary)}.dsham_sidebarCardError{margin-top:2px;font-size:12px;line-height:16px;color:var(--dsw-alias-state-error-primary,#ef7272)}.dsham_sidebarCardFooter{display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-top:10px}.dsham_sidebarCardBtn{border:none;background:transparent;padding:5px 12px;border-radius:var(--dsw-radius-sm,6px);font:inherit;font-size:13px;font-weight:500;line-height:18px;cursor:pointer;transition:background-color .15s ease,opacity .15s ease}.dsham_sidebarCardBtnCancel{color:var(--dsw-alias-label-primary)}.dsham_sidebarCardBtnCancel:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover)}.dsham_sidebarCardBtnDanger{color:var(--dsw-alias-state-error-primary,#ef7272)}.dsham_sidebarCardBtnDanger:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover-danger,#f25a5a26)}.dsham_sidebarCardBtn:disabled{opacity:.4;cursor:default}";
+		const SIDEBAR_POPOVER_CSS = ".dsham_sidebarCardRoot{position:fixed;inset:0;z-index:1200;pointer-events:none}.dsham_sidebarCardBackdrop{position:fixed;inset:0;pointer-events:auto;background:transparent}.dsham_sidebarCard{position:fixed;pointer-events:auto;box-sizing:border-box;width:290px;max-height:calc(100vh - 32px);overflow-y:auto;padding:16px 18px 14px;border-radius:var(--dsw-radius-lg,14px);background:var(--dsw-menu-surface-fill);backdrop-filter:var(--dsw-menu-backdrop-filter,blur(40px) saturate(150%));-webkit-backdrop-filter:var(--dsw-menu-backdrop-filter,blur(40px) saturate(150%));border:none;box-shadow:var(--dsw-elevation-prominent);color:var(--dsw-alias-label-primary);display:flex;flex-direction:column;gap:8px}.dsham_sidebarCardTitle{margin:0;font-size:14px;font-weight:600;line-height:20px;color:var(--dsw-alias-label-primary)}.dsham_sidebarCardDesc{margin:0;font-size:13px;line-height:18px;color:var(--dsw-alias-label-secondary)}.dsham_sidebarCardError{margin-top:2px;font-size:12px;line-height:16px;color:var(--dsw-alias-state-error-primary,#ef7272);white-space:pre-line}.dsham_sidebarCardFooter{display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-top:10px}.dsham_sidebarCardBtn{border:none;background:transparent;padding:5px 12px;border-radius:var(--dsw-radius-sm,6px);font:inherit;font-size:13px;font-weight:500;line-height:18px;cursor:pointer;transition:background-color .15s ease,opacity .15s ease}.dsham_sidebarCardBtnCancel{color:var(--dsw-alias-label-primary)}.dsham_sidebarCardBtnCancel:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover)}.dsham_sidebarCardBtnDanger{color:var(--dsw-alias-state-error-primary,#ef7272)}.dsham_sidebarCardBtnDanger:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover-danger,#f25a5a26)}.dsham_sidebarCardBtn:disabled{opacity:.4;cursor:default}";
 		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify("dsh-archive-manager/SidebarPopover.css") + "]") === null) {
 			const tag = document.createElement("style");
 			tag.dataset.plugin = "@michengai/dsh-archive-manager";
@@ -561,12 +561,15 @@ export function startArchiveClient(require: HostRequire) {
 				archiveBusy.current = true; setBusy(true); setError(null); setNotice(null);
 				try {
 					const result = await archiveSessions(ids);
-					setSelectedSessionIds([]);
-					setArchiveTab("archived");
-					setProject("all");
-					setQuery("");
-					setNotice(t("archives.archiveSuccess", { n: result.archivedSessionIdsAdded.length }));
 					setArchiveTarget(null); setArchiveGroup(null);
+					if (result.archivedSessionIdsAdded.length > 0) setNotice(t("archives.archiveSuccess", { n: result.archivedSessionIdsAdded.length }));
+					if (result.failures && result.failures.length > 0) setError(formatBatchFailures(result.failures, t));
+					else {
+						setSelectedSessionIds([]);
+						setArchiveTab("archived");
+						setProject("all");
+						setQuery("");
+					}
 				} catch (reason) {
 					const active = activeSessionRefusal(reason);
 					if (active !== undefined && typeof archiveSession === "function") {
@@ -664,7 +667,8 @@ export function startArchiveClient(require: HostRequire) {
 				setNotice(null);
 				try {
 					const result = await unarchiveSessions(target);
-					setNotice(t("archives.restoreSuccess", { n: result.unarchivedSessionIds.length }));
+					if (result.unarchivedSessionIds.length > 0) setNotice(t("archives.restoreSuccess", { n: result.unarchivedSessionIds.length }));
+					if (result.failures && result.failures.length > 0) setError(formatBatchFailures(result.failures, t, formatUnarchiveError));
 					return result;
 				} catch (reason) {
 					setError(t("archives.restoreBatchFailed", { detail: reason instanceof Error ? reason.message : String(reason) }));
@@ -962,6 +966,9 @@ export function startArchiveClient(require: HostRequire) {
 			if (isUnknownSessionError(reason)) return t("archives.unarchiveUnknown");
 			const detail = reason instanceof Error ? reason.message : String(reason);
 			return t("archives.unarchiveFailed", { detail });
+		}
+		function formatBatchFailures(failures: { sessionId: string; message: string }[], t: Translate, format = formatArchiveError) {
+			return failures.map((failure) => failure.sessionId + t("common.separator") + format(new Error(failure.message), t)).join("\n");
 		}
 		function formatArchiveError(reason: unknown, t: Translate) {
 			if (isUnknownSessionError(reason)) return t("archives.archiveUnknown");
@@ -1496,7 +1503,7 @@ export function startArchiveClient(require: HostRequire) {
 			".dsham_settingsMeta{margin-top:2px;color:var(--dsw-alias-label-tertiary);font-size:12px;line-height:16px}",
 			".dsham_settingsActions{display:flex;align-items:center;gap:4px;flex:none}",
 			".dsham_settingsEmpty{padding:28px 8px;color:var(--dsw-alias-label-secondary);text-align:center}",
-			".dsham_settingsError{margin-top:10px;color:var(--dsw-alias-state-error-primary);font-size:12px}",
+			".dsham_settingsError{margin-top:10px;color:var(--dsw-alias-state-error-primary);font-size:12px;white-space:pre-line}",
 			"@container(max-width:520px){.dsham_settingsHeader{margin-bottom:16px}.dsham_settingsGroup{margin-bottom:32px}.dsham_settingsRow{padding:10px 12px}.dsham_settingsActions{gap:4px}}"
 		].join("");
 		const ARCHIVE_SETTINGS_BATCH_CSS = ".dsham_settingsTitleLink{display:block;max-width:100%;padding:0;border:0;background:transparent;color:var(--dsw-alias-label-primary);font:inherit;font-size:13px;font-weight:600;line-height:20px;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer}.dsham_settingsTitleLink:hover:not(:disabled){text-decoration:underline;text-underline-offset:3px}.dsham_settingsTitleLink:disabled{cursor:default;opacity:.6}.dsham_groupToggle{display:flex;align-items:center;gap:8px;min-width:0;max-width:100%;padding:4px 0;border:0;background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer}.dsham_groupToggle span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.dsham_settingsRow:hover{background:var(--dsw-alias-interactive-bg-hover)}.dsham_settingsRow[data-selected=true]{background:var(--dsw-alias-interactive-bg-hover)}.dsham_settingsTitleLink:focus-visible,.dsham_groupToggle:focus-visible{outline:2px solid var(--dsw-alias-state-business-primary,#3b82f6);outline-offset:2px}@container(max-width:400px){.dsham_settingsRow{gap:8px;padding:10px 8px}.dsham_settingsActions{gap:0}.dsham_settingsMeta{font-size:11px}}.dsham_settingsGroupMeta{display:flex;align-items:center;gap:8px;flex:none;flex-wrap:wrap}.dsham_settingsStatus{margin-top:10px;color:var(--dsw-alias-label-secondary);font-size:12px}.dsham_checkbox{width:16px;height:16px;margin:0;accent-color:var(--dsw-alias-brand-primary);flex:none}button.dsham_favoriteOn{color:#e8b931}button.dsham_favoriteOn:not(:disabled):hover{color:#e8b931!important;border-color:#e8b931!important}";
@@ -2300,42 +2307,38 @@ export function startArchiveClient(require: HostRequire) {
 				await workspaces.unarchiveSession(sessionId);
 			};
 		}
-		/** 设置页/侧栏批量归档：串行调官方单笔 archiveSession。已归档与未知会话交给官方处理。 */
+		/** 设置页/侧栏批量归档：走统一串行循环，单条官方错误留下并继续。 */
 		async function archiveSessionsViaOfficial(workspaces: Workspaces, sessionIds: readonly string[], refresh?: () => Promise<unknown>) {
 			const before = new Set(workspaces.list?.getSnapshot?.()?.archivedSessionIds ?? []);
-			const seen = new Set<string>();
-			for (const sessionId of sessionIds) {
-				if (typeof sessionId !== "string" || sessionId.length === 0 || seen.has(sessionId)) continue;
-				seen.add(sessionId);
+			const batch = await runSessionBatch(sessionIds, async (sessionId) => {
 				try {
 					await workspaces.archiveSession(sessionId);
 				} catch (reason) {
 					if (reason !== null && typeof reason === "object" && activeSessionActivity(reason) !== undefined && typeof record(reason).sessionId !== "string") Object.assign(reason, { sessionId });
 					throw reason;
 				}
-			}
-			if (typeof refresh === "function") await refresh();
+				return true;
+			}, { refresh });
 			const archivedSessionIds = [...(workspaces.list?.getSnapshot?.()?.archivedSessionIds ?? [])];
 			return {
 				archivedSessionIds,
-				archivedSessionIdsAdded: archivedSessionIds.filter((id) => !before.has(id))
+				archivedSessionIdsAdded: archivedSessionIds.filter((id) => !before.has(id)),
+				failures: batch.failures,
 			};
 		}
-		/** 设置页批量恢复：串行调官方单笔恢复，完成后按快照计数。 */
+		/** 设置页批量恢复：走同一串行循环，单条失败留下并继续。 */
 		async function unarchiveSessionsViaOfficial(workspaces: Workspaces, sessionIds: readonly string[], refresh?: () => Promise<unknown>, unarchive?: (id: string) => Promise<unknown>) {
 			const before = new Set(workspaces.list?.getSnapshot?.()?.archivedSessionIds ?? []);
-			const seen = new Set<string>();
 			const run = typeof unarchive === "function" ? unarchive : (id: string) => workspaces.unarchiveSession?.(id);
-			for (const sessionId of sessionIds) {
-				if (typeof sessionId !== "string" || sessionId.length === 0 || seen.has(sessionId)) continue;
-				seen.add(sessionId);
+			const batch = await runSessionBatch(sessionIds, async (sessionId) => {
 				await run(sessionId);
-			}
-			if (typeof refresh === "function") await refresh();
+				return true;
+			}, { refresh });
 			const archivedSessionIds = [...(workspaces.list?.getSnapshot?.()?.archivedSessionIds ?? [])];
 			return {
 				archivedSessionIds,
-				unarchivedSessionIds: [...before].filter((id) => !archivedSessionIds.includes(id))
+				unarchivedSessionIds: [...before].filter((id) => !archivedSessionIds.includes(id)),
+				failures: batch.failures,
 			};
 		}
 		async function apply(ctx: ClientContext) {
@@ -2941,8 +2944,12 @@ export function startArchiveClient(require: HostRequire) {
 					const archived = new Set(ctx.workspaces.list?.getSnapshot?.()?.archivedSessionIds ?? []);
 					const candidateIds = (workspace?.sessionIds ?? []).filter((id) => isWorkspaceTaskCandidate(id, sessionMap, archived));
 
-					archiveSessionsViaOfficial(ctx.workspaces, candidateIds, refreshSessionList).then(() => {
+					archiveSessionsViaOfficial(ctx.workspaces, candidateIds, refreshSessionList).then((result) => {
 						setArchiving(false);
+						if (result.failures.length > 0) {
+							setError(formatBatchFailures(result.failures, t));
+							return;
+						}
 						publishArchiveWsTarget(null);
 					}).catch((err) => {
 						setArchiving(false);

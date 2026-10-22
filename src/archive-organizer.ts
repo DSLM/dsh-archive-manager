@@ -49,7 +49,8 @@ export function idleArchiveCandidate(session: SessionSummary | undefined, { days
 }
 
 /**
- * 串行批量操作：首个失败后停下，已成功项绝不重新执行；返回重试和撤回所需的精确集合。
+ * 串行批量操作：单条失败记下原因并继续后续，已成功项绝不重新执行。
+ * remaining 只含失败项，供重试；unprocessed 恒为空。
  * @param ids 会话 ID 列表。
  * @param operate 单条操作，返回 true 表示本次确实改变状态，false 表示跳过。
  * @param options 进度回调及结束后的列表刷新。
@@ -59,15 +60,12 @@ export async function runSessionBatch(ids: readonly string[], operate: (id: stri
   const result: BatchResult = { requested, succeeded: [], skipped: [], failures: [], unprocessed: [], remaining: [], refreshError: null };
   const report = () => onProgress?.({ total: requested.length, done: result.succeeded.length + result.skipped.length + result.failures.length, succeeded: result.succeeded.length, skipped: result.skipped.length, failed: result.failures.length });
   report();
-  for (const [index, id] of requested.entries()) {
+  for (const id of requested) {
     try {
       (await operate(id) ? result.succeeded : result.skipped).push(id);
     } catch (error) {
       result.failures.push({ sessionId: id, message: error instanceof Error ? error.message : String(error) });
-      result.unprocessed = requested.slice(index + 1);
-      result.remaining = requested.slice(index);
-      report();
-      break;
+      result.remaining.push(id);
     }
     report();
   }

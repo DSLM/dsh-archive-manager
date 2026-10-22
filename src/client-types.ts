@@ -44,10 +44,10 @@ export interface DeletedBatch { requestedSessionIds: string[]; deletedSessionIds
 export interface ArchivedGroup { key: string; title: string; ids?: Set<string>; sessions: ClientSession[]; cwd?: string; workspaceId?: string; createdAt?: string }
 export interface ArchiveProps {
   sessionStore: Observable<ClientList>; workspaceStore: Observable<WorkspaceSnapshot>;
-  archiveSessions(ids: string[]): Promise<{ archivedSessionIdsAdded: string[] }>;
+  archiveSessions(ids: string[]): Promise<{ archivedSessionIdsAdded: string[]; failures?: { sessionId: string; message: string }[] }>;
   archiveSession?(id: string, options?: { stopActivity?: boolean }): Promise<unknown>;
   unarchiveSession(id: string): Promise<unknown>; deleteSession(id: string): Promise<unknown>;
-  unarchiveSessions(target: BatchTarget): Promise<{ unarchivedSessionIds: string[] }>;
+  unarchiveSessions(target: BatchTarget): Promise<{ unarchivedSessionIds: string[]; failures?: { sessionId: string; message: string }[] }>;
   deleteArchivedSessions(target: BatchTarget): Promise<DeletedBatch>;
   archivedSessionMetadata(): Promise<{ items: { sessionId: string; createdAt: number }[] }>;
   openConversation(id: string): unknown; focusSessionWorkspace?(id: string): Promise<unknown>;
