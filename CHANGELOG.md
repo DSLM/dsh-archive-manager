@@ -8,6 +8,7 @@ Published release notes are retained below; new versions are added without remov
 
 - Fixed session titles or blank-session visibility changing after disabling Archive Manager (#71). The plugin no longer replaces the official projection-cache table; ordinary cache reads and writes remain host-owned.
 - On activation, hand historical plugin checkpoints back to the official cache after checking session identity. Keep newer same-version official projections and official rows with different projection versions. Failed handoffs can retry on later activation; source cache files are retained.
+- Archive and restore now use the official workspace APIs. Archiving an unknown session reports the official error instead of being skipped, and restore no longer reattaches a session that the workspace no longer lists. The plugin no longer blocks the official workspace update from dropping a member that has no path index.
 - Keep only the tombstones and in-flight write barrier needed for permanent deletion. Disabling removes those guards without closing the official cache service.
 - Upgrade note: users who disabled an older version must activate the fixed version at least once to hand off old records. Keys rejected by the official backend, such as IDs containing colons, remain in the legacy domain and return to native host behavior instead of receiving a replacement cache.
 

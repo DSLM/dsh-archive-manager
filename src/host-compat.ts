@@ -62,5 +62,6 @@ export interface WorkspaceCompat extends Omit<WorkspaceRegistry, "archiveSession
   sessionKnown(id: string): Promise<boolean>;
   indexHeader(header: Header): Promise<void>;
   indexHeaders(items: Header[]): Promise<void>;
+  listStoredHeaders(): Promise<Header[]>;
 }
 export type WorkspaceConstructor = { new(ctx: Context): WorkspaceCompat };

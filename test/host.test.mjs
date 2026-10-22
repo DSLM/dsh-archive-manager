@@ -440,7 +440,7 @@ test("archiveSession + unarchiveSession round trip (idempotent, durable)", async
 	assert.deepEqual(second.archivedSessionIds, []);
 });
 
-test("未编入路径索引的已记账会话仍留在原工作区，mutate 不会写丢", async () => {
+test("官方改工作区时丢掉没有路径索引的归档成员", async () => {
 	const env = buildRoot({
 		headers: [header(s1, cwdA), header(s2, cwdA)],
 		workspaces: { [A]: workspace("D:\\proj-a", [s1, s2]) },
@@ -448,23 +448,21 @@ test("未编入路径索引的已记账会话仍留在原工作区，mutate 不�
 	const registry = await mountWorkspaceRegistry(env);
 	await registry.archiveSession(s1);
 	registry.sessionPaths.delete(s1);
-	assert.deepEqual(registry.get(A).sessionIds, [s1, s2]);
 	await registry.get(A).setTitle("proj-a-renamed");
-	assert.deepEqual(env.table.get(A).sessionIds, [s1, s2]);
-	assert.deepEqual(registry.get(A).sessionIds, [s1, s2]);
+	assert.deepEqual(env.table.get(A).sessionIds, [s2]);
 });
 
-test("恢复不在工作区记账的会话时按 cwd 重新挂回原工作区", async () => {
+test("恢复只移出归档集合，不把已丢失的工作区记账挂回", async () => {
 	const env = buildRoot({
 		headers: [header(s1, cwdA)],
 		workspaces: { [A]: workspace("D:\\proj-a", []) },
 		archived: [s1],
 	});
 	const registry = await mountWorkspaceRegistry(env);
-	await registry.unarchiveSession(s1);
+	const restored = await registry.unarchiveSession(s1);
+	assert.deepEqual(restored.archivedSessionIds, []);
 	assert.deepEqual(env.global.archivedSessionIds, []);
-	assert.ok(env.table.get(A).sessionIds.includes(s1));
-	assert.ok(registry.get(A).sessionIds.includes(s1));
+	assert.equal(env.table.get(A).sessionIds.includes(s1), false);
 });
 
 test("archive drops a recorded pin and does not invent a missing pin list", async () => {
@@ -531,13 +529,14 @@ test("running sessions use the host activity gate", async () => {
 	assert.equal(asked, 0);
 });
 
-test("archiveSession skips unknown ids", async () => {
+test("archiveSession 未知会话交给官方抛错", async () => {
 	const env = buildRoot({
 		headers: [header(s1, cwdA)],
 		workspaces: { [A]: workspace("D:\\proj-a", [s1]) },
 	});
 	const registry = await mountWorkspaceRegistry(env);
-	await registry.archiveSession(sUnknown);
+	await assert.rejects(registry.archiveSession(sUnknown), (error) =>
+		error?.name === "WorkspaceUnknownSessionError" || error?.constructor?.name === "WorkspaceUnknownSessionError");
 	assert.deepEqual(env.global.archivedSessionIds, []);
 	await registry.archiveSession(s1);
 	assert.deepEqual(env.global.archivedSessionIds, [s1]);
@@ -1800,7 +1799,8 @@ test("deleteSession forgets the in-memory header index so the id cannot be re-ar
 		false,
 		"deleted session must leave the parent header index",
 	);
-	await registry.archiveSession(s2);
+	await assert.rejects(registry.archiveSession(s2), (error) =>
+		error?.name === "WorkspaceUnknownSessionError" || error?.constructor?.name === "WorkspaceUnknownSessionError");
 	assert.equal(
 		env.global.archivedSessionIds.includes(s2),
 		false,
