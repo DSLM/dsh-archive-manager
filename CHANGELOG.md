@@ -4,6 +4,14 @@
 
 Published release notes are retained below; new versions are added without removing earlier entries.
 
+## 1.1.9 - 2026-10-24
+
+- Redesigned the filter toolbar with a single-line adaptive layout (#74): the search input now uses the host's native `Input` primitive with an `IconSearchOutlineMedium` search icon and glowing green focus border; rearranged control order to search input, view filter/sort menu, project filter, and date range, with the input flexibly expanding to fill remaining width.
+- Added in-house lightweight single-field DateRange capsule and calendar popover: eliminated native `<input type="date">` glitches such as dark-mode inversion and click-away focus loss (#74); displays the selected range in a single line with a dedicated clear button; the popover supports quick presets (All time, Today, Last 7/30/90 days), localized month/weekday headers in Chinese, English, and Russian, and full WAI-ARIA keyboard navigation (arrows, Home/End, PageUp/Down with month-end clamping).
+- Consolidated filters and sorting into a Codex-style composite menu: merged \"All sessions / Favorites only\" and sorting options into a two-section dropdown, using the host `Menu`'s native checkmark primitive instead of hand-drawn icons.
+- Search scope optimization: removed the manual title/content scope toggle, defaulting automatically to unified full content and title search across conversations in the active tab.
+- Box model fix and folder icon removal: resolved text overflow in the project selector that previously overlapped the adjacent date picker's dropdown chevron, ensuring a clean 8px gap between controls; removed folder icons from project selector for a cleaner native look.
+
 ## 1.1.8 - 2026-10-23
 
 - Added primary sidebar navigation entry and dedicated workspace panel: users can now access Archive Manager directly from the first-level sidebar, opening a 960px centered workspace view. The entry can be toggled on or off at any time via the `sidebarEntry` switch in plugin configuration (`plugins.bundle.config` slot).

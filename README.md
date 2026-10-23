@@ -19,7 +19,7 @@
 
 > DSH Archive Manager is a community-maintained DeepSeek Harness (DSH) plugin, not an official DeepSeek AI product.
 
-This document describes **1.1.8**. See [Changelog](CHANGELOG.md) for published releases.
+This document describes **1.1.9**. See [Changelog](CHANGELOG.md) for published releases.
 
 ## Overview
 
@@ -27,7 +27,9 @@ Put inactive conversations away and find them again when needed, keeping everyda
 
 - **Dual views & primary sidebar entry**: Toggleable persistent icon on the host's primary sidebar opens a **960px centered workspace view** for both Archived and Unarchived sessions, eliminating narrow dialog scrolling constraints.
 - **Full lifecycle session management**: Archive individual chats, all chats in a workspace, cross-project batches, and restore or open sessions seamlessly.
-- **Combined filtering & full-text search**: Group by workspace projects, filter by date ranges, isolate favorites, and perform paginated keyword searches across message text with highlighting and fast previews.
+- **Clean single-line adaptive toolbar**: Uses the host's native `Input` primitive with an official search icon and glowing green focus border, flexibly expanding to fill remaining width; arranged as search input, view filter/sort menu, project filter, and date range in a clean single line with strict box-model boundaries.
+- **Unified full-text search & Codex composite menu**: Search automatically covers both conversation titles and body history (including user and assistant messages) by default; consolidates session filtering (all / favorites only) and sorting into a two-section Codex-style menu with native checkmarks.
+- **Lightweight DateRange capsule & calendar popover**: Completely replaces the native date input to eliminate dark-mode inversion and focus loss (#74); displays the selected range in a single line with a dedicated clear button; supports quick presets, localized English/Chinese/Russian typography, and full WAI-ARIA keyboard navigation (arrows, Home/End, PageUp/Down with month-end clamping) with real-time range stretch preview.
 - **Automated idle session cleanup**: Specify an idle threshold in days to discover inactive chats, automatically protecting running tasks, interactive prompts, and starred items, with instant undo support.
 - **Native workspace menu integration**: Securely injects an **Archive session** action into the sidebar workspace `...` menu, anchoring an in-place frosted glass confirmation modal following the "what you see is what you archive" principle.
 - **Permanent deletion**: Thoroughly purge unwanted transcripts, cache rows, and indexes with per-item retry reporting.
@@ -90,7 +92,7 @@ dsh plugin --profile web add @michengai/dsh-archive-manager@latest --registry=ht
 
 Restart DSH Web, then refresh the page (or hard-refresh with `Ctrl+Shift+R`). Open **Settings → Archived sessions** to get started. To update, click **Check for updates** or re-run the installation command.
 
-- Plugin `1.1.8` is tested with DeepSeek Harness `0.2.0-rc.1`, `0.2.0-rc.2`, `0.2.1-rc.1`, `0.2.1-rc.2`.
+- Plugin `1.1.9` is tested with DeepSeek Harness `0.2.0-rc.1`, `0.2.0-rc.2`, `0.2.1-rc.1`, `0.2.1-rc.2`.
 - Hosts before `0.2.0` are no longer supported. If you still use a `0.1.x` host, install plugin `1.0.20` instead of `@latest`.
 - **Reverse proxy deployment**: Supports hosting DSH behind prefix-stripping reverse proxies (e.g. `/app/dsh/`). API and update endpoints automatically resolve against the page base URI (`document.baseURI`), preventing 404 errors caused by lost prefix segments.
 
@@ -99,7 +101,7 @@ Restart DSH Web, then refresh the page (or hard-refresh with `Ctrl+Shift+R`). Op
 The plugin follows standard DSH bundle configuration conventions. Options are located at:
 > **Sidebar → Plugins → Click `Archive Manager`** (the host's `plugins.bundle.config` slot).
 
-Two native switches are available. Their values are persisted in `archive-manager/settings.json` under your local configuration directory and survive restarts; they are not two equivalent Cordis YAML options. `sidebarEntry` is managed through this UI, while `onlineUpdate` is also subject to the host lock described below:
+Two native switches are available:
 
 ### 1. Sidebar Entry (`sidebarEntry`)
 - **Default**: Disabled (`false`)
@@ -117,11 +119,7 @@ Two native switches are available. Their values are persisted in `archive-manage
   - **Endpoint Guard**: When disabled, the update API route returns `HTTP 403` for all check and install requests, preventing unreviewed updates;
   - **Host / Platform Lock**: For curated plugin indexes (such as VibeDev) or restricted enterprise environments, this can be locked directly via Cordis configuration (bundle patch) without needing UI interaction:
     ```yaml
-    - insert:
-        - id: ui-workspace-archive-manager
-          name: '@michengai/dsh-archive-manager'
-          config:
-            updater: false # or onlineUpdate: false
+    updater: false # or onlineUpdate: false
     ```
     Once configured, the updater is disabled at startup, the update action stays hidden, and the online-update switch is disabled. The host lock takes precedence over the user's choice in settings.json and cannot be lifted through the UI. Removing the host lock restores the saved user preference.
 
@@ -131,12 +129,13 @@ Two native switches are available. Their values are persisted in `archive-manage
 | --- | --- |
 | **Archive one chat** | Open the session context menu in the sidebar and choose **Archive session** |
 | **Archive a workspace** | Open the workspace menu and choose **Archive session** (opens an in-place confirmation overlay) |
-| **Search & filter** | Open **Settings → Archived sessions** or click **Archive** in the sidebar; combine keyword, project, favorites, and date filters |
+| **Search & filter** | Open **Settings → Archived sessions** or click **Archive** in the sidebar; search bar automatically covers titles and body messages; use the Codex-style view menu to filter (all / favorites only) and sort; select projects from dropdown; pick dates with the single-field capsule |
+| **Custom calendar & keyboard nav** | Click the date capsule to open the lightweight calendar popover; supports all time and quick presets; provides complete WAI-ARIA keyboard navigation (arrows, Home/End, PageUp/Down, Enter/Space) and real-time range stretch preview |
 | **Quick preview** | Click a match snippet or **More → Quick preview** to inspect context with highlights without restoring |
-| **Adjust ordering** | Sort by update time, creation time, title, or most/fewest turns |
+| **Adjust ordering** | Sort by update time, creation time, title, or most/fewest turns in the view menu |
 | **Restore a chat** | Click the restore icon on any row; use **More → Restore and open** to resume the chat directly |
 | **Archive entire group** | On **Unarchived**, click the **…** menu next to a group and confirm archiving all chats in that project |
-| **Favorite chats** | Click the star icon on any row; use the favorites dropdown to filter important chats |
+| **Favorite chats** | Click the star icon on any row; use the view menu to filter starred chats |
 | **Clean up idle chats** | On **Unarchived**, set an idle day threshold, automatically protecting running and starred chats, preview candidates, and confirm |
 | **Locate session files** | Select **Copy session ID** or **Copy session path** from the **More** menu |
 | **Repair damaged logs** | Expand **Diagnosis and repair** to diagnose and repair corrupted single-frame Zstandard files or legacy anomalies |
