@@ -118,6 +118,17 @@ export function getPresetRange(type: "all" | "today" | "7d" | "30d" | "90d", now
 	};
 }
 
+/**
+ * 按页翻月：把日号夹到目标月最后一天。
+ * 直接用 new Date(year, month ± 1, day) 时，目标月天数不足会让 JS 继续向后滚动
+ * （10-31 退一月落到 10-01、01-31 进一月落到 03-03），PageUp/PageDown 就会跳过整月。
+ */
+export function shiftMonthClamped(year: number, monthIndex: number, day: number, delta: number): Date {
+	const targetMonth = monthIndex + delta;
+	const lastDay = new Date(year, targetMonth + 1, 0).getDate();
+	return new Date(year, targetMonth, Math.min(day, lastDay));
+}
+
 /** 宿主没有日期范围。单字段胶囊触发器 + 轻量级 DSH 风格日历范围浮层。 */
 export function DateRange(props: {
 	React?: typeof React;
@@ -348,14 +359,14 @@ export function DateRange(props: {
 					e.stopPropagation();
 					const parts = parseYmd(cell.dateStr);
 					if (parts) {
-						moveFocusToDate(new Date(parts.year, parts.monthIndex - 1, parts.day));
+						moveFocusToDate(shiftMonthClamped(parts.year, parts.monthIndex, parts.day, -1));
 					}
 				} else if (e.key === "PageDown") {
 					e.preventDefault();
 					e.stopPropagation();
 					const parts = parseYmd(cell.dateStr);
 					if (parts) {
-						moveFocusToDate(new Date(parts.year, parts.monthIndex + 1, parts.day));
+						moveFocusToDate(shiftMonthClamped(parts.year, parts.monthIndex, parts.day, 1));
 					}
 				}
 			},

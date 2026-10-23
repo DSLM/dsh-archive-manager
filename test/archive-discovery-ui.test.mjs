@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { createDiscoveryTools } from "../src/archive-discovery-ui.ts";
-import { DateRange, buildMonthGrid, getPresetRange } from "../src/plugin-ui.ts";
+import { DateRange, buildMonthGrid, getPresetRange, shiftMonthClamped } from "../src/plugin-ui.ts";
 
 // 最小钩子驱动器保留依赖和清理，用可控请求验证异步竞争。
 function harness() {
@@ -248,4 +248,17 @@ test("buildMonthGrid 与 getPresetRange 纯函数核心行为与边界验证", (
   assert.deepEqual(getPresetRange("today", mockNow), { from: "2026-10-24", to: "2026-10-24" }, "今天为当天闭区间");
   assert.deepEqual(getPresetRange("7d", mockNow), { from: "2026-10-18", to: "2026-10-24" }, "近 7 天包含当天共 7 日");
   assert.deepEqual(getPresetRange("30d", mockNow), { from: "2026-09-25", to: "2026-10-24" }, "近 30 天包含当天共 30 日");
+});
+
+test("PageUp/PageDown 翻月把日号夹到目标月最后一天，不溢出到下下个月", () => {
+  const ymd = date => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+  // 月末翻到短月：日号必须夹紧，否则 new Date 会滚到下下个月（10-31 退一月曾落到 10-01）
+  assert.equal(ymd(shiftMonthClamped(2026, 9, 31, -1)), "2026-09-30", "10-31 退一月应为 09-30");
+  assert.equal(ymd(shiftMonthClamped(2026, 9, 31, 1)), "2026-11-30", "10-31 进一月应为 11-30，不得跳过 11 月");
+  assert.equal(ymd(shiftMonthClamped(2026, 0, 31, 1)), "2026-02-28", "01-31 进一月应为 02-28，不得跳过 2 月");
+  assert.equal(ymd(shiftMonthClamped(2024, 0, 31, 1)), "2024-02-29", "闰年 2 月夹到 29 日");
+  // 常规日号不受夹紧影响，跨年方向也要正确
+  assert.equal(ymd(shiftMonthClamped(2026, 0, 15, 1)), "2026-02-15", "常规日号原样保留");
+  assert.equal(ymd(shiftMonthClamped(2026, 0, 31, -1)), "2025-12-31", "1 月退一月跨到上一年 12 月");
+  assert.equal(ymd(shiftMonthClamped(2026, 11, 15, 1)), "2027-01-15", "12 月进一月跨到下一年 1 月");
 });
