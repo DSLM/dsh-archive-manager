@@ -1,6 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import React from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { createDiscoveryTools } from "../src/archive-discovery-ui.ts";
+import { DateRange, buildMonthGrid, getPresetRange } from "../src/plugin-ui.ts";
 
 // 最小钩子驱动器保留依赖和清理，用可控请求验证异步竞争。
 function harness() {
@@ -8,7 +11,8 @@ function harness() {
   const React = {
     useState(initial) { const i = cursor++; slots[i] ??= { value: typeof initial === "function" ? initial() : initial }; return [slots[i].value, next => { slots[i].value = typeof next === "function" ? next(slots[i].value) : next; }]; },
     useEffect(fn, deps) { const i = cursor++; const previous = slots[i]; if (!previous || deps.some((v, j) => !Object.is(v, previous.deps[j]))) { effects.push(() => { previous?.cleanup?.(); slots[i] = { deps, cleanup: fn() }; }); } },
-    createElement: (type, props, ...children) => ({ type, props, children })
+    useRef(initial) { const i = cursor++; return slots[i] ??= { current: initial }; },
+    createElement: (type, props, ...children) => ({ type, props: { ...props, children: children.length === 1 ? children[0] : children.length > 1 ? children : props?.children }, children })
   };
   return { tools: createDiscoveryTools(React), render(fn) { cursor = 0; const result = fn(); const pending = effects; effects = []; pending.forEach(fn => fn()); return result; }, dispose() { slots.forEach(slot => slot.cleanup?.()); } };
 }
@@ -87,26 +91,43 @@ test("正文搜索切换后不发布旧命中，禁用后不继续请求", async
 });
 
 test("日期范围写入开始和结束，清空时清除条件", () => {
-  const React = { createElement: (type, props, ...children) => ({ type, props, children }) };
-  const { DiscoveryFilters } = createDiscoveryTools(React);
+  const env = harness();
+  const { DiscoveryFilters } = env.tools;
   const calls = [];
-  const nodes = node => Array.isArray(node) ? node.flatMap(nodes) : node?.props ? [node, ...nodes(node.props.children), ...nodes(node.children)] : [];
-  const tree = DiscoveryFilters({
+  const nodes = node => {
+    const seen = new Set();
+    const walk = n => {
+      if (!n || typeof n !== "object" || seen.has(n)) return [];
+      seen.add(n);
+      if (Array.isArray(n)) return n.flatMap(walk);
+      return n.props ? [n, ...walk(n.props.children), ...walk(n.children)] : [];
+    };
+    return walk(node);
+  };
+  const tree = env.render(() => DiscoveryFilters({
     t: key => key, from: "2026-01-02", to: "2026-01-09", invalid: false,
     onFrom: value => calls.push(["from", value]), onTo: value => calls.push(["to", value]), onClear: () => calls.push(["clear"])
-  });
+  }));
   const range = tree.children.find(node => typeof node?.type === "function" && node.props?.onFrom);
-  const rendered = range.type(range.props);
+  const rendered = env.render(() => range.type(range.props));
   const dates = nodes(rendered).filter(node => node.props?.type === "date");
   dates[0].props.onChange({ target: { value: "2026-02-01" } });
   dates[1].props.onChange({ target: { value: "2026-02-03" } });
-  const cleared = DiscoveryFilters({
+  const cleared = env.render(() => DiscoveryFilters({
     t: key => key, from: "", to: "", invalid: false,
     onFrom: value => calls.push(["from", value]), onTo: value => calls.push(["to", value]), onClear: () => calls.push(["clear"])
-  });
+  }));
   const clearedRange = cleared.children.find(node => typeof node?.type === "function" && node.props?.onFrom);
-  nodes(clearedRange.type(clearedRange.props)).find(node => node.props?.type === "date").props.onChange({ target: { value: "" } });
+  nodes(env.render(() => clearedRange.type(clearedRange.props))).find(node => node.props?.type === "date").props.onChange({ target: { value: "" } });
   assert.deepEqual(calls, [["from", "2026-02-01"], ["to", "2026-02-03"], ["clear"]]);
+
+  // 验证单字段胶囊触发器在有值与无值时的文本展示及清空按钮渲染（直接验证生产真实 hooks 标记）
+  const textNode = nodes(rendered).find(node => typeof node.props?.className === "string" && node.props.className.includes("dsham_dateText"));
+  assert.equal(textNode?.props?.children, "2026-01-02 – 2026-01-09", "已选日期合并展示为单行区间");
+  const clearButton = nodes(rendered).find(node => node.props?.className === "dsham_dateClearBtn");
+  assert.ok(clearButton, "有值时渲染独立清除小按钮");
+  clearButton.props.onClick({ stopPropagation() {} });
+  assert.equal(calls[calls.length - 1][0], "clear", "点击清除按钮触发 onClear");
 });
 
 test("删除进行中暂停详情读取，不因列表变短重读剩余会话", async () => {
@@ -175,4 +196,56 @@ test('预览按 Escape 只关闭自身，拦截外层设置关闭并在退出后
     assert.equal(state.target,null);assert.equal(outer,0);assert.equal(event.defaultPrevented,true);
     target.dispatchEvent(new Event('keydown'));assert.equal(outer,1);
   } finally {env.dispose();if(previous===undefined)delete globalThis.window;else globalThis.window=previous;}
+});
+
+test("DateRange 轻量日历组件支持三语本地化与无障碍焦点属性", () => {
+  const dicts = {
+    zh: { "discovery.timeRange": "时间范围", "discovery.today": "今天", "discovery.allTime": "全部时间", "locale.language": "zh" },
+    en: { "discovery.timeRange": "Date range", "discovery.today": "Today", "discovery.allTime": "All time", "locale.language": "en" },
+    ru: { "discovery.timeRange": "Период", "discovery.today": "Сегодня", "discovery.allTime": "Все время", "locale.language": "ru" }
+  };
+  const makeT = dict => key => dict[key] ?? key;
+  const base = { label: "Date", fromLabel: "Updated from", toLabel: "To", onFrom() {}, onTo() {}, onClear() {} };
+
+  // 1. 三语占位与国际化输出
+  const htmlZh = renderToStaticMarkup(React.createElement(DateRange, { ...base, from: "", to: "", t: makeT(dicts.zh) }));
+  assert.ok(htmlZh.includes("时间范围"), "中文渲染时间范围");
+  assert.ok(htmlZh.includes("tabindex=\"-1\""), "隐藏 input 具备 tabindex=-1 避免键盘卡焦");
+  assert.ok(htmlZh.includes("aria-hidden=\"true\""), "隐藏 input 具备 aria-hidden 避免读屏器报出");
+
+  const htmlEn = renderToStaticMarkup(React.createElement(DateRange, { ...base, from: "", to: "", t: makeT(dicts.en) }));
+  assert.ok(htmlEn.includes("Date range"), "英文正确渲染 Date range 占位");
+
+  const htmlRu = renderToStaticMarkup(React.createElement(DateRange, { ...base, from: "", to: "", t: makeT(dicts.ru) }));
+  assert.ok(htmlRu.includes("Период"), "俄文正确渲染 Период 占位");
+});
+
+test("buildMonthGrid 与 getPresetRange 纯函数核心行为与边界验证", () => {
+  // 1. 验证 2026 年 10 月网格结构（共 42 格，31 个当月日）
+  const oct2026 = buildMonthGrid(2026, 9);
+  assert.equal(oct2026.length, 42, "完整输出 42 格保证 6 行对齐");
+  const octDays = oct2026.filter(c => !c.isOutside);
+  assert.equal(octDays.length, 31, "10 月共 31 天");
+  assert.equal(octDays[0].dateStr, "2026-10-01", "当月首日为 10-01");
+  assert.equal(octDays[30].dateStr, "2026-10-31", "当月末日为 10-31");
+  assert.equal(oct2026[0].dateStr, "2026-09-28", "前导格补齐 9 月 28 日");
+  assert.equal(oct2026[0].isOutside, true);
+
+  // 2. 验证闰年 2024 年 2 月（29 天）与平年 2026 年 2 月（28 天）
+  const feb2024 = buildMonthGrid(2024, 1);
+  assert.equal(feb2024.filter(c => !c.isOutside).length, 29, "2024 闰年 2 月 29 天");
+  const feb2026 = buildMonthGrid(2026, 1);
+  assert.equal(feb2026.filter(c => !c.isOutside).length, 28, "2026 平年 2 月 28 天");
+
+  // 3. 跨年边界：1 月的前导月为上一年 12 月
+  const jan2026 = buildMonthGrid(2026, 0);
+  assert.equal(jan2026[0].year, 2025, "1 月前导属于 2025 年");
+  assert.equal(jan2026[0].monthIndex, 11, "1 月前导月份索引为 11（12月）");
+
+  // 4. 预设范围计算
+  const mockNow = new Date(2026, 9, 24); // 2026-10-24
+  assert.deepEqual(getPresetRange("all", mockNow), { from: "", to: "" }, "全部时间清空区间");
+  assert.deepEqual(getPresetRange("today", mockNow), { from: "2026-10-24", to: "2026-10-24" }, "今天为当天闭区间");
+  assert.deepEqual(getPresetRange("7d", mockNow), { from: "2026-10-18", to: "2026-10-24" }, "近 7 天包含当天共 7 日");
+  assert.deepEqual(getPresetRange("30d", mockNow), { from: "2026-09-25", to: "2026-10-24" }, "近 30 天包含当天共 30 日");
 });

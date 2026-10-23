@@ -312,60 +312,39 @@ test("设置导航图标使用独立 mask 注入，不改写宿主 svg", async (
 	const source = await readFile(fileURLToPath(new URL("../src/client.ts", import.meta.url)), "utf8");
 	const built = await readFile(CLIENT_BUNDLE, "utf8");
 	for (const text of [source, built]) {
-		assert.match(text, /dsham-nav-icon/, "必须带独立标记属性");
-		assert.match(text, /dsham_nav_icon_archived/, "必须使用独立 mask 图标类");
-		assert.match(text, /--dsham-nav-icon-mask/, "图标必须以 mask 方式绘制");
-		assert.match(text, /svg\{display:none!important\}/, "必须隐藏宿主 svg");
+		assert.match(text, /data-dsham-nav-icon/, "必须带独立标记属性");
+		assert.match(text, /::before/, "必须使用 ::before 伪元素渲染图标");
+		assert.match(text, />\s*svg\s*\{[^}]*display:\s*none/, "必须隐藏宿主 svg");
 	}
 	assert.match(source, /width:calc\(\(100% - 4px\)\/2\)!important/, "分段指示器必须与 2px 内边距对齐");
 
-	const previousCreate = document.createElement;
-	document.createElement = (tag) => {
-		const node = {
-			tagName: String(tag).toUpperCase(),
-			className: "",
-			attributes: new Map(),
-			parent: null,
-			setAttribute(name, value) { this.attributes.set(name, String(value)); },
-			remove() {
-				if (this.parent === null) return;
-				const index = this.parent.children.indexOf(this);
-				if (index >= 0) this.parent.children.splice(index, 1);
-				this.parent = null;
-			},
-		};
-		return node;
+	const svg = { tagName: "svg" };
+	const button = {
+		textContent: "归档会话",
+		attributes: new Map(),
+		children: [svg],
+		getAttribute(name) { return this.attributes.get(name) ?? null; },
+		hasAttribute(name) { return this.attributes.has(name); },
+		setAttribute(name, value) { this.attributes.set(name, String(value)); },
+		removeAttribute(name) { this.attributes.delete(name); },
+		querySelector(selector) {
+			if (selector === ":scope > svg") return svg;
+			if (selector === "svg") return svg;
+			return null;
+		},
 	};
-	try {
-		const svg = { tagName: "svg" };
-		const button = {
-			textContent: "归档会话",
-			attributes: new Map(),
-			children: [svg],
-			getAttribute(name) { return this.attributes.get(name) ?? null; },
-			setAttribute(name, value) { this.attributes.set(name, String(value)); },
-			removeAttribute(name) { this.attributes.delete(name); },
-			querySelector(selector) {
-				if (selector === ":scope > svg") return svg;
-				if (selector === "svg") return svg;
-				if (selector === ".dsham_nav_icon_archived") return this.children.find((node) => node.className === "dsham_nav_icon_archived") ?? null;
-				return null;
-			},
-			prepend(node) { this.children.unshift(node); node.parent = this; },
-		};
-		assert.equal(t.applySettingsNavIcon(button, "归档会话"), true);
-		assert.equal(button.getAttribute("data-dsham-nav-icon"), "archived");
-		assert.equal(button.children[0].className, "dsham_nav_icon_archived");
-		assert.equal(button.children[0].attributes.get("aria-hidden"), "true");
-		assert.equal(svg.tagName, "svg", "不得改写宿主 svg");
-		assert.equal(t.applySettingsNavIcon(button, "归档会话"), false, "重复同步必须幂等");
-		assert.equal(t.applySettingsNavIcon(button, "其他入口"), false, "只处理本插件入口");
-		t.restoreSettingsNavIcon(button);
-		assert.equal(button.getAttribute("data-dsham-nav-icon"), null);
-		assert.equal(button.querySelector(".dsham_nav_icon_archived"), null);
-	} finally {
-		document.createElement = previousCreate;
-	}
+	assert.equal(t.applySettingsNavIcon(button, "归档会话"), true);
+	assert.equal(button.getAttribute("data-dsham-nav-icon"), "");
+	assert.equal(button.children.length, 1, "禁止向 button 插入任何真实 DOM 节点");
+	assert.equal(button.children[0], svg, "宿主 svg 结构保持原样");
+	assert.equal(t.applySettingsNavIcon(button, "归档会话"), false, "重复同步必须幂等");
+	assert.equal(t.applySettingsNavIcon(button, "其他入口"), true, "切换非本插件入口时应清除标记");
+	assert.equal(button.hasAttribute("data-dsham-nav-icon"), false);
+	assert.equal(t.applySettingsNavIcon(button, "其他入口"), false, "已无标记时不重复处理");
+	t.applySettingsNavIcon(button, "归档会话");
+	assert.equal(button.hasAttribute("data-dsham-nav-icon"), true);
+	assert.equal(t.restoreSettingsNavIcon(button), true);
+	assert.equal(button.getAttribute("data-dsham-nav-icon"), null);
 });
 
 test("设置导航图标样式在安装时全局注入，卸载时清理", () => {
@@ -395,7 +374,9 @@ test("设置导航图标样式在安装时全局注入，卸载时清理", () =>
 		});
 		assert.equal(appended, true, "样式必须在插件安装时就注入，而不是等归档页渲染");
 		assert.equal(style.id, "dsham-nav-icon-style");
-		assert.match(style.textContent, /dsham_nav_icon_archived/);
+		assert.match(style.textContent, /data-dsham-nav-icon/);
+		assert.match(style.textContent, /::before/);
+		assert.match(style.textContent, />\s*svg\s*\{[^}]*display:\s*none/);
 		disposer();
 		assert.equal(style.removed, true, "卸载时必须移除注入样式");
 	} finally {

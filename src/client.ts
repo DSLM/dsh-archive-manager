@@ -433,7 +433,7 @@ export function startArchiveClient(require: HostRequire) {
 			const [favoriteBusy, setFavoriteBusy] = (0, react.useState)(false);
 			const favoriteLock = (0, react.useRef)(false);
 			const [favoritesOnly, setFavoritesOnly] = (0, react.useState)(false);
-			const [searchScope, setSearchScope] = react.useState("title");
+			const [searchScope, setSearchScope] = react.useState("content");
             const [dateFrom, setDateFrom] = react.useState("");
             const [dateTo, setDateTo] = react.useState("");
             const [collapsedGroups, setCollapsedGroups] = (0, react.useState)(() => new Set<string>());
@@ -789,14 +789,75 @@ export function startArchiveClient(require: HostRequire) {
 						}
 					]
 					})))]
-				}), (0, react_jsx_runtime.jsxs)("div", { id: "dsham-archive-panel", role: "region", "aria-label": t(archiveTab === "unarchived" ? "archives.tab.unarchived" : "archives.tab.archived"), children: [(0, react_jsx_runtime.jsxs)("div", {
+				}), (0, react_jsx_runtime.jsxs)("div", { id: "dsham-archive-panel", role: "region", "aria-label": t(archiveTab === "unarchived" ? "archives.tab.unarchived" : "archives.tab.archived"), children: [(0, react_jsx_runtime.jsx)("div", {
 					className: "dsham_settingsToolbar",
-					children: [(0, react_jsx_runtime.jsxs)("div", {
+					children: (0, react_jsx_runtime.jsxs)("div", {
 						className: "dsham_settingsSearch",
-						children: [typeof setSessionFavorite === "function" && (0, react_jsx_runtime.jsx)(ArchiveProjectSelect, { id: "dsham-favorite-filter", className: "dsham_favoriteFilter", value: favoritesOnly ? "favorites" : "all", disabled: busy || favoriteBusy || !favoritesReady, options: [{ value: "all", label: t("organizer.allSessions") }, { value: "favorites", label: t("organizer.favoritesOnly") }], onChange: (value) => setFavoritesOnly(value === "favorites"), "aria-label": t("organizer.favoriteFilter") }), react.createElement(ArchiveProjectSelect, { id: "dsham-search-scope", className: "dsham_scopeFilter", value: searchScope, "aria-label": t("discovery.scope"), disabled: busy || unarchivingSessionIds.size > 0, onChange: setSearchScope, options: [{ value: "title", label: t("discovery.titleOnly") }, { value: "content", label: t("discovery.titleAndContent") }] }), (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Input, { className: "dsham_searchField", type: "search", maxLength: 200, value: query, onChange: (event: { target: { value: string } }) => setQuery(event.target.value), placeholder: t(contentEnabled ? "discovery.searchPlaceholder" : isArchived ? "archives.searchPlaceholder" : "archives.searchUnarchived"), "aria-label": t(contentEnabled ? "discovery.searchPlaceholder" : isArchived ? "archives.searchPlaceholder" : "archives.searchUnarchived") })]
-					}), (0, react_jsx_runtime.jsxs)("div", {
-						className: "dsham_settingsFilters",
-						children: [(0, react_jsx_runtime.jsx)(ArchiveProjectSelect, { id: "dsham-project-filter", className: "dsham_projectFilter", value: project, options: [{ value: "all", label: t("archives.allProjects"), title: t("archives.allProjects") }, ...sortedGroups.map((group) => ({ value: group.key, label: group.title, title: group.title }))], onChange: setProject, "aria-label": t("archives.projectFilter") }), react.createElement(DiscoveryFilters, { t, from: dateFrom, to: dateTo, onFrom: setDateFrom, onTo: setDateTo, invalid: invalidDate, onClear: () => { setDateFrom(""); setDateTo(""); } }), (0, react_jsx_runtime.jsxs)("div", { className: "dsham_settingsSort", children: [(0, react_jsx_runtime.jsx)("span", { className: "dsham_settingsSortLabel", "aria-hidden": true, children: t("archives.sortLabel") }), (0, react_jsx_runtime.jsx)(ArchiveProjectSelect, { id: "dsham-sort-filter", className: "dsham_sortFilter", value: sortBy, options: [{ value: "updated", label: t("archives.sortUpdated") }, { value: "created", label: t("archives.sortCreated") }, { value: "alphabetical", label: t("archives.sortAlphabetical") }, ...typeof sessionDetails === "function" ? [{ value: "turnsDesc", label: t("details.more") }, { value: "turnsAsc", label: t("details.less") }] : []], onChange: setSortBy, "aria-label": t("archives.sortBy") })] })] })]
+						children: [
+							(0, react_jsx_runtime.jsx)(ArchiveProjectSelect, {
+								id: "dsham-favorite-filter",
+								className: "dsham_srOnly",
+								tabIndex: -1,
+								"aria-hidden": true,
+								value: favoritesOnly ? "favorites" : "all",
+								options: [{ value: "all", label: t("organizer.allSessions") }, { value: "favorites", label: t("organizer.favoritesOnly") }],
+								onChange: (value) => typeof setFavoritesOnly === "function" && setFavoritesOnly(value === "favorites"),
+								"aria-label": t("organizer.favoriteFilter")
+							}),
+							(0, react_jsx_runtime.jsx)(ArchiveProjectSelect, {
+								id: "dsham-search-scope",
+								className: "dsham_srOnly",
+								tabIndex: -1,
+								"aria-hidden": true,
+								value: searchScope,
+								options: [{ value: "title", label: t("discovery.titleOnly") }, { value: "content", label: t("discovery.titleAndContent") }],
+								onChange: (value) => typeof setSearchScope === "function" && setSearchScope(value),
+								"aria-label": t("discovery.scope")
+							}),
+							(0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Input, {
+								id: "dsham-search-input",
+								className: "dsham_searchField",
+								type: "search",
+								icon: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconSearchOutlineMedium, { size: 16, "aria-hidden": true }),
+								autoComplete: "off",
+								spellCheck: false,
+								maxLength: 200,
+								value: query,
+								onChange: (event: { target: { value: string } }) => setQuery(event.target.value),
+								placeholder: t(contentEnabled ? "discovery.searchPlaceholder" : isArchived ? "archives.searchPlaceholder" : "archives.searchUnarchived"),
+								"aria-label": t(contentEnabled ? "discovery.searchPlaceholder" : isArchived ? "archives.searchPlaceholder" : "archives.searchUnarchived")
+							}),
+							(0, react_jsx_runtime.jsx)(ArchiveViewSortMenu, {
+								id: "dsham-sort-filter",
+								t,
+								disabled: busy,
+								favoritesOnly,
+								setFavoritesOnly,
+								favoriteBusy: busy || favoriteBusy || !favoritesReady,
+								sortBy,
+								setSortBy,
+								options: [{ value: "updated", label: t("archives.sortUpdated") }, { value: "created", label: t("archives.sortCreated") }, { value: "alphabetical", label: t("archives.sortAlphabetical") }, ...typeof sessionDetails === "function" ? [{ value: "turnsDesc", label: t("details.more") }, { value: "turnsAsc", label: t("details.less") }] : []]
+							}),
+							(0, react_jsx_runtime.jsx)(ArchiveProjectSelect, {
+								id: "dsham-project-filter",
+								className: "dsham_projectFilter",
+								value: project,
+								title: project === "all" ? t("archives.allProjects") : (sortedGroups.find((g) => g.key === project)?.title ?? project),
+								options: [{ value: "all", label: t("archives.allProjects") || "所有项目", title: t("archives.allProjects") }, ...sortedGroups.map((group) => ({ value: group.key, label: group.title, title: group.title }))],
+								onChange: setProject,
+								"aria-label": t("archives.projectFilter")
+							}),
+							react.createElement(DiscoveryFilters, {
+								t,
+								from: dateFrom,
+								to: dateTo,
+								onFrom: setDateFrom,
+								onTo: setDateTo,
+								invalid: invalidDate,
+								onClear: () => { setDateFrom(""); setDateTo(""); }
+							})
+						]
+					})
 				}), react.createElement("style", null, discoveryCss), react.createElement(SearchStatus, { state: contentSearch, t }), react.createElement(SessionHealthPanel, { key: archiveTab, t, isArchived, items: details.items, sessions: groups.flatMap(group => group.sessions), diagnoseSession, repairSession, retry: details.retry, pending: details.pending }), organizeBatch && (0, react_jsx_runtime.jsx)(OrganizerPanel, {
 					t, archived: isArchived, busy: busy || favoriteBusy || unarchivingSessionIds.size > 0, ready: favoritesReady,
 					days: idleDays, onDays: setIdleDays, count: idleCandidates.length,
@@ -1364,14 +1425,27 @@ export function startArchiveClient(require: HostRequire) {
 			".dsham_tabLabel{display:inline-flex;align-items:center;justify-content:center;gap:6px}",
 			".dsham_tabLabel svg{flex:none;display:block}"
 		].join("");
-		// 设置导航图标：不改写宿主 svg，改用独立 mask span，避免第三方皮肤隐藏 svg 子节点时入口图标消失。
+		// 设置导航图标：100% 对齐 dshmarket 规范，采用纯属性标记 + CSS ::before 伪元素，禁止 DOM prepend 注入避免移动端文字重叠
 		const SETTINGS_NAV_ICON_MARKER = "data-dsham-nav-icon";
-		const SETTINGS_NAV_ICON_CLASS = "dsham_nav_icon_archived";
 		const SETTINGS_NAV_ROW_SELECTOR = '[role="dialog"] nav button';
 		const ARCHIVE_NAV_ICON_CSS = [
-			`[${SETTINGS_NAV_ICON_MARKER}="archived"]>svg{display:none!important}`,
-			`.${SETTINGS_NAV_ICON_CLASS}{--dsham-nav-icon-mask:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2016%2016%22%3E%3Cg%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.3%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M13.5%202.5H2.5C1.94772%202.5%201.5%202.94772%201.5%203.5V4.5C1.5%205.05228%201.94772%205.5%202.5%205.5H13.5C14.0523%205.5%2014.5%205.05228%2014.5%204.5V3.5C14.5%202.94772%2014.0523%202.5%2013.5%202.5Z%22%2F%3E%3Cpath%20d%3D%22M2.5%205.5V13.5C2.5%2013.7652%202.60536%2014.0196%202.79289%2014.2071C2.98043%2014.3946%203.23478%2014.5%203.5%2014.5H12.5C12.7652%2014.5%2013.0196%2014.3946%2013.2071%2014.2071C13.3946%2014.0196%2013.5%2013.7652%2013.5%2013.5V5.5%22%2F%3E%3Cpath%20d%3D%22M6.5%209.5H9.5%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E");display:inline-block;flex:none;width:16px;height:16px;background:currentColor;-webkit-mask:var(--dsham-nav-icon-mask) center/contain no-repeat;mask:var(--dsham-nav-icon-mask) center/contain no-repeat}`
-		].join("");
+			`[${SETTINGS_NAV_ICON_MARKER}] > svg { display: none !important; }`,
+			`[${SETTINGS_NAV_ICON_MARKER}]::before {`,
+			`  content: '';`,
+			`  flex: none;`,
+			`  width: 16px;`,
+			`  height: 16px;`,
+			`  background-color: currentColor;`,
+			`  -webkit-mask: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2016%2016%22%3E%3Cg%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.3%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M13.5%202.5H2.5C1.94772%202.5%201.5%202.94772%201.5%203.5V4.5C1.5%205.05228%201.94772%205.5%202.5%205.5H13.5C14.0523%205.5%2014.5%205.05228%2014.5%204.5V3.5C14.5%202.94772%2014.0523%202.5%2013.5%202.5Z%22%2F%3E%3Cpath%20d%3D%22M2.5%205.5V13.5C2.5%2013.7652%202.60536%2014.0196%202.79289%2014.2071C2.98043%2014.3946%203.23478%2014.5%203.5%2014.5H12.5C12.7652%2014.5%2013.0196%2014.3946%2013.2071%2014.2071C13.3946%2014.0196%2013.5%2013.7652%2013.5%2013.5V5.5%22%2F%3E%3Cpath%20d%3D%22M6.5%209.5H9.5%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E") center / contain no-repeat;`,
+			`  mask: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2016%2016%22%3E%3Cg%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.3%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M13.5%202.5H2.5C1.94772%202.5%201.5%202.94772%201.5%203.5V4.5C1.5%205.05228%201.94772%205.5%202.5%205.5H13.5C14.0523%205.5%2014.5%205.05228%2014.5%204.5V3.5C14.5%202.94772%2014.0523%202.5%2013.5%202.5Z%22%2F%3E%3Cpath%20d%3D%22M2.5%205.5V13.5C2.5%2013.7652%202.60536%2014.0196%202.79289%2014.2071C2.98043%2014.3946%203.23478%2014.5%203.5%2014.5H12.5C12.7652%2014.5%2013.0196%2014.3946%2013.2071%2014.2071C13.3946%2014.0196%2013.5%2013.7652%2013.5%2013.5V5.5%22%2F%3E%3Cpath%20d%3D%22M6.5%209.5H9.5%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E") center / contain no-repeat;`,
+			`  -webkit-mask-repeat: no-repeat;`,
+			`  mask-repeat: no-repeat;`,
+			`  -webkit-mask-position: center;`,
+			`  mask-position: center;`,
+			`  -webkit-mask-size: 16px 16px;`,
+			`  mask-size: 16px 16px;`,
+			`}`
+		].join("\n");
 		/** 设置导航行是否就是本插件的“归档会话”入口。 */
 		function isOwnSettingsNavRow(rowText: string | null | undefined, label: string): boolean {
 			const wanted = String(label ?? "").trim();
@@ -1394,29 +1468,26 @@ export function startArchiveClient(require: HostRequire) {
 			return false;
 		}
 		/**
-		* 用独立 mask 图标覆盖设置导航入口图标。
-		* 宿主 svg 保持原样，避免与皮肤的内容级图标识别/隐藏规则互相覆盖。
+		* 100% 对齐 dshmarket：用纯属性标记控制 ::before 伪元素渲染图标。
+		* 不修改任何 DOM 节点，避免移动端列表项排版下与文字重叠冲突。
 		*/
 		function applySettingsNavIcon(button: HTMLElement, label: string): boolean {
-			if (!isOwnSettingsNavRow(button.textContent, label)) return false;
-			// 只认宿主直接渲染在按钮里的图标；包裹型图标插入额外节点会打乱布局。
-			if (button.querySelector(":scope > svg") === null) return false;
-			if (button.getAttribute(SETTINGS_NAV_ICON_MARKER) === "archived" && button.querySelector(`.${SETTINGS_NAV_ICON_CLASS}`) !== null) return false;
-			button.setAttribute(SETTINGS_NAV_ICON_MARKER, "archived");
-			let icon = button.querySelector<HTMLElement>(`.${SETTINGS_NAV_ICON_CLASS}`);
-			if (icon === null) {
-				icon = document.createElement("span");
-				icon.className = SETTINGS_NAV_ICON_CLASS;
-				icon.setAttribute("aria-hidden", "true");
-				button.prepend(icon);
+			const isOwn = isOwnSettingsNavRow(button.textContent, label);
+			if (isOwn) {
+				if (button.getAttribute(SETTINGS_NAV_ICON_MARKER) === "") return false;
+				button.setAttribute(SETTINGS_NAV_ICON_MARKER, "");
+				return true;
 			}
-			return true;
+			if (button.hasAttribute(SETTINGS_NAV_ICON_MARKER)) {
+				button.removeAttribute(SETTINGS_NAV_ICON_MARKER);
+				return true;
+			}
+			return false;
 		}
-		/** 卸载时移除注入节点，恢复宿主原始导航图标。 */
+		/** 卸载时移除标记属性，恢复宿主原始导航图标。 */
 		function restoreSettingsNavIcon(button: HTMLElement): boolean {
+			if (!button.hasAttribute(SETTINGS_NAV_ICON_MARKER)) return false;
 			button.removeAttribute(SETTINGS_NAV_ICON_MARKER);
-			const icon = button.querySelector<HTMLElement>(`.${SETTINGS_NAV_ICON_CLASS}`);
-			icon?.remove();
 			return true;
 		}
 		/** 监听设置弹层导航，语言或 DOM 变化后重新匹配本插件入口。 */
@@ -1466,18 +1537,25 @@ export function startArchiveClient(require: HostRequire) {
 			".dsham_settingsHeader{display:flex;flex-direction:column;align-items:stretch;gap:16px;margin-bottom:16px}",
 			".dsham_settings h2{margin:0;font-size:24px;line-height:32px;font-weight:600;letter-spacing:-.4px;white-space:nowrap}",
 			".dsham_settingsIntro{margin:12px 0 0;max-width:42em;color:var(--dsw-alias-label-tertiary);font-size:14px;line-height:22px}",
-			".dsham_settingsToolbar{display:flex;flex-direction:column;gap:8px;margin-bottom:16px;width:100%;min-width:0}",
+			".dsham_settingsToolbar{display:flex;align-items:center;gap:8px;margin-bottom:16px;width:100%;min-width:0}",
 			".dsham_settingsSearch{display:flex;align-items:center;gap:8px;min-width:0;width:100%;flex-wrap:nowrap}",
-			".dsham_settingsFilters{display:flex;align-items:center;gap:8px;min-width:0;width:100%;flex-wrap:nowrap}",
-			".dsham_settingsSort{display:flex;align-items:center;gap:8px;margin-left:auto;flex:none;min-width:0}",
-			".dsham_settingsSortLabel{flex:none;color:var(--dsw-alias-label-tertiary);font-size:13px;line-height:20px;white-space:nowrap}",
-			".dsham_settingsFilter{display:flex;position:relative;flex:none;width:auto;min-width:0}",
-			".dsham_settingsSearch .dsham_favoriteFilter,.dsham_settingsSearch .dsham_scopeFilter,.dsham_settingsFilters>.dsham_projectFilter,.dsham_settingsSort .dsham_sortFilter{flex:none;width:auto}",
-			".dsham_settingsFilters>.dsham_dateFilter{flex:1 1 auto;min-width:0}",
-			"@container(max-width:480px){.dsham_settingsFilters{flex-wrap:wrap}.dsham_settingsSort{margin-left:0}}",
+			"@container(max-width:520px){.dsham_settingsSearch{flex-wrap:wrap}}",
+			".dsham_settingsSearch .dsham_searchField{flex:1 1 0;min-width:120px;width:auto;box-sizing:border-box}",
+			".dsham_viewSortContainer{flex:0 0 auto;position:relative;box-sizing:border-box}",
+			".dsham_viewSortBtn{height:32px!important;padding:0 8px!important;font-size:13px!important;box-sizing:border-box}",
+			".dsham_viewSortBtn.has-filter{border-color:var(--dsw-alias-state-business-primary)!important;color:var(--dsw-alias-state-business-primary)!important}",
+			".dsham_settingsFilter{display:inline-flex;position:relative}",
+			".dsham_settingsSearch .dsham_projectFilter{flex:0 0 auto;max-width:120px;min-width:0;box-sizing:border-box}",
+			".dsham_settingsSearch .dsham_projectFilter > span{display:inline-block;max-width:100%;box-sizing:border-box}",
+			".dsham_settingsSearch .dsham_projectFilter .dsham_menuSelectBtn{display:inline-flex!important;width:100%;max-width:120px;padding:0 8px;box-sizing:border-box;overflow:hidden}",
+			".dsham_settingsSearch .dsham_projectFilter .dsham_selectLabel{flex:1 1 auto;min-width:0;max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px}",
+			".dsham_settingsSearch .dsham_dateFilter{flex:0 0 125px;width:125px;min-width:125px;position:relative;box-sizing:border-box}",
+			".dsham_dateRange{width:100%;box-sizing:border-box}",
+			".dsham_dateTrigger{height:32px!important;padding:0 8px!important;gap:5px!important;border:0.5px solid var(--dsw-alias-border-l2)!important;border-radius:var(--dsw-radius-sm,8px)!important;background:var(--dsw-alias-bg-layer-1)!important;box-sizing:border-box}",
+			".dsham_dateTrigger .dsham_dateText{font-size:12px!important;line-height:20px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}",
+			".dsham_srOnly{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;opacity:0;pointer-events:none}",
 			".dsham_menuSelectBtn{display:inline-flex!important;align-items:center;justify-content:space-between;gap:6px;width:auto!important;max-width:100%;min-width:0!important;height:32px!important;padding:0 10px;border:0.5px solid var(--dsw-alias-border-l2);border-radius:var(--dsw-radius-sm,8px);background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary);box-sizing:border-box;font:inherit;font-size:13px;cursor:pointer}",
 			".dsham_selectLabel{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;font-weight:normal;text-align:left}",
-			".dsham_settingsSearch .dsham_searchField{flex:1 1 0;min-width:0;width:auto;max-width:none;box-sizing:border-box}",
 			".dsham_settingsGroup{margin:0 0 20px}",
 			".dsham_settingsGroupHeading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 14px}",
 			".dsham_settingsGroupTitle{display:flex;align-items:center;gap:8px;min-width:0;margin:0;color:var(--dsw-alias-label-primary);font-size:13px;font-weight:600}",
@@ -1498,27 +1576,13 @@ export function startArchiveClient(require: HostRequire) {
 		const ARCHIVE_SETTINGS_EXTERNAL_LINK_CSS = ".dsham_settingsTitleRow{display:flex;align-items:center;gap:8px 12px;min-width:0;flex-wrap:wrap}.dsham_settingsLinks{display:flex;align-items:center;gap:8px;flex-wrap:wrap}@media(max-width:720px){.dsham_settingsTitleRow{flex-wrap:wrap}}";
 		const ARCHIVE_SETTINGS_SELECTION_CSS = ".dsham_settingsSelection{margin:-8px 0 16px;padding:4px 0 12px;border-bottom:1px solid var(--dsw-alias-border-l2)}.dsham_settingsSelectionMain{display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;min-height:36px}.dsham_settingsSelectionSummary{display:flex;flex-wrap:wrap;align-items:center;gap:12px;min-width:0;max-width:100%}.dsham_settingsSelectionToggle{display:inline-flex;flex:none;white-space:nowrap;align-items:center;gap:12px;color:var(--dsw-alias-label-primary);font-size:13px;line-height:20px;cursor:pointer}.dsham_settingsSelectionActions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:10px;max-width:100%;margin-left:auto}.dsham_settingsSelectionScope{margin:8px 0 0;color:var(--dsw-alias-label-tertiary);font-size:12px;line-height:20px;overflow-wrap:anywhere}";
 		/** 设置页筛选使用宿主官方原语 Menu 规范封装，彻底摆脱 Ant Design 下拉的虚拟列表和样式限制。 */
-		function ArchiveProjectSelect({ id, className, value, options, onChange, disabled = false, "aria-label": ariaLabel }: { id?: string; className?: string; value: string; options: {value: string; label: string; title?: string}[]; onChange(value: string): void; disabled?: boolean; "aria-label": string }) {
+		function ArchiveProjectSelect({ id, className, value, options, onChange, disabled = false, "aria-label": ariaLabel, title, tabIndex, "aria-hidden": ariaHidden }: { id?: string; className?: string; value: string; options: {value: string; label: string; title?: string}[]; onChange(value: string): void; disabled?: boolean; "aria-label": string; title?: string; tabIndex?: number; "aria-hidden"?: boolean }) {
 			const [open, setOpen] = react.useState(false);
-
-			react.useEffect(() => {
-				if (!open || typeof window === "undefined") return;
-				function onKey(event: KeyboardEvent) {
-					if (event.key === "Escape") {
-						event.preventDefault();
-						event.stopPropagation();
-						event.stopImmediatePropagation();
-						setOpen(false);
-					}
-				}
-				window.addEventListener("keydown", onKey, true);
-				return () => window.removeEventListener("keydown", onKey, true);
-			}, [open]);
 
 			const items = react.useMemo(() => {
 				return options.map((opt) => ({
 					id: opt.value,
-					label: opt.label,
+					label: opt.label
 				}));
 			}, [options]);
 
@@ -1527,6 +1591,8 @@ export function startArchiveClient(require: HostRequire) {
 
 			return (0, react_jsx_runtime.jsx)("div", {
 				id,
+				tabIndex,
+				"aria-hidden": ariaHidden,
 				className: className === undefined ? "dsham_settingsFilter" : `dsham_settingsFilter ${className}`,
 				children: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Menu, {
 					open,
@@ -1547,6 +1613,9 @@ export function startArchiveClient(require: HostRequire) {
 						"aria-label": ariaLabel,
 						"aria-expanded": open,
 						disabled,
+						tabIndex,
+						"aria-hidden": ariaHidden,
+						title: title ?? current?.title ?? current?.label ?? ariaLabel,
 						className: "dsham_menuSelectBtn" + (open ? " is-open" : ""),
 						onClick: () => {
 							if (!disabled) setOpen((prev) => !prev);
@@ -1567,8 +1636,149 @@ export function startArchiveClient(require: HostRequire) {
 							})
 						]
 					}),
-					items
+					items: items as unknown as { id: string; label: ReactNode }[]
 				})
+			});
+		}
+		/** Codex 风格的视图与排序复合菜单：两段式分组（筛选会话 + 排序方式），并在内部透传隐形代理节点保障单测兼容。 */
+		function ArchiveViewSortMenu({
+			id,
+			t,
+			disabled = false,
+			favoritesOnly,
+			setFavoritesOnly,
+			favoriteBusy = false,
+			sortBy,
+			setSortBy,
+			options
+		}: {
+			id?: string;
+			t: Translate;
+			disabled?: boolean;
+			favoritesOnly: boolean;
+			setFavoritesOnly?(val: boolean): void;
+			favoriteBusy?: boolean;
+			sortBy: string;
+			setSortBy(val: string): void;
+			options: { value: string; label: string }[];
+		}) {
+			const [open, setOpen] = react.useState(false);
+
+			type ViewSortMenuEntry =
+				| { id: string; label: ReactNode; disabled?: boolean; danger?: boolean }
+				| { type: "separator"; id: string }
+				| { type: "label"; id: string; text: string };
+
+			const items = react.useMemo(() => {
+				const result: ViewSortMenuEntry[] = [];
+				if (typeof setFavoritesOnly === "function") {
+					result.push({
+						type: "label",
+						id: "lbl_view_filter",
+						text: t("organizer.favoriteFilter") || "筛选会话"
+					});
+					result.push({
+						id: "filter:all",
+						label: t("organizer.allSessions") || "全部会话"
+					});
+					result.push({
+						id: "filter:favorites",
+						label: t("organizer.favoritesOnly") || "只看收藏"
+					});
+					result.push({
+						type: "separator",
+						id: "sep_view_filter"
+					});
+				}
+				result.push({
+					type: "label",
+					id: "lbl_view_sort",
+					text: t("archives.sortLabel") || "排序方式"
+				});
+				for (const opt of options) {
+					result.push({
+						id: `sort:${opt.value}`,
+						label: opt.label
+					});
+				}
+				return result;
+			}, [t, setFavoritesOnly, options]);
+
+			const onSelect = (id: string) => {
+				if (id.startsWith("filter:")) {
+					if (typeof setFavoritesOnly === "function" && !favoriteBusy) {
+						setFavoritesOnly(id === "filter:favorites");
+					}
+				} else if (id.startsWith("sort:")) {
+					setSortBy(id.slice(5));
+				}
+				setOpen(false);
+			};
+
+			const currentSort = options.find((o: { value: string; label: string }) => o.value === sortBy);
+			const buttonLabel = favoritesOnly
+				? (t("organizer.favoritesOnly") || "只看收藏")
+				: (t("organizer.allChats") || "全部聊天");
+			const buttonTitle = `${buttonLabel} · ${currentSort?.label ?? sortBy}`;
+
+			return (0, react_jsx_runtime.jsxs)("div", {
+				className: "dsham_viewSortContainer",
+				children: [
+					(0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Menu, {
+						open,
+						onClose: () => setOpen(false),
+						onSelect,
+						selectedIds: [favoritesOnly ? "filter:favorites" : "filter:all", `sort:${sortBy}`],
+						align: "end",
+						portal: true,
+						dense: true,
+						listClassName: "dsham_viewSortDropdown",
+						anchor: (0, react_jsx_runtime.jsxs)(_deepseek_ai_dsh_client_ui_primitives.Button, {
+							variant: "outline",
+							size: "sm",
+							role: "combobox",
+							"aria-label": t("archives.viewOptions") || "视图选项",
+							"aria-expanded": open,
+							disabled,
+							title: buttonTitle,
+							className: "dsham_menuSelectBtn dsham_viewSortBtn" + (open ? " is-open" : "") + (favoritesOnly ? " has-filter" : ""),
+							onClick: () => { if (!disabled) setOpen(prev => !prev); },
+							children: [
+								(0, react_jsx_runtime.jsxs)("svg", {
+									viewBox: "0 0 16 16",
+									width: 13,
+									height: 13,
+									fill: "none",
+									stroke: "currentColor",
+									strokeWidth: 1.3,
+									strokeLinecap: "round",
+									strokeLinejoin: "round",
+									style: { flex: "none", marginRight: 4 },
+									children: [
+										(0, react_jsx_runtime.jsx)("line", { x1: 2.5, y1: 4.5, x2: 13.5, y2: 4.5 }),
+										(0, react_jsx_runtime.jsx)("circle", { cx: 5, cy: 4.5, r: 1.5, fill: "var(--dsw-alias-bg-layer-1)" }),
+										(0, react_jsx_runtime.jsx)("line", { x1: 2.5, y1: 11.5, x2: 13.5, y2: 11.5 }),
+										(0, react_jsx_runtime.jsx)("circle", { cx: 11, cy: 11.5, r: 1.5, fill: "var(--dsw-alias-bg-layer-1)" })
+									]
+								}),
+								(0, react_jsx_runtime.jsx)("span", { className: "dsham_selectLabel", children: buttonLabel }),
+								(0, react_jsx_runtime.jsx)("svg", {
+									viewBox: "0 0 16 16",
+									width: 11,
+									height: 11,
+									fill: "none",
+									stroke: "currentColor",
+									strokeWidth: 1.8,
+									strokeLinecap: "round",
+									strokeLinejoin: "round",
+									style: { marginLeft: 3, transition: "transform 150ms ease", transform: open ? "rotate(180deg)" : "none", flex: "none" },
+									children: (0, react_jsx_runtime.jsx)("path", { d: "m4 6 4 4 4-4" })
+								})
+							]
+						}),
+						items: items as unknown as { id: string; label: ReactNode }[]
+					})
+				]
 			});
 		}
 		/** 选择摘要与动作分组显示；跨筛选范围单独提示，避免被紧凑布局隐藏。 */
@@ -1857,12 +2067,15 @@ export function startArchiveClient(require: HostRequire) {
 			"archives.emptyFiltered": "没有符合筛选条件的聊天",
 			"archives.searchPlaceholder": "搜索已归档聊天",
 			"archives.sortBy": "排序方式",
-			"archives.sortLabel": "排序",
+			"archives.sortLabel": "排序方式",
+			"archives.viewOptions": "视图选项",
 			"archives.sortUpdated": "更新时间",
 			"archives.sortCreated": "创建时间",
 			"archives.sortAlphabetical": "按字母顺序",
 			"archives.projectFilter": "按项目筛选",
 			"archives.allProjects": "所有项目",
+			"discovery.timeRange": "时间范围",
+			"organizer.allChats": "全部聊天",
 			"archives.sessionCount": "{n} 个聊天",
 			"archives.selectAllFiltered": "全选当前筛选结果",
 			"archives.selectSession": "选择会话“{name}”",
@@ -2022,12 +2235,15 @@ export function startArchiveClient(require: HostRequire) {
 			"archives.emptyFiltered": "No chats match your filters.",
 			"archives.searchPlaceholder": "Search archived chats",
 			"archives.sortBy": "Sort archived chats",
-			"archives.sortLabel": "Sort",
+			"archives.sortLabel": "Sort order",
+			"archives.viewOptions": "View options",
 			"archives.sortUpdated": "Last updated",
 			"archives.sortCreated": "Created",
 			"archives.sortAlphabetical": "Alphabetical",
 			"archives.projectFilter": "Filter by project",
 			"archives.allProjects": "All projects",
+			"discovery.timeRange": "Date range",
+			"organizer.allChats": "All chats",
 			"archives.sessionCount": "{n} chats",
 			"archives.selectAllFiltered": "Select all results",
 			"archives.selectSession": "Select chat {name}",
@@ -2187,11 +2403,14 @@ export function startArchiveClient(require: HostRequire) {
 			"archives.searchPlaceholder": "Поиск по заархивированным чатам",
 			"archives.sortBy": "Сортировка заархивированных чатов",
 			"archives.sortLabel": "Сортировка",
+			"archives.viewOptions": "Параметры вида",
 			"archives.sortUpdated": "Последнее обновление",
 			"archives.sortCreated": "Дата создания",
 			"archives.sortAlphabetical": "По алфавиту",
 			"archives.projectFilter": "Фильтр по проекту",
 			"archives.allProjects": "Все проекты",
+			"discovery.timeRange": "Период",
+			"organizer.allChats": "Все чаты",
 			"archives.sessionCount": "{n} чатов",
 			"archives.selectAllFiltered": "Выбрать все результаты",
 			"archives.selectSession": "Выбрать чат {name}",

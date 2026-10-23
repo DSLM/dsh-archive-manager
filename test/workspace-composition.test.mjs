@@ -556,8 +556,8 @@ test("整理页收藏、闲置预览、部分失败重试及撤回形成完整�
   assert.equal(panel().props.ready, true);
   const filter = nodes(tree).find(node => node.props.id === "dsham-favorite-filter");
   assert.deepEqual(filter.props.options.map(option => option.value), ["all", "favorites"]);
-  const searchKids = nodes(tree).find(node => node.props.className === "dsham_settingsSearch").props.children.filter(Boolean);
-  assert.ok(searchKids.findIndex(node => node.props?.id === "dsham-favorite-filter") < searchKids.findIndex(node => node.props?.id === "dsham-search-scope"), "只看收藏在仅标题前面");
+  const searchNodes = nodes(nodes(tree).find(node => node.props.className === "dsham_settingsSearch"));
+  assert.ok(searchNodes.findIndex(node => node.props?.id === "dsham-favorite-filter") < searchNodes.findIndex(node => node.props?.id === "dsham-search-scope"), "只看收藏在仅标题前面");
   const menuNode = nodes(tree).find(node => node.type?.name === "ArchivedSessionMenu");
   assert.ok(menuNode, "已归档行通过更多菜单提供恢复打开和删除");
   const menu = menuNode.type(menuNode.props);
@@ -710,11 +710,9 @@ test("归档发现入口提供组合日期筛选及只读预览", async () => {
   const filters = nodes(tree).find(n => n.type?.name === "DiscoveryFilters");
   assert.ok(filters, "日期筛选应接入真实设置页");
   const searchRow = nodes(tree).find(n => n.props.className === "dsham_settingsSearch");
-  const filterRow = nodes(tree).find(n => n.props.className === "dsham_settingsFilters");
   assert.ok(nodes(searchRow).some(n => n.type?.name === "ArchiveProjectSelect" && n.props["aria-label"] === "discovery.scope"), "搜索框左侧常驻查找范围切换");
-  assert.equal(nodes(searchRow).includes(filters), false, "日期筛选不和搜索框挤在同一行");
-  assert.ok(nodes(filterRow).includes(filters), "日期筛选跟在项目和收藏后面");
-  assert.ok(nodes(filterRow).some(n => n.props.className === "dsham_settingsSort"), "排序靠在筛选行右侧");
+  assert.ok(nodes(searchRow).includes(filters), "日期筛选整合进单行工具栏");
+  assert.ok(nodes(searchRow).some(n => n.props.id === "dsham-sort-filter"), "排序图标按钮整合进单行工具栏");
   filters.props.onFrom("2026-09-01"); tree = render();
   assert.equal(nodes(tree).filter(n => n.props?.className === "dsham_settingsRow").length, 1);
   assert.equal(nodes(tree).find(n => n.props.className === "dsham_settingsCount").props.children, "1", "日期筛选后的数量必须与可见会话一致");
