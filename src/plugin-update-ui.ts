@@ -1,8 +1,19 @@
 import React from "react";
 import { Button as PrimitiveButton, Modal } from "@deepseek-ai/dsh-client-ui-primitives";
 import { createUpdateFlow, handlePluginUpdateEscape, manualPluginUpdateCommand, pluginUpdateCopy, ZH, EN, type UpdatePayload } from "./plugin-update-model.js";
+import { resolveApiUrl } from "./api-base.js";
 
-interface UpdateUiOptions { endpoint: string; packageName: string; titleRowSelector: string; linksSelector: string; zhName: string; enName: string; ruName: string; createIcon: (name: "refresh" | "download" | "copy" | "close") => HTMLElement }
+interface UpdateUiOptions {
+	endpoint: string;
+	packageName: string;
+	titleRowSelector: string;
+	linksSelector: string;
+	zhName: string;
+	enName: string;
+	ruName: string;
+	createIcon: (name: "refresh" | "download" | "copy" | "close") => HTMLElement;
+	isEnabled?: () => boolean;
+}
 
 type UpdateRoot = { render(node: React.ReactNode): void; unmount(): void };
 function mountRoot(container: Element): UpdateRoot {
@@ -103,6 +114,7 @@ function UpdateDialog(props: { flow: ReturnType<typeof createUpdateFlow>; packag
 
 function observePluginUpdate(options: UpdateUiOptions) {
 	if (typeof document === "undefined" || document.body === null) return () => {};
+	const endpoint = resolveApiUrl(options.endpoint);
 	ensureStyle();
 	const controller = new AbortController();
 	let payload: UpdatePayload | undefined;
@@ -131,7 +143,7 @@ function observePluginUpdate(options: UpdateUiOptions) {
 		dialogHost = host;
 		dialogRoot = mountRoot(host);
 		dialogRoot.render(React.createElement(UpdateDialog, {
-			flow: createUpdateFlow((method) => requestStatus(options.endpoint, method, controller.signal), payload, (next) => { payload = next; applyControls(); }),
+			flow: createUpdateFlow((method) => requestStatus(endpoint, method, controller.signal), payload, (next) => { payload = next; applyControls(); }),
 			packageName: options.packageName, zhName: options.zhName, enName: options.enName, ruName: options.ruName, onClose: closeDialog,
 		}));
 	}
@@ -139,6 +151,26 @@ function observePluginUpdate(options: UpdateUiOptions) {
 		const row = document.querySelector(options.titleRowSelector);
 		if (row === null) return;
 		const heading = row.querySelector("h1,h2");
+		const links = row.querySelector(options.linksSelector);
+
+		if (options.isEnabled && !options.isEnabled()) {
+			if (dialogHost !== undefined) closeDialog();
+			if (links !== null) {
+				const existing = links.querySelector(`[data-mpi-check="${options.packageName}"]`);
+				if (existing !== null) {
+					unmountCheck();
+					existing.remove();
+				}
+			}
+			if (heading !== null) {
+				const version = heading.querySelector(`.mpi-version[data-package="${options.packageName}"]`);
+				if (version !== null) {
+					version.remove();
+				}
+			}
+			return;
+		}
+
 		if (heading !== null && payload !== undefined) {
 			let version = heading.querySelector<HTMLElement>(`.mpi-version[data-package="${options.packageName}"]`);
 			if (version === null) {
@@ -151,7 +183,6 @@ function observePluginUpdate(options: UpdateUiOptions) {
 			if (version.textContent !== versionLabel) version.textContent = versionLabel;
 		}
 		if (buttonHost !== undefined && !buttonHost.isConnected) unmountCheck();
-		const links = row.querySelector(options.linksSelector);
 		if (links === null) return;
 		const existing = links.querySelector<HTMLElement>(`[data-mpi-check="${options.packageName}"]`);
 		if (existing !== null) {
@@ -172,13 +203,33 @@ function observePluginUpdate(options: UpdateUiOptions) {
 		frame = window.requestAnimationFrame(() => { frame = undefined; applyControls(); });
 	});
 	observer.observe(document.documentElement, { childList: true, subtree: true, attributes: true, attributeFilter: ["lang"] });
+	let activeLoad: Promise<UpdatePayload | undefined> | undefined;
+	const load = async () => {
+		if (activeLoad) return activeLoad;
+		activeLoad = (async () => {
+			try {
+				payload = await requestStatus(endpoint, "GET", controller.signal);
+				applyControls();
+				return payload;
+			} finally {
+				activeLoad = undefined;
+			}
+		})();
+		return activeLoad;
+	};
+	const onToggle = () => {
+		applyControls();
+		if (!options.isEnabled || options.isEnabled()) void load().catch(() => {});
+	};
+	if (typeof window !== "undefined") window.addEventListener("dsham-update-toggle", onToggle);
 	applyControls();
-	void requestStatus(options.endpoint, "GET", controller.signal).then((next) => { payload = next; applyControls(); }).catch(() => {});
+	void load().catch(() => {});
 	return () => {
 		controller.abort(); observer.disconnect(); closeDialog(); unmountCheck();
+		if (typeof window !== "undefined") window.removeEventListener("dsham-update-toggle", onToggle);
 		if (frame !== undefined) window.cancelAnimationFrame(frame);
 		document.querySelectorAll(`[data-mpi-check="${options.packageName}"],.mpi-version[data-package="${options.packageName}"]`).forEach((node) => node.remove());
 	};
 }
 
-export { EN, handlePluginUpdateEscape, manualPluginUpdateCommand, observePluginUpdate, ZH };
+export { EN, handlePluginUpdateEscape, manualPluginUpdateCommand, observePluginUpdate, resolveApiUrl, ZH };

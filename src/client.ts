@@ -11,6 +11,8 @@ import { createDiscoveryTools, discoveryCss, discoveryZh, discoveryEn, discovery
 import { compareTurnCounts, copySessionText, discoveryInvocations, matchesUpdatedRange, validUpdatedRange, sessionDetailCandidates } from "./archive-discovery.js";
 import { allowArchivedNavigation, openArchivedConversation, formatArchiveNavigationError, ArchiveNavigationError, currentSessionId } from "./archive-experience.js";
 import { observePluginUpdate } from "./plugin-update-ui.js";
+import { setupSidebarEntry } from "./sidebar-entry.js";
+import { resolveApiUrl } from "./api-base.js";
 import { favoriteInvocations, idleArchiveCandidate, createSessionOrganizer, runSessionBatch } from "./archive-organizer.js";
 import { createOrganizerPanel, organizerZh, organizerEn, organizerRu } from "./archive-organizer-ui.js";
 import { createPortal } from "react-dom";
@@ -1785,6 +1787,13 @@ export function startArchiveClient(require: HostRequire) {
 		const zh = {
 			...organizerZh, ...discoveryZh, ...healthZh,
             "locale.language": "zh", "service.unavailable": "服务尚未就绪，请重试",
+			"sidebar.entry.title": "侧边栏入口",
+			"sidebar.entry.desc": "在左侧主导航栏显示归档管理器。设置里的入口不变。",
+			"sidebar.entry.toggle": "切换侧边栏入口",
+			"update.entry.title": "在线更新",
+			"update.entry.desc": "允许检查并在线安装归档管理器的新版本。关闭后隐藏更新入口。",
+			"update.entry.toggle": "切换在线更新",
+			"update.entry.locked": "在线更新已被宿主配置锁定禁用",
 			"archives.archiveProject": "归档该项目的全部聊天",
 			"archives.archiveUngrouped": "归档全部未分组聊天",
 			"archives.archiveProjectDesc": "将“{name}”中全部 {n} 条未归档会话归档，不受当前搜索筛选影响。之后可在“已归档”中恢复。",
@@ -1943,6 +1952,13 @@ export function startArchiveClient(require: HostRequire) {
 		const en = {
 			...organizerEn, ...discoveryEn, ...healthEn,
             "locale.language": "en", "service.unavailable": "The service is not ready. Please retry.",
+			"sidebar.entry.title": "Sidebar entry",
+			"sidebar.entry.desc": "Show Archived Sessions in the left sidebar. The Settings entry stays either way.",
+			"sidebar.entry.toggle": "Toggle sidebar entry",
+			"update.entry.title": "Online updates",
+			"update.entry.desc": "Allow checking and installing new versions online. Hides the update entry when disabled.",
+			"update.entry.toggle": "Toggle online updates",
+			"update.entry.locked": "Online updates are disabled by the host configuration.",
 			"archives.moreActions": "More actions",
 			"archives.archiveProject": "Archive all chats in this project",
 			"archives.archiveUngrouped": "Archive all ungrouped chats",
@@ -2100,6 +2116,13 @@ export function startArchiveClient(require: HostRequire) {
 		const ru = {
 			...organizerRu, ...discoveryRu, ...healthRu,
             "locale.language": "ru", "service.unavailable": "Сервис ещё не готов. Повторите.",
+			"sidebar.entry.title": "Пункт боковой панели",
+			"sidebar.entry.desc": "Показывать архив сессий на левой панели. Пункт в настройках сохраняется.",
+			"sidebar.entry.toggle": "Переключить пункт боковой панели",
+			"update.entry.title": "Онлайн-обновление",
+			"update.entry.desc": "Разрешить проверку и установку обновлений онлайн. Скрывает пункт обновления при отключении.",
+			"update.entry.toggle": "Переключить онлайн-обновление",
+			"update.entry.locked": "Онлайн-обновление отключено конфигурацией хоста.",
 			"archives.moreActions": "Дополнительно",
 			"archives.archiveProject": "Заархивировать все чаты этого проекта",
 			"archives.archiveUngrouped": "Заархивировать все несгруппированные чаты",
@@ -2347,16 +2370,6 @@ export function startArchiveClient(require: HostRequire) {
 				en,
 				ru
 			}), "dsh-archive-manager: dictionaries");
-			ctx.effect(() => observePluginUpdate({
-				endpoint: "/api/michengai/dsh-archive-manager/update",
-				packageName: "@michengai/dsh-archive-manager",
-				titleRowSelector: ".dsham_settingsTitleRow",
-				linksSelector: ".dsham_settingsLinks",
-				zhName: "归档会话",
-				enName: "Archived sessions",
-				ruName: "Архив сессий",
-				createIcon: createPluginUpdateIcon
-			}), "dsh-archive-manager: plugin update ui");
 			// 侧栏先注册；导航适配在客户端 effect 中绑定。客户端门面没有 inject。
 			const uiWorkspaceAt = () => ctx.get("uiWorkspace");
 			const archiveViewState = {};
@@ -3212,6 +3225,57 @@ export function startArchiveClient(require: HostRequire) {
 				disposeArchiveDialog?.();
 			}, "archive-manager: sidebar mode");
 
+			const buildArchivedSectionProps = () => ({
+				archiveSessions,
+				archiveSession: (id: string, options?: { stopActivity?: boolean }) => ctx.workspaces.archiveSession(id, options),
+				sessionStore: bindObservable(ctx.sessions.list),
+				workspaceStore: bindObservable(ctx.workspaces.list),
+				unarchiveSession,
+				deleteSession,
+				unarchiveSessions,
+				deleteArchivedSessions,
+				archivedSessionMetadata, openConversation, focusSessionWorkspace, viewState: archiveViewState,
+				favoriteSessions, setSessionFavorite, organizeBatch, diagnoseSession, repairSession, sessionDetails, searchSessionContent, searchArchivedContent, previewArchivedSession,
+				t: ctx.locale.bind(NS)
+			});
+
+			const callSettingsApi = async (path: "/sidebar-entry" | "/online-update", options?: RequestInit) => {
+				const targetUrl = resolveApiUrl(`/api/michengai/dsh-archive-manager${path}`);
+				const reqHeaders = Object.assign({
+					"content-type": "application/json",
+					"x-michengai-plugin-update": "1",
+				}, options?.headers);
+				const response = await fetch(targetUrl, Object.assign({}, options, { headers: reqHeaders }));
+				const data = await response.json();
+				if (!response.ok || !data || data.ok === false) {
+					throw new Error((data && typeof data === "object" && typeof data.error === "string" ? data.error : undefined) || `HTTP ${response.status}`);
+				}
+				return data;
+			};
+
+			const sidebarController = setupSidebarEntry(ctx, {
+				callApi: callSettingsApi,
+				renderPanel: (ownerProps) => (0, react_jsx_runtime.jsx)(ArchivedSessionsSection, Object.assign({}, buildArchivedSectionProps(), ownerProps)),
+				injectProps: buildArchivedSectionProps,
+				ns: NS,
+				onOnlineUpdateChange: () => {
+					if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent("dsham-update-toggle"));
+				},
+			});
+			ctx.effect(() => () => sidebarController.destroy(), "archive-manager: sidebar entry");
+
+			ctx.effect(() => observePluginUpdate({
+				endpoint: "/api/michengai/dsh-archive-manager/update",
+				packageName: "@michengai/dsh-archive-manager",
+				titleRowSelector: ".dsham_settingsTitleRow",
+				linksSelector: ".dsham_settingsLinks",
+				zhName: "归档会话",
+				enName: "Archived sessions",
+				ruName: "Архив сессий",
+				createIcon: createPluginUpdateIcon,
+				isEnabled: () => sidebarController.isOnlineUpdateEnabled(),
+			}), "dsh-archive-manager: plugin update ui");
+
 			ctx.slots.inject("settings.section", () => ctx.slots.register({
 				name: "settings.section",
 				id: "archived-sessions",
@@ -3219,19 +3283,7 @@ export function startArchiveClient(require: HostRequire) {
 				label: () => ctx.locale.bind(NS)("archived.badge"),
 				icon: "archive",
 				locale: NS,
-				inject: () => ({
-					archiveSessions,
-					archiveSession: (id: string, options?: { stopActivity?: boolean }) => ctx.workspaces.archiveSession(id, options),
-					sessionStore: bindObservable(ctx.sessions.list),
-					workspaceStore: bindObservable(ctx.workspaces.list),
-					unarchiveSession,
-					deleteSession,
-					unarchiveSessions,
-					deleteArchivedSessions,
-					archivedSessionMetadata, openConversation, focusSessionWorkspace, viewState: archiveViewState,
-					favoriteSessions, setSessionFavorite, organizeBatch, diagnoseSession, repairSession, sessionDetails, searchSessionContent, searchArchivedContent, previewArchivedSession,
-					t: ctx.locale.bind(NS)
-				})
+				inject: buildArchivedSectionProps
 			}, ArchivedSessionsSection));
 		}
 		//#endregion
@@ -3283,6 +3335,7 @@ export function startArchiveClient(require: HostRequire) {
 			byRecency,
 			ARCHIVE_MANAGER_REMOTE,
 			currentSessionId,
+			setupSidebarEntry,
 		};
 		exports.apply = apply;
 		exports.inject = inject;

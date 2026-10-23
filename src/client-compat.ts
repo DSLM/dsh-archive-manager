@@ -1,4 +1,5 @@
-import type { ComponentType } from "react";
+import type { ComponentType, ReactNode } from "react";
+import type { StoredEntry } from "@deepseek-ai/dsh-client-ui-slots";
 import type { ArchiveProps, BrowserProps, ClientList, ClientWorkspace, Observable, SearchPage, WorkspaceSnapshot } from "./client-types.js";
 import type { ArchiveState } from "./contracts.js";
 import type { NavigationSource, SessionNavigationSource } from "./archive-experience.js";
@@ -51,8 +52,10 @@ export interface ClientContext extends Omit<DirectoryMirrorContext, "slots"> {
   locale: { register(namespace: string, dictionaries: Record<string, Record<string, string>>): () => void; bind(namespace: string): ArchiveProps["t"] };
   get<K extends keyof Services>(name: K): Services[K] | undefined;
   inject?(dependencies: ["uiWorkspace"], effect: (ready: { uiWorkspace?: UiWorkspace }) => () => void): unknown;
-  slots: DirectoryMirrorContext["slots"] & {
+  slots: {
+    inject(target: string, effect: () => (() => void) | void): () => void;
+    entries(source: string): readonly StoredEntry[];
     subscribe(name: string, listener: () => void): () => void;
-    register<P>(options: { name: string; priority?: number; store?: unknown; inject: () => unknown; locale: string; children?: Record<string, { kind: string; scope: string }>; id?: string; order?: number; label?: () => string; icon?: string }, component: ComponentType<P>): () => void;
+    register<P = unknown>(options: { name: string; priority?: number; store?: unknown; inject?: () => unknown; locale: string; children?: Record<string, { kind: string; scope: string }>; id?: string; key?: string; order?: number; label?: () => string; icon?: string }, component: ComponentType<P> | ((props?: unknown) => ReactNode)): () => void;
   };
 }

@@ -9,7 +9,12 @@ interface PackageManagerLaunch { command: string; args: readonly string[]; env?:
 interface PluginManagerInstall { installBundle(spec: string): Promise<{ application?: string; error?: { message?: string }; packageResult?: { output?: string } }> }
 interface UpdateRuntime { profileName: string; profileDir: string; cliEntry?: string; desktopPnpm?: DesktopPnpm; packageManager?: PackageManagerLaunch; pluginManager?: PluginManagerInstall; officialDesktop: boolean; canAutoUpdate: boolean }
 interface UpdateRuntimeOptions { argv?: readonly string[]; env?: NodeJS.ProcessEnv; cwd?: string; homeDir?: string; exists?: (path: string) => boolean; execPath?: string }
-interface UpdateOptions { endpoint: string; packageName: string; manifestUrl: URL }
+interface UpdateOptions {
+  endpoint: string;
+  packageName: string;
+  manifestUrl: URL;
+  isEnabled?: () => Promise<boolean> | boolean;
+}
 import { spawn } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { readFile } from "node:fs/promises";
@@ -380,6 +385,13 @@ function registerPluginUpdater(ctx: Context, options: UpdateOptions) {
     path: options.endpoint,
     handler: async (request, response) => {
       try {
+        if (options.isEnabled) {
+          const allowed = await options.isEnabled();
+          if (!allowed) {
+            json(response, 403, { ok: false, error: "\u5728\u7EBF\u66F4\u65B0\u5DF2\u88AB\u7981\u7528\u3002" });
+            return;
+          }
+        }
         const target = runtime(host);
         if (request.method === "GET" || request.method === "HEAD") {
           const payload = await status(options, target);
@@ -444,8 +456,10 @@ export {
   isNewerVersion,
   isTrustedUpdateRequest,
   mergeMinimumReleaseAgeExclude,
+  rawService,
   recordReleaseAgeExclude,
   registerPluginUpdater,
+  releaseUpdateRoute,
   resolveUpdateRuntime,
   shouldNotifyParent
 };
