@@ -4,6 +4,13 @@
 
 Published release notes are retained below; new versions are added without removing earlier entries.
 
+## 1.1.8 - 2026-10-23
+
+- Added primary sidebar navigation entry and dedicated workspace panel: users can now access Archive Manager directly from the first-level sidebar, opening a 960px centered workspace view. The entry can be toggled on or off at any time via the `sidebarEntry` switch in plugin configuration (`plugins.bundle.config` slot).
+- Added toggleable online updates and host-level security locking: added an `onlineUpdate` switch in plugin configuration. Disabling it immediately hides the "Check for updates" button and version badge in the header, and rejects update requests at the endpoint level. Environments requiring security compliance or curated catalog distribution can enforce `updater: false` (or `onlineUpdate: false`) in Cordis patch configuration to disable the updater at startup and lock the UI toggle.
+- Added baseURI dynamic endpoint resolution for reverse proxies: API requests now resolve against document `baseURI` to preserve path prefixes when DSH is hosted under a reverse proxy or subdirectory, preventing 404 errors on update and settings routes.
+- Unified the online feedback button icon to use the host's native `IconEditOutlineRegular`.
+
 ## 1.1.7 - 2026-10-22
 
 - Fixed session titles or blank-session visibility changing after disabling Archive Manager (#71). The plugin no longer replaces the official projection-cache table; ordinary cache reads and writes remain host-owned.
