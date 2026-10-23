@@ -19,18 +19,20 @@
 
 > DSH Archive Manager is a community-maintained DeepSeek Harness (DSH) plugin, not an official DeepSeek AI product.
 
-## What you can do
+This document describes **1.1.8**. See [Changelog](CHANGELOG.md) for published releases.
+
+## Overview
 
 Put inactive conversations away and find them again when needed, keeping everyday task lists tidy.
 
-- **Archive conversations**: put away one chat or all unarchived chats in a workspace.
-- **Find past work**: search titles and content, combine project/favorites/date filters, and sort by time, title, or turns.
-- **Restore tasks**: restore one chat, selected chats, or a project group; select all filtered results for bulk actions.
-- **Clean up records**: permanently delete unwanted archives after confirmation, track batch progress, and retry remaining items.
-- **Organize important chats**: save favorites and preview idle cleanup while protecting favorites and active work.
-- **Inspect and troubleshoot**: preview without restoring, copy IDs/paths, diagnose errors, and repair supported legacy logs.
-
-> This README describes 1.0.0. See the [changelog](CHANGELOG.md) for the complete feature list and upgrade boundaries.
+- **Dual views & primary sidebar entry**: Toggleable persistent icon on the host's primary sidebar opens a **960px centered workspace view** for both Archived and Unarchived sessions, eliminating narrow dialog scrolling constraints.
+- **Full lifecycle session management**: Archive individual chats, all chats in a workspace, cross-project batches, and restore or open sessions seamlessly.
+- **Combined filtering & full-text search**: Group by workspace projects, filter by date ranges, isolate favorites, and perform paginated keyword searches across message text with highlighting and fast previews.
+- **Automated idle session cleanup**: Specify an idle threshold in days to discover inactive chats, automatically protecting running tasks, interactive prompts, and starred items, with instant undo support.
+- **Native workspace menu integration**: Securely injects an **Archive session** action into the sidebar workspace `...` menu, anchoring an in-place frosted glass confirmation modal following the "what you see is what you archive" principle.
+- **Permanent deletion**: Thoroughly purge unwanted transcripts, cache rows, and indexes with per-item retry reporting.
+- **Diagnostic & repair center**: Diagnose corrupted single-frame Zstandard transcripts and legacy format anomalies with in-place verified repair.
+- **Controlled online updates & reverse proxy ready**: Features a toggleable online update switch, enterprise host-level configuration locking, and native baseURI dynamic endpoint resolution for prefix-stripping reverse proxies.
 
 ## Session diagnosis and repair
 
@@ -62,54 +64,49 @@ Switch to **Unarchived** for the same filters, idle cleanup previews, and projec
 
 ![Unarchived: idle cleanup and project archiving](assets/screenshots/unarchived-sessions.webp)
 
-> Screenshots show the pre-release development build labeled 0.1.44; this release is 1.0.0. The sidebar belongs to the installed UI plugin and does not represent new sidebar features in this release.
-
-## Prerequisites
-
-- A working [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) Web installation with `dsh` available in your terminal.
-- Supported DSH versions: `0.2.0-rc.1`, `0.2.0-rc.2`, `0.2.1-rc.1`, and `0.2.1-rc.2`. Intermediate `0.2.1-alpha.*` releases and earlier hosts are rejected by the version gate and this plugin will not run. Existing archives and favorites are kept. Install `1.0.20` if you still use a `0.1.x` host.
-- Node.js matching `^22.19.0 || >=24.0.0`. Source installation also requires pnpm.
+*Screenshots show core functional panels, including archived session search and unarchived idle cleanup. Lossless WebP format.*
 
 ## Installation
 
-Examples use the `web` profile. Replace it with the profile you actually use.
+A working DeepSeek Harness environment is required. Examples use the `web` profile; adjust to your environment.
+
+Plugin installation supports npm registry, locally built `.tgz` packages, and GitHub. Both GitHub and npm contain runnable `lib` artifacts.
 
 ### Ask an agent to install it
 
 Send this prompt to an agent that can run terminal commands on your computer:
 
 ```text
-Install the latest @michengai/dsh-archive-manager into my local DSH web profile using the official npm registry. Check the plugin configuration afterward, then explain how to reload DSH and open archived session management.
+Please install the latest @michengai/dsh-archive-manager into my DSH web profile using the official npm registry, verify activation, and explain how to reload.
 ```
 
 ### Install manually
 
-Run in PowerShell:
-
 ```powershell
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 $OutputEncoding = [System.Text.Encoding]::UTF8
-
 dsh plugin --profile web add @michengai/dsh-archive-manager@latest --registry=https://registry.npmjs.org/
 ```
 
-Restart DSH Web, then hard-refresh your browser with `Ctrl+Shift+R`. Open **Settings → Archived sessions** to get started.
+Restart DSH Web, then refresh the page (or hard-refresh with `Ctrl+Shift+R`). Open **Settings → Archived sessions** to get started. To update, click **Check for updates** or re-run the installation command.
 
+- Plugin `1.1.8` is tested with DeepSeek Harness `0.2.0-rc.1`, `0.2.0-rc.2`, `0.2.1-rc.1`, `0.2.1-rc.2`.
+- Hosts before `0.2.0` are no longer supported. If you still use a `0.1.x` host, install plugin `1.0.20` instead of `@latest`.
 - **Reverse proxy deployment**: Supports hosting DSH behind prefix-stripping reverse proxies (e.g. `/app/dsh/`). API and update endpoints automatically resolve against the page base URI (`document.baseURI`), preventing 404 errors caused by lost prefix segments.
 
 ## Plugin Configuration & Toggles
 
 The plugin follows standard DSH bundle configuration conventions. Options are located at:
-> **Sidebar → Plugins → Click `@michengai/dsh-archive-manager`** (the host's `plugins.bundle.config` slot).
+> **Sidebar → Plugins → Click `Archive Manager`** (the host's `plugins.bundle.config` slot).
 
 Two native switches are available. Their values are persisted in `archive-manager/settings.json` under your local configuration directory and survive restarts; they are not two equivalent Cordis YAML options. `sidebarEntry` is managed through this UI, while `onlineUpdate` is also subject to the host lock described below:
 
 ### 1. Sidebar Entry (`sidebarEntry`)
 - **Default**: Disabled (`false`)
-- **Description**: Displays a persistent **Archived sessions** navigation icon in the host's left primary sidebar.
+- **Description**: Displays a persistent **Archive** navigation icon in the host's left primary sidebar under **Plugins**.
 - **Effect**:
   - When enabled, clicking the sidebar icon opens the Archive Manager directly in the primary workspace with a **960px centered container** (matching host plugin manager conventions). This eliminates vertical scrolling constraints in narrow settings dialogs;
-  - When disabled, unregisters the sidebar entry cleanly (and resets active panel gracefully if currently viewing the panel, preventing blank views);
+  - When disabled, unregisters the sidebar entry cleanly (and resets the active panel gracefully if currently viewing the panel, preventing blank views);
   - The standard **Settings → Archived sessions** view remains active either way, and state is synchronized live across both entry points.
 
 ### 2. Online Updates (`onlineUpdate` / `updater`)
@@ -128,23 +125,23 @@ Two native switches are available. Their values are persisted in `archive-manage
     ```
     Once configured, the updater is disabled at startup, the update action stays hidden, and the online-update switch is disabled. The host lock takes precedence over the user's choice in settings.json and cannot be lifted through the UI. Removing the host lock restores the saved user preference.
 
-## Usage
+## Usage Guide
 
-| Goal | Action |
+| Action | How to do it |
 | --- | --- |
-| Archive one chat | Open its sidebar menu and choose **Archive session** |
-| Archive a workspace | Open the workspace menu and choose the option to archive its chats |
-| Find an archive | Open **Settings → Archived sessions**, then choose title/content search or filter by project, favorites, and dates |
-| Change the order | Sort by update time, creation time, title, or most/fewest turns |
-| Restore one chat | Click the restore icon, or choose **More → Restore and open** |
-| Archive a project or ungrouped chats | On **Unarchived**, open the group’s **…** menu and confirm archiving all chats in that group, regardless of search filters |
-| Favorite a chat | Click its right-side star; use the favorites dropdown to filter |
-| Preview archived content | Click a match snippet or **More → Quick preview** |
-| Clean up idle chats | On Unarchived, set idle days, preview candidates, and confirm |
-| Locate a session | Copy its ID or path from More |
-| Handle read errors | Expand diagnosis, diagnose first, and confirm repair when eligible |
-| Archive across projects | Switch to **Unarchived**, select sessions across projects, then click **Archive** and confirm |
-| Restore or delete in bulk | Select chats and use the bulk actions, or use the project menu; there are no separate Restore all / Delete all buttons |
+| **Archive one chat** | Open the session context menu in the sidebar and choose **Archive session** |
+| **Archive a workspace** | Open the workspace menu and choose **Archive session** (opens an in-place confirmation overlay) |
+| **Search & filter** | Open **Settings → Archived sessions** or click **Archive** in the sidebar; combine keyword, project, favorites, and date filters |
+| **Quick preview** | Click a match snippet or **More → Quick preview** to inspect context with highlights without restoring |
+| **Adjust ordering** | Sort by update time, creation time, title, or most/fewest turns |
+| **Restore a chat** | Click the restore icon on any row; use **More → Restore and open** to resume the chat directly |
+| **Archive entire group** | On **Unarchived**, click the **…** menu next to a group and confirm archiving all chats in that project |
+| **Favorite chats** | Click the star icon on any row; use the favorites dropdown to filter important chats |
+| **Clean up idle chats** | On **Unarchived**, set an idle day threshold, automatically protecting running and starred chats, preview candidates, and confirm |
+| **Locate session files** | Select **Copy session ID** or **Copy session path** from the **More** menu |
+| **Repair damaged logs** | Expand **Diagnosis and repair** to diagnose and repair corrupted single-frame Zstandard files or legacy anomalies |
+| **Archive across projects** | Switch to **Unarchived**, select sessions across projects, then click **Archive** and confirm |
+| **Restore or delete in bulk** | Select chats and use the bulk actions, or use the project menu; there are no separate Restore all / Delete all buttons |
 
 The page opens on **Archived**, with **Unarchived** on the right. Switching tabs clears selections; changing search or project filters preserves them. Check the hidden selection count before applying bulk actions, or clear your selection first.
 
