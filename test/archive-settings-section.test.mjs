@@ -93,7 +93,8 @@ test("创建时间排序从宿主归档头部读取元数据，更新时间继�
   assert.match(client, /registry\.archivedSessionMetadata\(\)/);
   assert.match(client, /Object\.fromEntries\(result\.items\.map/);
   assert.match(client, /sortBy === "created" \? \(details\[session\.id\]\?\.createdAt \?\? createdAtById\[session\.id\]\) : session\.updatedAt/);
-  assert.match(client, /sortArchivedGroups\(groups, sortBy, createdAtById, t, details.byId\)/);
+  assert.match(client, /archives\.sortArchived/);
+  assert.match(client, /sortArchivedGroups\(groups, sortBy, createdAtById, t, details\.byId(?:, [^)]+)?\)/);
 });
 
 test("归档元数据请求不触发会话列表刷新", async () => {

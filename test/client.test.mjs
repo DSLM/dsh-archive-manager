@@ -747,6 +747,22 @@ test("sortArchivedGroups: 按更新、创建或字母顺序排列项目与组内
 	assert.deepEqual(groups[0].sessions.map((session) => session.id), ["a", "b"], "原分组顺序保持不变");
 });
 
+test("sortArchivedGroups: 按最近归档顺序（archivedSessionIds 倒序）排列项目与组内会话", () => {
+	const groups = [
+		{ key: "w1", title: "zeta", sessions: [summary("a", { displayTitle: "Alpha", updatedAt: 100 }), summary("b", { displayTitle: "Beta", updatedAt: 10 })] },
+		{ key: "w2", title: "alpha", sessions: [summary("c", { displayTitle: "Charlie", updatedAt: 50 })] }
+	];
+	// 归档顺序是 a 先归档，c 接着归档，b 最后归档（最新归档）
+	const archivedOrder = ["a", "c", "b"];
+	const translate = (key) => key;
+
+	const sorted = t.sortArchivedGroups(groups, "archived", {}, translate, {}, archivedOrder);
+	// b 是最新归档（索引最大），包含 b 的 w1 排在最前；组内 b 排在 a 前面
+	assert.deepEqual(sorted.map((group) => group.key), ["w1", "w2"]);
+	assert.deepEqual(sorted[0].sessions.map((session) => session.id), ["b", "a"]);
+	assert.deepEqual(sorted[1].sessions.map((session) => session.id), ["c"]);
+});
+
 test("deriveArchivedBatchIds: 按完整归档集合派生全部、项目和未分组批次", () => {
 	const items = [
 		{ workspaceId: "w1", title: "proj-a", sessionIds: ["s1", "s-missing"] },

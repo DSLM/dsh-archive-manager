@@ -587,7 +587,7 @@ export function startArchiveClient(require: HostRequire) {
                     if (navigationActive.current) setNotice(t("details.copied"));
                 } catch (reason) { if (navigationActive.current) setError(typeof errorCode(reason) === "string" && String(errorCode(reason)).startsWith("copy.") ? t(String(errorCode(reason))) : errorMessage(reason)); }
             };
-            const sortedGroups = (0, react.useMemo)(() => sortArchivedGroups(groups, sortBy, createdAtById, t, details.byId), [groups, sortBy, createdAtById, t, details.byId]);
+            const sortedGroups = (0, react.useMemo)(() => sortArchivedGroups(groups, sortBy, createdAtById, t, details.byId, isArchived ? workspaceState.archivedSessionIds : undefined), [groups, sortBy, createdAtById, t, details.byId, isArchived, workspaceState.archivedSessionIds]);
 			(0, react.useEffect)(() => {
 				// 归档名单在批量删除中会逐条变化。忙碌时不重读，结束后再补一次。
 				if (busy) return;
@@ -835,7 +835,7 @@ export function startArchiveClient(require: HostRequire) {
 								favoriteBusy: busy || favoriteBusy || !favoritesReady,
 								sortBy,
 								setSortBy,
-								options: [{ value: "updated", label: t("archives.sortUpdated") }, { value: "created", label: t("archives.sortCreated") }, { value: "alphabetical", label: t("archives.sortAlphabetical") }, ...typeof sessionDetails === "function" ? [{ value: "turnsDesc", label: t("details.more") }, { value: "turnsAsc", label: t("details.less") }] : []]
+								options: [...(isArchived ? [{ value: "archived", label: t("archives.sortArchived") }] : []), { value: "updated", label: t("archives.sortUpdated") }, { value: "created", label: t("archives.sortCreated") }, { value: "alphabetical", label: t("archives.sortAlphabetical") }, ...typeof sessionDetails === "function" ? [{ value: "turnsDesc", label: t("details.more") }, { value: "turnsAsc", label: t("details.less") }] : []]
 							}),
 							(0, react_jsx_runtime.jsx)(ArchiveProjectSelect, {
 								id: "dsham-project-filter",
@@ -1962,13 +1962,25 @@ export function startArchiveClient(require: HostRequire) {
 		* 归档设置页排序：时间排序同时按每组首条会话排列项目，字母排序则
 		* 同时排列项目名和组内标题；所有输入均复制后排序，不改写 store 快照。
 		*/
-		function sortArchivedGroups(groups: readonly ArchivedGroup[], sortBy: string, createdAtById: Record<string, number>, t: Translate, details: Record<string, SessionDetail> = {}) {
+		function sortArchivedGroups(groups: readonly ArchivedGroup[], sortBy: string, createdAtById: Record<string, number>, t: Translate, details: Record<string, SessionDetail> = {}, archivedSessionIds: readonly string[] = []) {
 			const compareText = (left: unknown, right: unknown) => String(left).localeCompare(String(right), void 0, { numeric: true, sensitivity: "base" });
+			const archiveIndexMap = new Map<string, number>();
+			if (Array.isArray(archivedSessionIds)) {
+				for (let i = 0; i < archivedSessionIds.length; i++) {
+					archiveIndexMap.set(archivedSessionIds[i], i);
+				}
+			}
 			const timestampOf = (session: ClientSession) => {
 				const value = sortBy === "created" ? (details[session.id]?.createdAt ?? createdAtById[session.id]) : session.updatedAt;
 				return typeof value === "number" && Number.isFinite(value) ? value : Number.NEGATIVE_INFINITY;
 			};
 			const compareSessions = (left: ClientSession, right: ClientSession) => {
+				if (sortBy === "archived") {
+					const leftOrder = archiveIndexMap.get(left.id) ?? -1;
+					const rightOrder = archiveIndexMap.get(right.id) ?? -1;
+					const difference = rightOrder - leftOrder;
+					if (difference !== 0) return difference;
+				}
                 if (sortBy === "turnsAsc" || sortBy === "turnsDesc") {
                     const difference = compareTurnCounts(details[left.id]?.turnCount, details[right.id]?.turnCount, sortBy);
                     if (difference) return difference;
@@ -1981,6 +1993,14 @@ export function startArchiveClient(require: HostRequire) {
 			};
 			const result = groups.map((group) => ({ ...group, sessions: [...group.sessions].sort(compareSessions) }));
 			return result.sort((left, right) => {
+				if (sortBy === "archived") {
+					const leftTop = left.sessions[0]?.id;
+					const rightTop = right.sessions[0]?.id;
+					const leftOrder = leftTop !== undefined ? (archiveIndexMap.get(leftTop) ?? -1) : -1;
+					const rightOrder = rightTop !== undefined ? (archiveIndexMap.get(rightTop) ?? -1) : -1;
+					const difference = rightOrder - leftOrder;
+					if (difference !== 0) return difference;
+				}
                 if (sortBy === "turnsAsc" || sortBy === "turnsDesc") {
                     const difference = compareTurnCounts(details[left.sessions[0]?.id]?.turnCount, details[right.sessions[0]?.id]?.turnCount, sortBy);
                     if (difference) return difference;
@@ -2068,6 +2088,7 @@ export function startArchiveClient(require: HostRequire) {
 			"archives.sortBy": "排序方式",
 			"archives.sortLabel": "排序方式",
 			"archives.viewOptions": "视图选项",
+			"archives.sortArchived": "最近归档",
 			"archives.sortUpdated": "更新时间",
 			"archives.sortCreated": "创建时间",
 			"archives.sortAlphabetical": "按字母顺序",
@@ -2236,6 +2257,7 @@ export function startArchiveClient(require: HostRequire) {
 			"archives.sortBy": "Sort archived chats",
 			"archives.sortLabel": "Sort order",
 			"archives.viewOptions": "View options",
+			"archives.sortArchived": "Recently archived",
 			"archives.sortUpdated": "Last updated",
 			"archives.sortCreated": "Created",
 			"archives.sortAlphabetical": "Alphabetical",
@@ -2403,6 +2425,7 @@ export function startArchiveClient(require: HostRequire) {
 			"archives.sortBy": "Сортировка заархивированных чатов",
 			"archives.sortLabel": "Сортировка",
 			"archives.viewOptions": "Параметры вида",
+			"archives.sortArchived": "Недавно архивированные",
 			"archives.sortUpdated": "Последнее обновление",
 			"archives.sortCreated": "Дата создания",
 			"archives.sortAlphabetical": "По алфавиту",
