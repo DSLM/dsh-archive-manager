@@ -564,11 +564,41 @@ var ArchiveWorkspaceRegistry = class extends (WorkspaceRegistry as unknown as Re
 		});
 	}
 	/**
-	 * 只有 persistence.stat 明确说文件不在时才从持久集合摘掉。
-	 * list/header 读不出不等于文件没了；没有 stat 时宁可不落盘删除。
+	 * 确证会话工件在物理上是否已经彻底缺失。
+	 * 注意：官方 jsonl 的 stat() 在日志第一行 JSON 损坏、为空或格式异常时也会返回 undefined，
+	 * 不能单凭 stat() === undefined 断定文件不存在；
+	 * 必须结合 findLog(sessionId) 以及物理存储根目录扫描，确证磁盘上没有任何工件或目录残留。
 	 */
 	async sessionArtifactMissing(sessionId: string) {
 		const persistence = this.ctx.get("sessionPersistence");
+		if (!persistence) return false;
+
+		// 1. 若宿主持久化提供了 findLog，它纯物理探测日志文件是否存在，不受第一行 JSON 损坏或空文件干扰
+		if (typeof persistence.findLog === "function") {
+			try {
+				const found = await persistence.findLog(sessionId);
+				if (found !== undefined) return false;
+			} catch {
+				return false;
+			}
+		}
+
+		// 2. 检查官方 JSONL 根目录：物理扫描各 project 目录下是否存在该 session 的目录
+		const root = persistence.root ?? persistence.config?.root;
+		if (typeof root === "string" && isAbsolute(root)) {
+			try {
+				const encode = (text: string) => text.replace(/[^A-Za-z0-9._-]/g, (ch) => `~${ch.charCodeAt(0).toString(16).toUpperCase().padStart(4, "0")}`);
+				const segment = sessionId === "." ? "~002E" : sessionId === ".." ? "~002E~002E" : encode(sessionId);
+				const projects = await readdir(root);
+				for (const proj of projects) {
+					if (await pathExists(join(root, proj, segment))) {
+						return false;
+					}
+				}
+			} catch {}
+		}
+
+		// 3. 通用兜底：stat
 		if (typeof persistence?.stat !== "function") return false;
 		try {
 			return (await persistence.stat(sessionId)) === undefined;

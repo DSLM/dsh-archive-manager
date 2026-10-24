@@ -1702,6 +1702,36 @@ test("diagnoseOrphanSubagents 防误删、支持播种型子代理且显式清�
 	assert.equal(existsSync(env.located.get(s2)), true, "活着母会话的子代理未被删除");
 });
 
+test("diagnoseOrphanSubagents: 母会话文件存在但 stat 返回 undefined 时（如空文件或头部坏 JSON），绝不误判孤儿", async () => {
+	const s10 = "parent-with-broken-json";
+	const s11 = "child-of-broken-parent";
+	const env = buildRoot({
+		headers: [
+			header(s11, cwdA, { parentSession: s10, origin: "subagent" }),
+		],
+		workspaces: { [A]: workspace("D:\\\\proj-a", [s11]) },
+	});
+	const projectDir = join(env.root, "proj-0");
+	const s10Dir = join(projectDir, s10);
+	mkdirSync(s10Dir, { recursive: true });
+	writeFileSync(join(s10Dir, "session.v4.jsonl.zstd"), "{broken-json-corrupt");
+
+	env.persistence.root = env.root;
+	env.persistence.stat = async (id) => {
+		if (id === s10) return undefined;
+		const path = env.located.get(id);
+		return path && existsSync(path) ? { mtimeMs: 1 } : undefined;
+	};
+
+	const registry = await mountWorkspaceRegistry(env);
+	const diagnosis = await registry.diagnoseOrphanSubagents();
+	assert.equal(diagnosis.count, 0, "母会话物理文件依然在磁盘，子代理绝不能被误判为孤儿");
+
+	const clean = await registry.cleanOrphanSubagents();
+	assert.deepEqual(clean.cleanedSessionIds, [], "绝不执行清理");
+	assert.equal(existsSync(env.located.get(s11)), true, "子代理日志完整保留");
+});
+
 test("deleteSession removes current index entries without blocking later host re-indexing", async () => {
 	const env = buildRoot({
 		headers: [header(s1, cwdA), header(s2, cwdA)],

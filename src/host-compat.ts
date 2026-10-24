@@ -15,6 +15,7 @@ export interface PersistenceCompat {
   locate(header: Header): { kind: string; path: string } | undefined;
   list(): Promise<{ header: Header }[]>;
   stat(id: string): Promise<unknown>;
+  findLog?(id: string): Promise<unknown>;
   open(id: string, mode: "read"): Promise<{ header: Header; inheritedEventCount: number; read(offset: number): Promise<{ events: SessionEvent[] }>; close(): Promise<void> }>;
   prepare?(id: string): Promise<{ session: Session; [Symbol.dispose](): void }>;
   readZstdPrefix?(bytes: Buffer): Promise<{ meta: Header; tornTruncateTo?: number }>;
