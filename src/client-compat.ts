@@ -13,7 +13,7 @@ export type Registry = { [K in keyof RegistryCalls]: (...args: Parameters<Regist
   unarchiveSession(id: string): Promise<RemoteResult<ArchiveState>>;
   deleteSession(id: string): Promise<RemoteResult<unknown>>;
   deleteArchivedSessions(target: Parameters<ArchiveProps["deleteArchivedSessions"]>[0]): Promise<RemoteResult<Awaited<ReturnType<ArchiveProps["deleteArchivedSessions"]>>>>;
-  archivedSessionMetadata(): Promise<RemoteResult<{ items: { sessionId: string; createdAt: number }[]; repairedSessionIds: string[] }>>;
+  archivedSessionMetadata(): Promise<RemoteResult<Awaited<ReturnType<ArchiveProps["archivedSessionMetadata"]>>>>;
 };
 export interface Workspaces {
   list: Observable<WorkspaceSnapshot>;

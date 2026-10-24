@@ -26,7 +26,6 @@ import { remoteMethods } from "@deepseek-ai/dsh-typert-protocol";
 import { DomainFacility } from "@deepseek-ai/dsh-storage-domain";
 import { sessionDir } from "@deepseek-ai/dsh-spill-local";
 import { ArchiveWorkspaceRegistry } from "../lib/workspace.js";
-import { projectionCacheStorageKey } from "../lib/projcache.js";
 
 const SID = (n) =>
 	`session-${String(n).padStart(5, "0")}-0000-0000-0000-000000000000`;
@@ -182,16 +181,14 @@ function buildRoot({
 			return { kind: "jsonl", path };
 		},
 	};
-	const cacheCalls = { deleted: [], cleared: [], idleAwaited: 0 };
+	const cacheCalls = { deleted: [] };
 	const projCache = {
-		async whenIdle() {
-			cacheCalls.idleAwaited += 1;
-		},
-		async delete(id) {
-			cacheCalls.deleted.push(id);
-		},
-		clearTombstone(id) {
-			cacheCalls.cleared.push(id);
+		requireTable() {
+			return {
+				async delete(id) {
+					cacheCalls.deleted.push(id);
+				},
+			};
 		},
 	};
 	const sessions = {
@@ -351,51 +348,38 @@ test("收藏经真实宿主存储域落盘并关闭重开，含特殊字符 ID",
 	} finally { await facility.closeAll(); }
 });
 
-test("热重载时过期的文件上传解析器可以被替换，旧解除函数不清掉新的", async () => {
+test("插件子类入口不改写文件上传服务", async () => {
 	const env = buildRoot();
 	const uploads = {
 		agentResolver: undefined,
 		registerAgentResolver(resolve) {
 			if (this.agentResolver !== undefined) throw new Error("file-upload: Agent resolver is already registered");
 			this.agentResolver = resolve;
-			return () => {
-				if (this.agentResolver === resolve) this.agentResolver = undefined;
-			};
+			return () => { if (this.agentResolver === resolve) this.agentResolver = undefined; };
 		},
 	};
+	const register = uploads.registerAgentResolver;
 	env.ctx.provide("fileUploads", uploads);
 	await mountWorkspaceRegistry(env);
-	const previous = () => "old";
-	const disposePrevious = uploads.registerAgentResolver(previous);
-	const next = () => "new";
-	const disposeNext = uploads.registerAgentResolver(next);
-	assert.equal(uploads.agentResolver, next);
-	disposePrevious();
-	assert.equal(uploads.agentResolver, next);
-	disposeNext();
+	assert.equal(uploads.registerAgentResolver, register);
+	const resolver = () => "new";
+	const dispose = uploads.registerAgentResolver(resolver);
+	assert.equal(uploads.agentResolver, resolver);
+	dispose();
 	assert.equal(uploads.agentResolver, undefined);
 });
 
-test("文件上传解析器的其他错误和无法清理的形状仍然抛出", async () => {
+test("文件上传服务原有错误保持原样传播", async () => {
 	const env = buildRoot();
-	const other = {
-		registerAgentResolver() {
-			throw new Error("file-upload: something else");
-		},
+	const error = new Error("file-upload: Agent resolver is already registered");
+	const uploads = {
+		registerAgentResolver() { throw error; },
 	};
-	env.ctx.provide("fileUploads", other);
+	const register = uploads.registerAgentResolver;
+	env.ctx.provide("fileUploads", uploads);
 	await mountWorkspaceRegistry(env);
-	assert.throws(() => other.registerAgentResolver(() => "x"), /something else/);
-
-	const stuckEnv = buildRoot();
-	const stuck = {
-		registerAgentResolver() {
-			throw new Error("file-upload: Agent resolver is already registered");
-		},
-	};
-	stuckEnv.ctx.provide("fileUploads", stuck);
-	await mountWorkspaceRegistry(stuckEnv);
-	assert.throws(() => stuck.registerAgentResolver(() => "x"), /already registered/);
+	assert.equal(uploads.registerAgentResolver, register);
+	assert.throws(() => uploads.registerAgentResolver(() => "x"), error);
 });
 
 test("workspace registry init with the fakes", async () => {
@@ -629,163 +613,29 @@ test("archivedSessionMetadata lists stored headers once while pruning unknowns",
 	assert.equal(lists, 1, "prune must not rebuild the full header listing once per unknown id");
 });
 
-for (const version of [0, 3])
-	test(`归档摘要保留格式版本 ${version} 和播种身份，普通已缓存会话不读取原文`, async () => {
+for (const isSeeded of [false, true]) {
+	test(`归档元数据不读取正文或补写缓存（播种=${isSeeded}）`, async () => {
 		const env = buildRoot({
-			headers: [
-				header(s1, cwdA, { version, createdAt: 100 }),
-				header(s2, cwdA, { version, createdAt: 200, isSeeded: true }),
-			],
-			workspaces: { [A]: workspace("D:\\proj-a", [s1, s2]) },
-			archived: [s1, s2],
+			headers: [header(s1, cwdA, { createdAt: 100, isSeeded })],
+			workspaces: { [A]: workspace("D:\\proj-a", [s1]) },
+			archived: [s1],
 		});
-		const identityOf = (meta, inheritedEventCount) => ({
-			formatVersion: meta.version,
-			createdAt: meta.createdAt,
-			...(meta.cwd === void 0 ? {} : { cwd: meta.cwd }),
-			isSeeded: meta.isSeeded,
-			inheritedEventCount,
-		});
-		const records = new Map([
-			[
-				s1,
-				{
-					identity: identityOf(
-						env.persistence.headers.find((item) => item.id === s1),
-						0,
-					),
-					snapshot: { asOfSeq: 8, values: { title: "already cached" } },
-				},
-			],
-		]);
-		const cacheReads = [];
-		const reads = [];
-		const puts = [];
-		// 剩余宿主只按头部查缓存，第二参数是可选投影键，不再传继承切点。
-		env.projCache.cachedSnapshot = (meta) => {
-			cacheReads.push({ id: meta.id });
-			return records.get(meta.id)?.snapshot;
-		};
-		env.projCache.put = async (id, identity, rows) => {
-			puts.push({ id, identity, rows });
-			records.set(id, {
-				identity,
-				snapshot: { asOfSeq: 9, values: { title: rows.title.val } },
-			});
-		};
-		env.persistence.open = async (id) => {
-			reads.push({ id, fromSeq: 0 });
-			return {
-				header: env.persistence.headers.find((item) => item.id === id),
-				inheritedEventCount: 3,
-				read: async () => ({ events: [{ seq: 0, type: "session/start", data: {} }] }),
-				close: async () => {},
-			};
-		};
+		const calls = [];
+		env.persistence.open = async () => { calls.push("open"); throw new Error("元数据不应读取正文"); };
+		env.projCache.cachedSnapshot = () => { calls.push("cachedSnapshot"); return undefined; };
+		env.projCache.put = async () => { calls.push("put"); };
 		env.ctx.provide("sessionProjections", {
-			restore: (cached, events, floor, meta, inheritedEventCount) => {
-				assert.deepEqual(cached, {});
-				assert.equal(events.length, 1);
-				assert.equal(floor, 0);
-				assert.equal(meta.id, s2);
-				assert.equal(inheritedEventCount, 3);
-				return {
-					checkpoint: { title: { ver: 1, seq: 9, val: "rebuilt" } },
-					snapshot: { asOfSeq: 9, values: { title: "rebuilt" } },
-				};
-			},
+			restore: () => { calls.push("restore"); return { checkpoint: {} }; },
 		});
 		const registry = await mountWorkspaceRegistry(env);
-		assert.deepEqual(await registry.archivedSessionMetadata(), {
-			items: [
-				{ sessionId: s1, createdAt: 100 },
-				{ sessionId: s2, createdAt: 200 },
-			],
-			repairedSessionIds: [s2],
-		});
-		assert.deepEqual(
-			reads,
-			[{ id: s2, fromSeq: 0 }],
-			"only the missing archive reads its transcript",
-		);
-		assert.deepEqual(cacheReads, [
-			{ id: s1 },
-			{ id: s2 },
-		]);
-		assert.deepEqual(puts, [
-			{
-				id: s2,
-				identity: {
-					formatVersion: version,
-					createdAt: 200,
-					cwd: env.persistence.headers.find((item) => item.id === s2).cwd,
-					isSeeded: true,
-					inheritedEventCount: 3,
-				},
-				rows: { title: { ver: 1, seq: 9, val: "rebuilt" } },
-			},
-		]);
-		assert.deepEqual(
-			await registry.archivedSessionMetadata(),
-			{
-				items: [
-					{ sessionId: s1, createdAt: 100 },
-					{ sessionId: s2, createdAt: 200 },
-				],
-			},
-			"缓存命中后普通会话无需读取原文；播种会话仍需读取继承事件数",
-		);
-		assert.deepEqual(
-			reads,
-			[
-				{ id: s2, fromSeq: 0 },
-				{ id: s2, fromSeq: 0 },
-			],
-			"播种会话必须读取继承事件数，普通已缓存会话无需读取原文",
-		);
-		assert.deepEqual(cacheReads, [
-			{ id: s1 },
-			{ id: s2 },
-			{ id: s1 },
-			{ id: s2 },
-		]);
+		for (let read = 0; read < 2; read += 1) {
+			assert.deepEqual(await registry.archivedSessionMetadata(), {
+				items: [{ sessionId: s1, createdAt: 100 }],
+			});
+		}
+		assert.deepEqual(calls, [], "归档元数据只使用头部，不能读取或重建投影缓存");
 	});
-
-test("archivedSessionMetadata skips seeded projection repair when the inherited count is missing", async () => {
-	const env = buildRoot({
-		headers: [header(s1, cwdA, { createdAt: 100, isSeeded: true })],
-		workspaces: { [A]: workspace("D:\\proj-a", [s1]) },
-		archived: [s1],
-	});
-	const reads = [];
-	let restored = false;
-	let put = false;
-	env.persistence.open = async (id) => {
-		reads.push({ id, fromSeq: 0 });
-		return {
-			header: env.persistence.headers[0],
-			read: async () => ({ events: [] }),
-			close: async () => {},
-		};
-	};
-	env.projCache.cachedSnapshot = () => void 0;
-	env.projCache.put = async () => {
-		put = true;
-	};
-	env.ctx.provide("sessionProjections", {
-		restore: () => {
-			restored = true;
-			return { checkpoint: {} };
-		},
-	});
-	const registry = await mountWorkspaceRegistry(env);
-	assert.deepEqual(await registry.archivedSessionMetadata(), {
-		items: [{ sessionId: s1, createdAt: 100 }],
-	});
-	assert.deepEqual(reads, [{ id: s1, fromSeq: 0 }]);
-	assert.equal(restored, false);
-	assert.equal(put, false);
-});
+}
 
 test("explicit archived-session batches span projects, deduplicate input, and preserve archive order", async () => {
 	const env = buildRoot({
@@ -815,9 +665,19 @@ test("explicit archived-session batches span projects, deduplicate input, and pr
 	assert.deepEqual(env.global.archivedSessionIds, []);
 });
 
+test("workspace 扩展不安装物理删除墓碑或索引拦截", async () => {
+	const env = buildRoot();
+	const registry = await mountWorkspaceRegistry(env);
+	assert.equal(Object.hasOwn(registry, "deletedSessionIds"), false);
+	assert.equal(Object.hasOwn(registry, "deletedSessionOrder"), false);
+	assert.equal(Object.hasOwn(registry, "deletedIdentities"), false);
+	assert.equal(Object.hasOwn(ArchiveWorkspaceRegistry.prototype, "sessionKnown"), false);
+	assert.equal(Object.hasOwn(ArchiveWorkspaceRegistry.prototype, "indexHeader"), false);
+});
+
+
 test("deleteSession cleans unknown sessions without throwing", async () => {
 	const env = buildRoot({
-		headers: [header(s1, cwdA)],
 		workspaces: { [A]: workspace("D:\\proj-a", [s1]) },
 	});
 	const registry = await mountWorkspaceRegistry(env);
@@ -1012,9 +872,9 @@ test("pruneUnknownArchivedSessionIds removes ghost entries even if headers cache
 	assert.deepEqual(env.global.archivedSessionIds, [s1], "持久化归档标记必须已清除幽灵会话");
 	assert.equal(registry.headers.has(s2), false, "剪枝必须清掉宿主内存索引");
 	await registry.indexHeaders([header(s2, cwdA, { createdAt: 200 })]);
-	assert.equal(registry.headers.has(s2), false, "墓碑必须挡住 stale list() 把幽灵加回");
+	assert.equal(registry.headers.has(s2), true, "索引不再安装墓碑拦截");
 	env.persistence.headers.push(header(s2, cwdA, { createdAt: 999 }));
-	assert.equal(await registry.sessionKnown(s2), true, "同 id 的新生命周期必须能冷复用");
+	assert.equal(await registry.sessionKnown(s2), true, "官方会话索引按其原有语义处理此 ID");
 });
 
 test("新版快照列表中的冷子会话仍被级联删除，fork 保留", async () => {
@@ -1072,7 +932,6 @@ test("持久化仍能观察到会话时不得提交删除记账或完成通知",
 		/still present in persistence/,
 	);
 	assert.deepEqual(env.global.archivedSessionIds, [s1]);
-	assert.equal(registry.deletedSessionIds.has(s1), false);
 	assert.deepEqual(removed, []);
 });
 
@@ -1413,11 +1272,14 @@ test("deleteArchivedSessions snapshots a workspace scope, continues after failur
 		archived: [s1, s2, s3],
 	});
 	const registry = await mountWorkspaceRegistry(env);
-	const originalDelete = env.projCache.delete;
-	env.projCache.delete = async (id) => {
-		if (id === s1) throw new Error("cache write failed");
-		return originalDelete.call(env.projCache, id);
-	};
+	const originalTable = env.projCache.requireTable.bind(env.projCache);
+	env.projCache.requireTable = () => ({
+		...originalTable(),
+		async delete(id) {
+			if (id === s1) throw new Error("cache write failed");
+			return originalTable().delete(id);
+		},
+	});
 	const result = await registry.deleteArchivedSessions({
 		scope: "workspace",
 		workspaceId: A,
@@ -1445,7 +1307,7 @@ test("deleteArchivedSessions snapshots a workspace scope, continues after failur
 	);
 });
 
-test("批量删除只为级联预取一次存储列举，墓碑淘汰后也不重建已删索引", async () => {
+test("批量删除只为级联预取一次存储列举并清除已删索引", async () => {
 	const env = buildRoot({
 		headers: [
 			header(s1, cwdA),
@@ -1460,7 +1322,6 @@ test("批量删除只为级联预取一次存储列举，墓碑淘汰后也不�
 		archived: [s1, s2, s3],
 	});
 	const registry = await mountWorkspaceRegistry(env);
-	registry.deletedSessionTombstoneLimit = 1;
 	let lists = 0;
 	const indexedDuring = [];
 	env.persistence.list = async () => {
@@ -1541,11 +1402,6 @@ test("deleteArchivedSessions clears every remaining trace for unknown sessions",
 		[sUnknown],
 		"unknown targets must purge stale projection rows",
 	);
-	assert.deepEqual(
-		env.cacheCalls.cleared,
-		[sUnknown],
-		"a transient cache tombstone must be released after the purge",
-	);
 	assert.equal(
 		existsSync(spillPath),
 		false,
@@ -1558,9 +1414,7 @@ test("deleteArchivedSessions keeps the marker retryable when unknown-session cle
 		workspaces: { [A]: workspace("D:\\proj-a", [sUnknown]) },
 		archived: [sUnknown],
 	});
-	env.projCache.delete = async () => {
-		throw new Error("cache cleanup failed");
-	};
+	env.projCache.requireTable = () => ({ delete: async () => { throw new Error("cache cleanup failed"); } });
 	const registry = await mountWorkspaceRegistry(env);
 	const result = await registry.deleteArchivedSessions({ scope: "all" });
 	assert.deepEqual(result.skippedSessionIds, []);
@@ -1668,11 +1522,7 @@ test("deleteSession retains the transcript after a physical failure and succeeds
 		false,
 		"retry removes the retained transcript",
 	);
-	assert.equal(
-		await registry.sessionKnown(s2),
-		false,
-		"successful retry forgets the header and records the tombstone",
-	);
+	assert.equal(registry.headers.has(s2), false, "成功重试后移除当前内存索引");
 });
 
 test("deleteArchivedSessions keeps a physical failure in its retryable target", async () => {
@@ -1715,26 +1565,27 @@ test("deleteArchivedSessions keeps a physical failure in its retryable target", 
 	assert.deepEqual(env.table.get(A).sessionIds, [s1]);
 });
 
-test("deleteSession on a live session flushes, detaches, emits session/disposed, and waits for the cache write-behind before deleting the row", async () => {
+test("deleteSession on a live session flushes and detaches before deleting the cache row", async () => {
 	const liveSession = { id: sLive, header: header(sLive, cwdA), events: [] };
 	const env = buildRoot({
 		headers: [header(s1, cwdA), header(sLive, cwdA)],
 		workspaces: { [A]: workspace("D:\\proj-a", [s1, sLive]) },
 		live: [liveSession],
 	});
-	// Make the fake cache order-sensitive: whenIdle must be awaited before delete.
 	const order = [];
-	env.projCache.whenIdle = async () => {
-		order.push("whenIdle");
-	};
-	env.projCache.delete = async (id) => {
-		order.push(`delete:${id}`);
-	};
+	const originalFlush = env.sessions.flush;
+	env.sessions.flush = async (session) => { order.push("flush"); await originalFlush(session); };
+	env.ctx.on("session/disposed", () => order.push("disposed"));
+	const originalTable = env.projCache.requireTable.bind(env.projCache);
+	env.projCache.requireTable = () => ({
+		...originalTable(),
+		async delete(id) { order.push(`delete:${id}`); return originalTable().delete(id); },
+	});
 	const registry = await mountWorkspaceRegistry(env);
 	await registry.deleteSession(sLive);
 	assert.deepEqual(env.sessions.flushed, [sLive]);
 	assert.deepEqual(env.sessions.detached, [sLive]);
-	assert.deepEqual(order, ["whenIdle", `delete:${sLive}`]);
+	assert.deepEqual(order, ["flush", "disposed", `delete:${sLive}`]);
 	assert.deepEqual(env.table.get(A).sessionIds, [s1]);
 	assert.equal(registry.get(A).sessionIds.length, 1);
 	assert.equal(
@@ -1777,16 +1628,12 @@ test("deleteSession cascades to SUBAGENT children (origin = subagent) but never 
 		true,
 		"fork branch transcript dir kept",
 	);
-	assert.equal(await registry.sessionKnown(s4), false);
-	assert.equal(
-		await registry.sessionKnown(s5),
-		false,
-		"cascade child must also leave the header index",
-	);
-	assert.equal(await registry.sessionKnown(s2), true);
+	assert.equal(registry.headers.has(s4), false);
+	assert.equal(registry.headers.has(s5), false, "级联删除后子会话离开当前头部索引");
+	assert.equal(registry.headers.has(s2), true);
 });
 
-test("deleteSession forgets the in-memory header index so the id cannot be re-archived", async () => {
+test("deleteSession removes current index entries without blocking later host re-indexing", async () => {
 	const env = buildRoot({
 		headers: [header(s1, cwdA), header(s2, cwdA)],
 		workspaces: { [A]: workspace("D:\\proj-a", [s1, s2]) },
@@ -1794,11 +1641,8 @@ test("deleteSession forgets the in-memory header index so the id cannot be re-ar
 	});
 	const registry = await mountWorkspaceRegistry(env);
 	await registry.deleteSession(s2);
-	assert.equal(
-		await registry.sessionKnown(s2),
-		false,
-		"deleted session must leave the parent header index",
-	);
+	env.persistence.headers = env.persistence.headers.filter((item) => item.id !== s2);
+	assert.equal(registry.headers.has(s2), false, "成功删除后移除当前头部索引");
 	await assert.rejects(registry.archiveSession(s2), (error) =>
 		error?.name === "WorkspaceUnknownSessionError" || error?.constructor?.name === "WorkspaceUnknownSessionError");
 	assert.equal(
@@ -1807,55 +1651,11 @@ test("deleteSession forgets the in-memory header index so the id cannot be re-ar
 		"deleted session must not re-enter the archive set",
 	);
 	assert.deepEqual(await registry.deleteSession(s2), { deleted: true });
-	// persistence.list() still returns the deleted header; probing another id
-	// re-indexes and must not resurrect the forgotten session.
+	// deletion forgets the current in-memory header; later host indexing is not blocked.
 	assert.equal(await registry.sessionKnown(sUnknown), false);
-	assert.equal(
-		await registry.sessionKnown(s2),
-		false,
-		"stale persistence.list() must not resurrect a deleted session",
-	);
+	await registry.indexHeaders([header(s2, cwdA)]);
+	assert.equal(await registry.sessionKnown(s2), true, "无墓碑拦截，官方索引逻辑可重新收录该 ID");
 	assert.equal(await registry.sessionKnown(s1), true);
-});
-
-test("live reuse removes the tombstone from both the set and the order queue", async () => {
-	const liveSession = { id: sLive, header: header(sLive, cwdA), events: [] };
-	const env = buildRoot({
-		headers: [header(s1, cwdA), header(sLive, cwdA)],
-		workspaces: { [A]: workspace("D:\\proj-a", [s1, sLive]) },
-		live: [liveSession],
-	});
-	const registry = await mountWorkspaceRegistry(env);
-	registry.forgetIndexedSession(sLive);
-	assert.equal(registry.deletedSessionIds.has(sLive), true);
-	assert.equal(registry.deletedSessionOrder.includes(sLive), true);
-	assert.equal(await registry.sessionKnown(sLive), true);
-	assert.equal(registry.deletedSessionIds.has(sLive), false);
-	assert.equal(registry.deletedSessionOrder.includes(sLive), false);
-	assert.deepEqual(
-		env.cacheCalls.cleared,
-		[sLive],
-		"live reuse must also clear the projection-cache tombstone",
-	);
-	registry.forgetIndexedSession(sLive);
-	assert.equal(
-		registry.deletedSessionOrder.filter((id) => id === sLive).length,
-		1,
-	);
-});
-
-test("deletedSessionIds evicts the oldest tombstone after the cap", async () => {
-	const env = buildRoot({
-		headers: [header(s1, cwdA)],
-		workspaces: { [A]: workspace("D:\\proj-a", [s1]) },
-	});
-	const registry = await mountWorkspaceRegistry(env);
-	const limit = registry.deletedSessionTombstoneLimit;
-	assert.ok(limit > 0);
-	for (let i = 0; i < limit + 3; i++) registry.forgetIndexedSession(`gone-${i}`);
-	assert.equal(registry.deletedSessionIds.has("gone-0"), false);
-	assert.equal(registry.deletedSessionIds.has(`gone-${limit + 2}`), true);
-	assert.ok(registry.deletedSessionIds.size <= limit);
 });
 
 test("markRemoteMethod registers single and batch archive methods on the service prototype", async () => {
@@ -1883,7 +1683,7 @@ test("markRemoteMethod registers single and batch archive methods on the service
 	);
 });
 
-test("deleteSession cascade skips already-deleted subagent children", async () => {
+test("级联删除对已删除的子代理工件保持幂等", async () => {
 	const env = buildRoot({
 		headers: [
 			header(s4, cwdA),
@@ -1894,78 +1694,10 @@ test("deleteSession cascade skips already-deleted subagent children", async () =
 	const registry = await mountWorkspaceRegistry(env);
 	await registry.deleteSession(s5);
 	await registry.deleteSession(s4);
-	assert.equal(await registry.sessionKnown(s4), false);
-	assert.equal(await registry.sessionKnown(s5), false);
-});
-
-test("历史缓存键映射保持稳定，仅用于读取旧数据", () => {
-	const id = "im:historical:dm:user";
-	const key = projectionCacheStorageKey(id);
-	assert.match(key, /^session_[A-Za-z0-9_-]{43}$/);
-	assert.equal(projectionCacheStorageKey(id), key);
-	assert.notEqual(projectionCacheStorageKey("another"), key);
-});
-
-test("cold reuse of a deleted id (new lifecycle) clears the tombstone; a stale same-lifecycle header stays unknown", async () => {
-	const env = buildRoot({
-		headers: [header(s1, cwdA), header(s2, cwdA)],
-		workspaces: { [A]: workspace("D:\\proj-a", [s1, s2]) },
-		archived: [s2],
-	});
-	const registry = await mountWorkspaceRegistry(env);
-	await registry.deleteSession(s2);
-	// stale list()：同一生命周期（同 createdAt）的旧头部仍视为未知。
-	assert.equal(await registry.sessionKnown(s2), false);
-	// 另一进程以同 id 重建并落盘新生命周期（createdAt 不同）：撤墓碑放行。
-	env.persistence.headers = env.persistence.headers.map((item) =>
-		item.id === s2 ? { ...item, createdAt: 1800000000000 } : item,
-	);
-	assert.equal(await registry.sessionKnown(s2), true);
-	assert.equal(
-		registry.deletedSessionIds.has(s2),
-		false,
-		"cold reuse must clear the tombstone",
-	);
-	assert.deepEqual(
-		env.cacheCalls.cleared,
-		[s2],
-		"cold reuse must also clear the projection-cache tombstone",
-	);
-	// 撤墓碑后可重新归档（headers 已重新编入索引）。
-	await registry.archiveSession(s2);
-	assert.deepEqual(env.global.archivedSessionIds, [s2]);
-});
-
-test("cold-reuse probe normalizes a missing cwd on both sides of the identity comparison", async () => {
-	// 删除时身份带 cwd，list 返回同 createdAt 但无 cwd 的头部：形状不同即身份不同，按新生命周期放行。
-	const env = buildRoot({
-		headers: [header(s1, cwdA), header(s2, cwdA)],
-		workspaces: { [A]: workspace("D:\\proj-a", [s1, s2]) },
-		archived: [s2],
-	});
-	const registry = await mountWorkspaceRegistry(env);
-	await registry.deleteSession(s2);
-	env.persistence.headers = env.persistence.headers.map((item) =>
-		item.id === s2 ? { id: s2, createdAt: 1700000000000 } : item,
-	);
-	assert.equal(
-		await registry.sessionKnown(s2),
-		true,
-		"a header whose cwd shape differs from the deleted identity is a new lifecycle",
-	);
-	// 双侧均无 cwd 的同生命周期头部：归一为 null 后相等，仍拦截。
-	const env2 = buildRoot({
-		headers: [{ id: s3, createdAt: 1700000000000 }],
-		workspaces: {},
-		archived: [s3],
-	});
-	const registry2 = await mountWorkspaceRegistry(env2);
-	await registry2.deleteSession(s3);
-	assert.equal(
-		await registry2.sessionKnown(s3),
-		false,
-		"both-missing cwd normalizes to null and keeps the stale header unknown",
-	);
+	assert.equal(existsSync(env.located.get(s4)), false);
+	assert.equal(existsSync(env.located.get(s5)), false);
+	assert.equal(registry.headers.has(s4), false);
+	assert.equal(registry.headers.has(s5), false);
 });
 
 test("typert gateway SRC: claims + dispatch single and batch archive methods end to end", async () => {

@@ -31,15 +31,12 @@ export interface SessionsCompat {
   announce(session: Session): void;
 }
 interface CacheCompat {
-  whenIdle?(): Promise<void>; delete(id: string): Promise<void>; clearTombstone?(id: string): void;
-  cachedSnapshot(header: Header, keys?: readonly string[]): unknown;
-  put(id: string, identity: Omit<CheckpointRecord["identity"], "inheritedEventCount"> & { inheritedEventCount: number }, rows: CheckpointRecord["rows"]): Promise<void>;
+  requireTable(): Pick<KvTable<string, CheckpointRecord>, "delete">;
 }
 interface HostServices {
   sessions: SessionsCompat;
   sessionPersistence: PersistenceCompat;
   sessionProjectionCache: CacheCompat;
-  sessionProjections: { restore(initial: object, events: SessionEvent[], offset: number, header: Header, inheritedEventCount: number): { checkpoint: CheckpointRecord["rows"] } | undefined };
   spillStore: { root?: string };
   typert: { register(value: TypertContribution): unknown };
 }

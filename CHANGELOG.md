@@ -4,6 +4,14 @@
 
 Published release notes are retained below; new versions are added without removing earlier entries.
 
+## Unreleased
+
+- Remove all historical projection-cache scanning, identity checks, and handoff logic (#76), so activation no longer waits for per-record session-log reads. Cache rebuilding is host-owned and on demand; permanent deletion directly removes the cache row without suppressing later official writes.
+- Remove automatic full-log reads and official projection-cache write-backs when opening the archive list, along with the follow-up list refresh. Archive metadata only returns header creation times; preview, search, and explicit diagnosis/repair remain available.
+- Remove the historical file-upload resolver conflict shim: the current entry overlays the official workspace instance without replacing the service or restarting `sessionController`; the plugin no longer mutates the global `fileUploads` registrar.
+- Remove all write-barrier and workspace deletion tombstones for permanent deletion. Deletion directly removes transcript directories, cleans the official cache row, and clears in-memory indexing; subsequent cache writes and host indexing follow native behavior.
+- Upgrade boundary: historical plugin cache files are no longer read or automatically deleted. Cold sessions without official cache entries may initially lack list titles; log reads recover titles, and restoring a live session lets the host persist its cache. No extra activation is required to import old caches.
+
 ## 1.1.10 - 2026-10-24
 
 - Support DeepSeek Harness `0.2.1-rc.3` while retaining all existing supported versions.

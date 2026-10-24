@@ -179,7 +179,6 @@ export function startArchiveClient(require: HostRequire) {
 				const value = record(input);
 				if (typeof value !== "object" || value === null || Array.isArray(value) || !Array.isArray(value.items)) throw new TypeError("result.items must be an array");
 				if (value.items.some((item) => typeof item !== "object" || item === null || typeof item.sessionId !== "string" || typeof item.createdAt !== "number" || !Number.isFinite(item.createdAt))) throw new TypeError("items must contain sessionId/createdAt objects");
-				if (value.repairedSessionIds !== void 0 && (!Array.isArray(value.repairedSessionIds) || value.repairedSessionIds.some((id) => typeof id !== "string"))) throw new TypeError("repairedSessionIds must be a string array");
 				return value;
 			}
 		};
@@ -2684,13 +2683,6 @@ export function startArchiveClient(require: HostRequire) {
 				if (registry === void 0) throw new Error("archive-manager remote service is unavailable");
 				const result = await registry.archivedSessionMetadata();
 				if (!result.ok) throw new Error(result.error.message);
-				if (result.value.repairedSessionIds?.length > 0 && typeof ctx.sessions.refresh === "function") {
-					try {
-						await ctx.sessions.refresh();
-					} catch (error) {
-						console.warn("archive-manager: repaired archived projections but session list refresh failed:", error);
-					}
-				}
 				return result.value;
 			};
 			const sessionMenuSlot = "sidebar.workspaces.session.menu.item";
