@@ -4,7 +4,6 @@ import type { WorkspaceRegistry, WorkspaceRecord, WorkspaceDomainState } from "@
 import type { CheckpointRecord } from "@deepseek-ai/dsh-session-projection-cache";
 import type { KvTable } from "@deepseek-ai/dsh-storage-domain";
 import type { TypertContribution } from "@deepseek-ai/dsh-typert-registry";
-import type { RepairFormat } from "./session-repair.js";
 
 /** 旧宿主使用普通字符串 ID；只在经现有 schema 校验的兼容边界消除新版本品牌。 */
 export type Header = Omit<SessionHeader, "id"> & { id: string; header?: Header };
@@ -12,7 +11,7 @@ export type WorkspaceRow = Omit<WorkspaceRecord, "sessionIds"> & { sessionIds: s
 export type WorkspaceState = Omit<WorkspaceDomainState, "workspaceIds" | "archivedSessionIds" | "pinnedSessionIds"> & { workspaceIds: string[]; archivedSessionIds: string[]; pinnedSessionIds: string[] };
 export interface StoredSource { meta: Header; events: SessionEvent[]; inheritedEventCount?: number }
 export interface PersistenceCompat {
-  name: string; root?: string; config?: { root?: string }; generationFormat: RepairFormat;
+  name: string; root?: string; config?: { root?: string }; generationFormat?: unknown;
   locate(header: Header): { kind: string; path: string } | undefined;
   list(): Promise<{ header: Header }[]>;
   stat(id: string): Promise<unknown>;

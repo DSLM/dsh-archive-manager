@@ -21,10 +21,8 @@ const ARCHIVE_ENDPOINTS = [
 	"deleteArchivedSessions",
 	"deleteSession",
 	"diagnoseOrphanSubagents",
-	"diagnoseSession",
 	"favoriteSessions",
 	"previewArchivedSession",
-	"repairSession",
 	"searchArchivedContent",
 	"searchSessionContent",
 	"sessionDetails",
@@ -158,7 +156,7 @@ test("归档能力经真实网关从官方 workspace 实例派发", async () => 
 	assert.equal(Reflect.get(binding, "namespace"), "workspaceRegistry");
 	assert.equal(captured.matches("workspaceRegistry/archivedSessionMetadata"), true);
 	assert.equal(captured.matches("workspaceRegistry/sessionDetails"), true);
-	assert.equal(captured.matches("workspaceRegistry/diagnoseSession"), true);
+	assert.equal(captured.matches("workspaceRegistry/diagnoseOrphanSubagents"), true);
 	// 暴露面必须与子类入口一致：只有归档方法，内部方法不得成为远程端点。
 	assert.deepEqual(remoteMethods(registry).map((marker) => marker.method).sort(), ARCHIVE_ENDPOINTS);
 	for (const internal of ["removeTranscriptDirectory", "cleanSpill", "deleteDescendants", "indexHeader", "deleteSessionCore"]) {
@@ -166,7 +164,7 @@ test("归档能力经真实网关从官方 workspace 实例派发", async () => 
 	}
 	assert.deepEqual(await call("workspaceRegistry/archivedSessionMetadata", {}), { ok: true, value: { items: [] } });
 	assert.deepEqual(await call("workspaceRegistry/favoriteSessions", {}), { ok: true, value: { favoriteSessionIds: [] } });
-	assert.equal((await call("workspaceRegistry/diagnoseSession", { input: { sessionId: "missing" } })).ok, true);
+	assert.equal((await call("workspaceRegistry/diagnoseOrphanSubagents", {})).ok, true);
 	assert.equal(cache.table, officialTable);
 
 	await fiber.dispose();

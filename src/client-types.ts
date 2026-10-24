@@ -1,6 +1,6 @@
 import type * as React from "react";
 import type { SessionSummary, SessionDetail, BatchResult, BatchProgress, OrganizeKind, OrganizeOptions, Translate } from "./contracts.js";
-import type { ArchivePreviewResult, RepairResult } from "./archive-discovery.js";
+import type { ArchivePreviewResult } from "./archive-discovery.js";
 
 /** 给预编译 JSX 调用补回属性与事件上下文，运行时仍使用宿主的 jsx-runtime。 */
 interface TypedJsx {
@@ -52,8 +52,6 @@ export interface ArchiveProps {
   archivedSessionMetadata(): Promise<{ items: { sessionId: string; createdAt: number }[] }>;
   openConversation(id: string): unknown; focusSessionWorkspace?(id: string): Promise<unknown>;
   viewState?: { query?: string; project?: string; sortBy?: string }; close?(): void; t: Translate;
-  diagnoseSession: (input: {sessionId: string}) => Promise<RepairResult>;
-  repairSession: (input: {sessionId: string; token?: string}) => Promise<RepairResult>;
   sessionDetails(input: {sessionIds: string[]}): Promise<{ items: SessionDetail[] }>;
   searchSessionContent?: (input: {sessionIds: string[]; query: string}) => Promise<unknown>;
   searchArchivedContent?: (input: {sessionIds: string[]; query: string}) => Promise<unknown>;

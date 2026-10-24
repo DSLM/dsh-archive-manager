@@ -98,7 +98,12 @@ export async function copySessionText(text: string, clipboard = globalThis.navig
 }
 export function discoveryInvocations() {
   const codec = (name: string, schema: Schema<unknown>) => ({ mode: "strict", typeSymbol: `@michengai/dsh-archive-manager/types#${name}`, create: () => schema, schema });
-  const methods: [string, Schema<unknown>, Schema<unknown>][] = [["searchSessionContent", searchInputSchema, searchResultSchema], ["diagnoseSession", repairInputSchema, repairResultSchema], ["repairSession", repairInputSchema, repairResultSchema], ["sessionDetails", detailsInputSchema, detailsResultSchema], ["searchArchivedContent", searchInputSchema, searchResultSchema], ["previewArchivedSession", previewInputSchema, previewResultSchema]];
+  const methods: [string, Schema<unknown>, Schema<unknown>][] = [
+    ["searchSessionContent", searchInputSchema, searchResultSchema],
+    ["sessionDetails", detailsInputSchema, detailsResultSchema],
+    ["searchArchivedContent", searchInputSchema, searchResultSchema],
+    ["previewArchivedSession", previewInputSchema, previewResultSchema]
+  ];
   return methods.map(([method, input, output]) => ({
     id: `@michengai/dsh-archive-manager#workspaceRegistry/${method}`, service: "workspaceRegistry", namespace: "workspaceRegistry", method,
     invocation: { kind: "direct" }, parameters: [{ name: "input", wire: "input", source: "json", codec: codec(method + "Input", input) }],
@@ -202,65 +207,3 @@ export async function searchArchiveBatches(ids: readonly string[], query: string
   }
   check(); return { items, failures };
 }
-
-/** 错误分类只决定说明和入口，是否可修复必须由服务端读取工件后判断。 */
-export function classifySessionError(error: unknown) {
-  const message = errorMessage(error);
-  const descriptions: Record<string, [string, string]> = {
-    'repair-frame': ['旧版修复生成的压缩格式不符合宿主要求', '重新诊断可纠正压缩帧格式，原始日志保持不变。'],
-    'legacy-source': ['旧版消息来源不受新版 DSH 支持', '运行诊断，检查是否为可转换的旧版来源。'],
-    missing: ['会话日志或附件路径不存在', '检查原目录或磁盘是否可用；缺失正文不能通过重建缓存恢复。'],
-    permission: ['没有权限读取会话文件', '检查目录访问权限、文件占用与安全软件限制，再重试。'],
-    corrupt: ['会话日志可能损坏或未完整写入', '保留现有日志，检查磁盘和原始文件；不自动截断或删除消息。'],
-    unknown: ['会话暂时无法读取', '先重试；仍失败时展开技术详情，按具体错误检查宿主兼容性。']
-  };
-  const codes: Record<string, string> = { ENOENT: 'missing', EACCES: 'permission', EPERM: 'permission' };
-  const patterns: [string, RegExp][] = [
-    ['repair-frame', /first frame is not exactly one header line/],
-    ['legacy-source', /unclassified message source/],
-    ['missing', /ENOENT|不存在|not found/i],
-    ['permission', /EACCES|EPERM|permission/i],
-    ['corrupt', /corrupt|JSON|incomplete|truncat|损坏|SessionFormatError/i]
-  ];
-  const rawCode = errorCode(error);
-  const name = error && typeof error === "object" && "name" in error ? String((error as { name?: unknown }).name ?? "") : "";
-  const explicit = typeof rawCode === "string" ? codes[rawCode] ?? rawCode : "";
-  if (Object.hasOwn(descriptions, explicit)) {
-    const [reason, advice] = descriptions[explicit];
-    return { code: explicit, reason, advice };
-  }
-  const emptyToolCall = /requires toolCallId matching its tool source|tool call id requires a nonempty string/i;
-  if (emptyToolCall.test(message)) {
-    return {
-      code: "corrupt",
-      reason: "日志尾部有未闭合的工具调用，且 toolCallId 为空",
-      advice: "保留现有日志，检查磁盘和原始文件；不自动截断或改写日志。",
-    };
-  }
-  const namedCorrupt = name === "SessionFormatError" || name === "SessionPersistenceCorruptionError" ? "corrupt" : undefined;
-  const code = namedCorrupt ?? patterns.find(([, pattern]) => pattern.test(message))?.[0] ?? "unknown";
-  const [reason, advice] = descriptions[code];
-  return { code, reason, advice };
-}
-export const repairInputSchema = { parse(input: unknown) {
-  const value = record(input);
-  const sessionId = id(value?.sessionId);
-  if (value?.token !== undefined && (typeof value.token !== "string" || !/^[a-f0-9]{64}$/.test(value.token))) throw new TypeError('修复凭据无效');
-  return { sessionId, ...(value.token !== undefined ? { token: value.token } : {}) };
-} };
-/** 会话诊断与修复的返回结构。 */
-export interface RepairResult {
-  code?: string;
-  sessionId: string;
-  repairable: boolean;
-  repaired: boolean;
-  reason: string;
-  advice: string;
-  token: string;
-  count: number;
-}
-export const repairResultSchema = { parse(input: unknown): RepairResult {
-  const value = record(input);
-  if (!value || typeof value.repairable !== 'boolean' || typeof value.repaired !== 'boolean') throw new TypeError('诊断结果无效');
-  return { ...(value.code !== undefined ? { code: boundedString(value.code, 64) } : {}), sessionId: id(value.sessionId), repairable: value.repairable, repaired: value.repaired, reason: boundedString(value.reason, 1000), advice: boundedString(value.advice, 1000), token: boundedString(value.token ?? '',64), count: sequence(value.count ?? 0) };
-} };

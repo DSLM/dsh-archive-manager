@@ -7,7 +7,7 @@ import type { DirectoryMirrorContext } from "./directory-flow-slot.js";
 
 /** 跨版本远程结果保持宿主原有的成功/失败判别字段。 */
 export type RemoteResult<T> = { ok: true; value: T } | { ok: false; error: { message: string } };
-export type DiscoveryMethod = "sessionDetails" | "diagnoseSession" | "repairSession" | "searchArchivedContent" | "searchSessionContent" | "previewArchivedSession" | "diagnoseOrphanSubagents" | "cleanOrphanSubagents";
+export type DiscoveryMethod = "sessionDetails" | "searchArchivedContent" | "searchSessionContent" | "previewArchivedSession" | "diagnoseOrphanSubagents" | "cleanOrphanSubagents";
 export type RegistryCalls = { [K in DiscoveryMethod | "favoriteSessions" | "setSessionFavorite"]: NonNullable<ArchiveProps[K]> };
 export type Registry = { [K in keyof RegistryCalls]: (...args: Parameters<RegistryCalls[K]>) => Promise<RemoteResult<Awaited<ReturnType<RegistryCalls[K]>>>> } & {
   unarchiveSession(id: string): Promise<RemoteResult<ArchiveState>>;

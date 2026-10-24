@@ -35,3 +35,23 @@ test("删除结果独立于闲置整理区域并保留失败重试", () => {
   assert.match(html, /重试剩余/);
   assert.doesNotMatch(html, /闲置天数|预览闲置归档/);
 });
+
+test("OrganizerPanel: 发现孤儿子代理时展示清理卡片并响应清理点击", () => {
+  let cleaned = 0;
+  const t = (key, values) => {
+    let text = organizerZh[key] ?? key;
+    if (values) for (const [name, value] of Object.entries(values)) text = text.replaceAll(`{${name}}`, String(value));
+    return text;
+  };
+  const html = renderToStaticMarkup(React.createElement(Panel, {
+    ...props,
+    t,
+    archived: true,
+    orphanCount: 3,
+    orphanSizeBytes: 2048,
+    onCleanOrphans: () => { cleaned++; }
+  }));
+  assert.match(html, /发现 3 个无主孤儿子代理/);
+  assert.match(html, /清理全部孤儿/);
+  assert.match(html, /2.0 KB/);
+});

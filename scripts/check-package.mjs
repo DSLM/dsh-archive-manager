@@ -20,7 +20,6 @@ const required = [
   "lib/archive-experience.js",
   "lib/archive-organizer.js",
   "lib/archive-discovery.js",
-  "lib/session-repair.js",
   "LICENSE",
   "README.md",
   "README.ru.md",

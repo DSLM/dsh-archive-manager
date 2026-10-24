@@ -7,9 +7,7 @@ import { record, errorMessage, errorCode } from "./contracts.js";
 import type { Schema, SessionDetail } from "./contracts.js";
 import type { TypertGatewayBinding } from "@deepseek-ai/dsh-typert-protocol";
 type BatchTarget = { scope: "all" | "ungrouped" } | { scope: "workspace"; workspaceId: string } | { scope: "sessions"; sessionIds: string[] };
-import * as SessionRuntime from "@deepseek-ai/dsh-session";
-import { childCatalogFact, prepareAutomationRepair, type RepairFormat } from "./session-repair.js";
-import { repairInputSchema, classifySessionError, detailsInputSchema, countConversationTurns, discoveryInvocations, searchInputSchema, previewInputSchema, extractConversation, findContentMatch, previewConversation } from "./archive-discovery.js";
+import { detailsInputSchema, countConversationTurns, discoveryInvocations, searchInputSchema, previewInputSchema, extractConversation, findContentMatch, previewConversation } from "./archive-discovery.js";
 import { lstat, readdir, rm } from "node:fs/promises";
 import { basename, dirname, isAbsolute, join, resolve } from "node:path";
 import { WorkspaceRegistry } from "@deepseek-ai/dsh-workspace";
@@ -159,8 +157,6 @@ const ARCHIVE_REMOTE_METHODS = [
 	"searchSessionContent",
 	"previewArchivedSession",
 	"sessionDetails",
-	"diagnoseSession",
-	"repairSession",
 	"diagnoseOrphanSubagents",
 	"cleanOrphanSubagents",
 ] as const;
@@ -462,18 +458,6 @@ export function bindArchiveManagerRemote(ctx: Context): () => void {
 		return () => {};
 	}
 }
-/** generationFormat 已带 createRestore 时直接用；否则用本次修复收集到的直属子会话证据建目录。没有子会话时才传空数组。 */
-async function hostRepairFormat(format: RepairFormat | undefined, children: readonly Record<string, unknown>[] = []): Promise<RepairFormat> {
-	if (!format || !Number.isInteger(format.currentVersion) || format.currentVersion < 3) throw new Error("当前宿主不支持此修复，请升级 DSH 后重试");
-	if (typeof format.createRestore === "function") return format;
-	if (typeof format.encodeHeader !== "function" || typeof format.encodeEvent !== "function") throw new Error("当前宿主不支持此修复，请升级 DSH 后重试");
-	const catalog = await import("@deepseek-ai/dsh-session-format-catalog");
-	if (typeof catalog.createSessionFormatCatalogWithChildren !== "function") throw new Error("当前宿主不支持此修复，请升级 DSH 后重试");
-	const bound = catalog.createSessionFormatCatalogWithChildren(children as never);
-	return { ...format, createRestore(header: unknown) {
-		return bound.createRestore(header, { recovery: "recoverable", validation: "transformed" });
-	} } as unknown as RepairFormat;
-}
 type RestorableWorkspaceConstructor = new (ctx: Context) => InstanceType<WorkspaceConstructor> & {
 	unarchiveSession(sessionId: string): Promise<unknown>;
 };
@@ -535,71 +519,6 @@ var ArchiveWorkspaceRegistry = class extends (WorkspaceRegistry as unknown as Re
             items.push(item);
         }
         return { items };
-    }
-    /** 诊断与执行共用同一工件校验；客户端不能提供文件路径。 */
-    async sessionRepairPlan(sessionId: string) {
-        if (!(await this.sessionKnown(sessionId))) throw new Error("会话不存在，请刷新列表");
-        await this.ensureSessionRepairIdle(sessionId);
-        const persistence = this.ctx.get("sessionPersistence");
-        const header = await this.readSessionHeader(sessionId);
-        const location = await persistence?.locate?.(header);
-        const directory = location && jsonlSessionDirectory(persistence, header, location);
-        const version = persistence.generationFormat?.currentVersion;
-        const currentGeneration = Number.isInteger(version) && version >= 3 ? new RegExp(`^session\\.v${version}\\.jsonl(?:\\.zstd)?$`) : undefined;
-        if (!directory || currentGeneration === undefined || !currentGeneration.test(basename(location.path))) throw new Error("当前存储后端或格式不支持自动修复");
-        const format = await hostRepairFormat(persistence.generationFormat, await this.childCatalogFacts(sessionId));
-        return prepareAutomationRepair({ directory, target: location.path, sessionId, format: { ...format, validateBytes: async bytes => {
-            if (location.path.endsWith(".zstd")) {
-                if (typeof persistence.readZstdPrefix !== "function") throw new Error("当前宿主缺少压缩日志校验能力");
-                const parsed = await persistence.readZstdPrefix(bytes);
-                if (parsed.meta.id !== sessionId || parsed.tornTruncateTo !== undefined) throw new Error("生成的压缩日志未通过宿主校验");
-            }
-        }, validate: artifact => {
-            if (typeof SessionRuntime.Session?.fromRestore !== "function") throw new Error("当前宿主缺少完整会话校验能力");
-            SessionRuntime.Session.fromRestore(artifact.header.id, artifact.events, artifact.header, artifact.inheritedEventCount, "detached");
-        } } });
-    }
-    async ensureSessionRepairIdle(sessionId: string) {
-        if (!this.requireState().archivedSessionIds.includes(sessionId)) throw new Error("请先归档会话，再进行修复");
-        if (this.ctx.get("sessions")?.get(sessionId)) throw new Error("会话仍在宿主内打开，请关闭会话并重启 DSH 后修复");
-    }
-    async diagnoseSession(input: unknown) {
-        const { sessionId } = repairInputSchema.parse(input);
-        const result = { code: "unknown", sessionId, repairable: false, repaired: false, token: "", count: 0, reason: "", advice: "" };
-        try {
-            if (!(await this.sessionKnown(sessionId))) throw new Error("会话不存在，请刷新列表");
-            await this.readConversationEvents(sessionId);
-            return { ...result, code: "healthy", reason: "会话已可正常读取", advice: "刷新会话详情即可，无需修复。" };
-        } catch (error) {
-            const diagnostic = classifySessionError(error);
-            result.code = diagnostic.code; result.reason = diagnostic.reason; result.advice = diagnostic.advice;
-            // 文案仅用于说明；工件结构和宿主验证才决定是否可修复。
-        }
-        try {
-            const plan = await this.sessionRepairPlan(sessionId);
-            return { ...result, code: plan.correctingFrame ? "ready-frame" : "ready", repairable: true, token: plan.token, count: plan.count,
-                reason: plan.correctingFrame ? "发现旧版修复的压缩帧问题，已通过宿主读取校验" : `发现 ${plan.count} 处旧版来源，已通过宿主格式转换校验`,
-                advice: "将来源改写为宿主支持的插件归属，保留正文，生成新版日志；旧日志原样保留。请确保其他 DSH 进程未打开该会话。" };
-        } catch (error) {
-            // 不能修复不等于原因未知：保留已识别分类，限制详情追加在建议中。
-            return { ...result, code: result.code === "unknown" ? "blocked" : result.code,
-                advice: (result.advice + " 暂不能自动修复：" + errorMessage(error)).slice(0, 1000) };
-        }
-    }
-    async repairSession(input: unknown) {
-        const { sessionId, token } = repairInputSchema.parse(input);
-        if (!token) throw new Error("请先诊断，再确认修复");
-        return this.enqueueOperation(async () => {
-            const plan = await this.sessionRepairPlan(sessionId);
-            const persistence = this.ctx.get("sessionPersistence");
-            if (typeof persistence.acquireLease !== "function") throw new Error("当前宿主缺少会话写锁，无法安全修复");
-            const lease = await persistence.acquireLease(sessionId, undefined, dirname(plan.source));
-            try { await plan.publish(token, () => this.ensureSessionRepairIdle(sessionId)); }
-            finally { await lease.release(); }
-            try { await this.readConversationEvents(sessionId); }
-            catch { return { sessionId, repairable: false, repaired: false, token: "", count: plan.count, code: "published-unreadable", reason: "新版日志已生成，但宿主复读未通过", advice: "旧日志仍保留，请重启 DSH 后重新诊断；不要反复修复或删除日志。" }; }
-            return { sessionId, repairable: false, repaired: true, token: "", count: plan.count, code: "repaired", reason: "修复完成，宿主已能正常读取", advice: "旧日志保留，归档状态不变；可以重新预览或打开会话。" };
-        });
     }
     /** 已归档与未归档共用正文检索；只读已知会话，不激活或改变归档状态。 */
     async searchSessionContent(input: unknown) {
@@ -1023,37 +942,6 @@ var ArchiveWorkspaceRegistry = class extends (WorkspaceRegistry as unknown as Re
 			const entity = this.entities.get(workspaceId);
 			if (entity !== void 0) entity.record = next;
 		}
-	}
-	/** 修复父日志前收集直属 subagent 的目录证据。读不出来的子日志跳过，不把其他子会话一起丢掉。 */
-	async childCatalogFacts(sessionId: string) {
-		const ids = new Set<string>();
-		const sessions = this.ctx.get("sessions");
-		if (typeof sessions?.list === "function") {
-			for (const session of sessions.list()) {
-				const header = session?.header;
-				if (header?.parentSession === sessionId && header.origin === "subagent" && typeof session.id === "string") ids.add(session.id);
-			}
-		}
-		try {
-			for (const header of await this.listStoredHeaders()) {
-				if (header.parentSession === sessionId && header.origin === "subagent") ids.add(header.id);
-			}
-		} catch (error) {
-			this.ctx.logger.warn(`archive-manager: child header list for "${sessionId}" failed: ${String(error)}`);
-		}
-		const persistence = this.ctx.get("sessionPersistence");
-		const facts = [];
-		for (const childId of ids) {
-			try {
-				if (persistence === undefined) continue;
-				const stored = await this.readStoredProjectionSource(persistence, childId);
-				const fact = childCatalogFact(stored.meta, stored.events, stored.inheritedEventCount ?? 0);
-				if (fact !== undefined) facts.push(fact);
-			} catch (error) {
-				this.ctx.logger.warn(`archive-manager: child catalog fact for "${childId}" skipped: ${String(error)}`);
-			}
-		}
-		return facts;
 	}
 	/** 尽力而为的级联删除：删除 `sessionId` 的 SUBAGENT 子会话。
 	 * 仅头部标记 `origin: "subagent"` 的会话参与：单凭 `parentSession` 有歧义

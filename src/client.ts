@@ -6,7 +6,6 @@ import type { ClientSession, ClientList, ClientWorkspace, WorkspaceSnapshot, Obs
 import type { NavigationSource } from "./archive-experience.js";
 import type { RemoteResult } from "./client-compat.js";
 import type { ReactNode, RefObject, AriaAttributes, HTMLAttributes, DragEvent as ReactDragEvent } from "react";
-import { createSessionHealthPanel, healthZh, healthEn, healthRu } from "./session-health-ui.js";
 import { createDiscoveryTools, discoveryCss, discoveryZh, discoveryEn, discoveryRu } from "./archive-discovery-ui.js";
 import { compareTurnCounts, copySessionText, discoveryInvocations, matchesUpdatedRange, validUpdatedRange, sessionDetailCandidates } from "./archive-discovery.js";
 import { allowArchivedNavigation, openArchivedConversation, formatArchiveNavigationError, ArchiveNavigationError, currentSessionId } from "./archive-experience.js";
@@ -97,7 +96,6 @@ export function startArchiveClient(require: HostRequire) {
 		}
 		const OrganizerPanel = createOrganizerPanel(react, _deepseek_ai_dsh_client_ui_primitives.Button);
         const { HighlightedText, useSessionDetails, useArchiveSearch, useArchivePreview, DiscoveryFilters, SearchStatus, PreviewContent } = createDiscoveryTools(react, { Button: _deepseek_ai_dsh_client_ui_primitives.Button, SegmentedControl: _deepseek_ai_dsh_client_ui_primitives.SegmentedControl });
-        const SessionHealthPanel = createSessionHealthPanel(react, { warning: _deepseek_ai_dsh_client_ui_primitives.IconWarningOutlineMedium, info: _deepseek_ai_dsh_client_ui_primitives.IconInfoOutlineMedium, check: _deepseek_ai_dsh_client_ui_primitives.IconCheckOutlineMedium, refresh: _deepseek_ai_dsh_client_ui_primitives.IconRefreshOutlineMedium, search: _deepseek_ai_dsh_client_ui_primitives.IconSearchOutlineMedium, chevron: _deepseek_ai_dsh_client_ui_primitives.IconChevronDownOutlineMedium }, _deepseek_ai_dsh_client_ui_primitives.Button);
 		const UPDATE_ICON_PATHS: Record<string, string[]> = {
 			refresh: ["M13.5 5.5V2.5m0 0h-3m3 0-2.1 2.1A5.5 5.5 0 1 0 13.2 12"],
 			download: ["M8 2v8m0 0 3-3m-3 3-3-3M3 13v2h10v-2"],
@@ -434,7 +432,7 @@ export function startArchiveClient(require: HostRequire) {
 		/**
 		* 归档管理设置页：集中处理筛选、多选、恢复、删除和原生会话导航。
 		*/
-		function ArchivedSessionsSection({ archiveSessions, archiveSession, sessionStore, workspaceStore, unarchiveSession, deleteSession, unarchiveSessions, deleteArchivedSessions, archivedSessionMetadata, openConversation, focusSessionWorkspace, viewState, close, t, diagnoseSession, repairSession, diagnoseOrphanSubagents, cleanOrphanSubagents, sessionDetails, searchSessionContent, searchArchivedContent, previewArchivedSession, favoriteSessions, setSessionFavorite, organizeBatch, useSessionPendingInteraction, useSessionStatus }: ArchiveProps) {
+		function ArchivedSessionsSection({ archiveSessions, archiveSession, sessionStore, workspaceStore, unarchiveSession, deleteSession, unarchiveSessions, deleteArchivedSessions, archivedSessionMetadata, openConversation, focusSessionWorkspace, viewState, close, t, diagnoseOrphanSubagents, cleanOrphanSubagents, sessionDetails, searchSessionContent, searchArchivedContent, previewArchivedSession, favoriteSessions, setSessionFavorite, organizeBatch, useSessionPendingInteraction, useSessionStatus }: ArchiveProps) {
 			const sessions = (0, react.useSyncExternalStore)(sessionStore.subscribe, sessionStore.getSnapshot);
 			const workspaceState = (0, react.useSyncExternalStore)(workspaceStore.subscribe, workspaceStore.getSnapshot);
 			const [archiveTab, setArchiveTab] = (0, react.useState)("archived");
@@ -514,6 +512,32 @@ export function startArchiveClient(require: HostRequire) {
 					return result;
 				} catch (reason) { setError(errorMessage(reason)); }
 				finally { batchLock.current = false; setBusy(false); setBatchProgress(null); }
+			};
+			const [orphanInfo, setOrphanInfo] = (0, react.useState)<{ count: number; items: { sessionId: string; parentSessionId: string; createdAt: number; sizeBytes: number }[]; totalSizeBytes: number } | null>(null);
+			const [orphanCleaning, setOrphanCleaning] = (0, react.useState)(false);
+			const loadOrphans = () => {
+				if (typeof diagnoseOrphanSubagents === "function") {
+					diagnoseOrphanSubagents().then(setOrphanInfo).catch(() => {});
+				}
+			};
+			(0, react.useEffect)(() => {
+				loadOrphans();
+			}, [workspaceState.archivedSessionIds]);
+
+			const cleanOrphans = async () => {
+				if (orphanCleaning || typeof cleanOrphanSubagents !== "function") return;
+				setOrphanCleaning(true);
+				try {
+					const res = await cleanOrphanSubagents();
+					if (res.cleanedSessionIds.length > 0) {
+						setNotice(t("organizer.orphanCleanSuccess", { n: res.cleanedSessionIds.length }));
+						loadOrphans();
+					}
+				} catch (error) {
+					setError(errorMessage(error));
+				} finally {
+					setOrphanCleaning(false);
+				}
 			};
 			const navigationActive = (0, react.useRef)(true);
 			const navigationPending = (0, react.useRef)(false);
@@ -888,14 +912,18 @@ export function startArchiveClient(require: HostRequire) {
 							})
 						]
 					})
-				}), react.createElement("style", null, discoveryCss), react.createElement(SearchStatus, { state: contentSearch, t }), react.createElement(SessionHealthPanel, { key: archiveTab, t, isArchived, items: details.items, sessions: groups.flatMap(group => group.sessions), diagnoseSession, repairSession, diagnoseOrphanSubagents, cleanOrphanSubagents, retry: details.retry, pending: details.pending }), organizeBatch && (0, react_jsx_runtime.jsx)(OrganizerPanel, {
+				}), react.createElement("style", null, discoveryCss), react.createElement(SearchStatus, { state: contentSearch, t }), organizeBatch && (0, react_jsx_runtime.jsx)(OrganizerPanel, {
 					t, archived: isArchived, busy: busy || favoriteBusy || unarchivingSessionIds.size > 0, ready: favoritesReady,
 					days: idleDays, onDays: setIdleDays, count: idleCandidates.length,
 					onPreview: () => { requestArchive(idleCandidates); setIdleRequest(true); },
 					progress: batchProgress, result: batchResult?.tab === archiveTab ? batchResult : null,
 					onRetry: () => { const retry = retryBatch.current; if (retry) { if (retry.kind === "delete") requestDelete({ kind: "batch", target: { scope: "sessions", sessionIds: retry.ids }, count: retry.ids.length }); else executeBatch(retry.kind, retry.ids, { idle: retry.idle, retry: true }); } },
 					undoCount: undoableArchiveCount,
-					onUndo: () => executeBatch("undo", lastArchive, { retry: true }), onReload: loadFavorites
+					onUndo: () => executeBatch("undo", lastArchive, { retry: true }), onReload: loadFavorites,
+					orphanCount: orphanInfo?.count ?? 0,
+					orphanSizeBytes: orphanInfo?.totalSizeBytes ?? 0,
+					orphanCleaning,
+					onCleanOrphans: cleanOrphans
 				}), groups.length > 0 && (0, react_jsx_runtime.jsx)(ArchiveSelectionToolbar, {
 					selectedCount: selectedSessionIds.length,
 					hiddenCount: selectedSessionIds.length - selectedVisibleCount,
@@ -2045,7 +2073,7 @@ export function startArchiveClient(require: HostRequire) {
 		}
 
 		const zh = {
-			...organizerZh, ...discoveryZh, ...healthZh,
+			...organizerZh, ...discoveryZh,
             "locale.language": "zh", "service.unavailable": "服务尚未就绪，请重试",
 			"sidebar.entry.title": "侧边栏入口",
 			"sidebar.entry.desc": "在左侧主导航栏显示归档管理器。设置里的入口不变。",
@@ -2214,7 +2242,7 @@ export function startArchiveClient(require: HostRequire) {
 		};
 		/** English dictionary, checked complete against the zh key set. */
 		const en = {
-			...organizerEn, ...discoveryEn, ...healthEn,
+			...organizerEn, ...discoveryEn,
             "locale.language": "en", "service.unavailable": "The service is not ready. Please retry.",
 			"sidebar.entry.title": "Sidebar entry",
 			"sidebar.entry.desc": "Show Archived Sessions in the left sidebar. The Settings entry stays either way.",
@@ -2382,7 +2410,7 @@ export function startArchiveClient(require: HostRequire) {
 			"time.ago": "{t} ago"
 		};
 		const ru = {
-			...organizerRu, ...discoveryRu, ...healthRu,
+			...organizerRu, ...discoveryRu,
             "locale.language": "ru", "service.unavailable": "Сервис ещё не готов. Повторите.",
 			"sidebar.entry.title": "Пункт боковой панели",
 			"sidebar.entry.desc": "Показывать архив сессий на левой панели. Пункт в настройках сохраняется.",
@@ -2689,8 +2717,6 @@ export function startArchiveClient(require: HostRequire) {
                 return result.value;
             };
             const sessionDetails: RegistryCalls["sessionDetails"] = input => registryCall("sessionDetails", input);
-            const diagnoseSession: RegistryCalls["diagnoseSession"] = input => registryCall("diagnoseSession", input);
-            const repairSession: RegistryCalls["repairSession"] = input => registryCall("repairSession", input);
             const diagnoseOrphanSubagents: RegistryCalls["diagnoseOrphanSubagents"] = () => registryCall("diagnoseOrphanSubagents");
             const cleanOrphanSubagents: RegistryCalls["cleanOrphanSubagents"] = input => registryCall("cleanOrphanSubagents", input);
             const searchArchivedContent: RegistryCalls["searchArchivedContent"] = input => registryCall("searchArchivedContent", input);
@@ -3502,7 +3528,7 @@ export function startArchiveClient(require: HostRequire) {
 				unarchiveSessions,
 				deleteArchivedSessions,
 				archivedSessionMetadata, openConversation, focusSessionWorkspace, viewState: archiveViewState,
-				favoriteSessions, setSessionFavorite, organizeBatch, diagnoseSession, repairSession, diagnoseOrphanSubagents, cleanOrphanSubagents, sessionDetails, searchSessionContent, searchArchivedContent, previewArchivedSession,
+				favoriteSessions, setSessionFavorite, organizeBatch, diagnoseOrphanSubagents, cleanOrphanSubagents, sessionDetails, searchSessionContent, searchArchivedContent, previewArchivedSession,
 				t: ctx.locale.bind(NS)
 			});
 
