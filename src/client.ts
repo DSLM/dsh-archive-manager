@@ -552,15 +552,15 @@ export function startArchiveClient(require: HostRequire) {
 				setOrphanCleaning(true); setError(null); setNotice(null);
 				try {
 					const res = await cleanOrphanSubagents({});
+					if (res.cleanedSessionIds.length > 0 || res.skippedSessionIds.length > 0) {
+						loadOrphans();
+					}
 					if (res.failures.length > 0) {
 						setNotice(null);
 						setError(formatBatchFailures(res.failures, t));
 					} else if (res.cleanedSessionIds.length > 0) {
 						setError(null);
 						setNotice(t("organizer.orphanCleanSuccess", { n: res.cleanedSessionIds.length }));
-						loadOrphans();
-					} else if (res.skippedSessionIds.length > 0) {
-						loadOrphans();
 					}
 				} catch (error) {
 					setError(errorMessage(error));

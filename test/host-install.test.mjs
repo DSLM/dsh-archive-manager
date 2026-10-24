@@ -164,6 +164,7 @@ test("归档能力经真实网关从官方 workspace 实例派发", async () => 
 	assert.deepEqual(await call("workspaceRegistry/favoriteSessions", {}), { ok: true, value: { favoriteSessionIds: [] } });
 	assert.equal((await call("workspaceRegistry/diagnoseOrphanSubagents", {})).ok, true);
 	assert.deepEqual(await call("workspaceRegistry/cleanOrphanSubagents", {}), { ok: true, value: { cleanedSessionIds: [], skippedSessionIds: [], failures: [] } });
+	assert.equal((await call("workspaceRegistry/cleanOrphanSubagents", { target: { sessionIds: 123 } })).ok, false, "非法参数必须被网关干净拒绝");
 	assert.equal(cache.table, officialTable);
 
 	await fiber.dispose();

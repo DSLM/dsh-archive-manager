@@ -413,7 +413,15 @@ const ARCHIVE_MANAGER_INVOCATIONS = [
 				source: "json",
 				acceptsUndefined: true,
 				codec: strictCodec("@michengai/dsh-archive-manager/types#CleanOrphanTarget", {
-					parse: (v: unknown) => v ?? {},
+					parse(v: unknown) {
+						if (v === undefined || v === null) return {};
+						const val = record(v);
+						if (!val) throw new TypeError("target must be an object");
+						if (val.sessionIds !== undefined && (!Array.isArray(val.sessionIds) || val.sessionIds.some((id) => typeof id !== "string"))) {
+							throw new TypeError("sessionIds must be an array of strings");
+						}
+						return val;
+					},
 				}),
 			},
 		],
