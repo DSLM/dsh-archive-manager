@@ -446,6 +446,7 @@ test("bundle resolves the current client-store", () => {
 
 test("manifest keeps one DSH peer range; store optional; ghost client-runtime peer removed", () => {
 	assert.equal(PACKAGE_MANIFEST.engines?.node, "^22.19.0 || >=24.0.0");
+	assert.equal(PACKAGE_MANIFEST.engines?.dsh, ">=0.2.0-rc.1 <0.3.0-0");
 	assert.equal(PACKAGE_MANIFEST.packageManager, "pnpm@11.22.0");
 	const dshPeerRanges = Object.entries(PACKAGE_MANIFEST.peerDependencies ?? {})
 		.filter(([name]) => name.startsWith("@deepseek-ai/dsh-"))
@@ -455,15 +456,15 @@ test("manifest keeps one DSH peer range; store optional; ghost client-runtime pe
 		.map(([, version]) => version);
 	assert.ok(dshPeerRanges.length > 0);
 	assert.equal(new Set(dshPeerRanges).size, 1);
-	assert.equal(dshPeerRanges[0], "0.2.0-rc.1 || 0.2.0-rc.2 || 0.2.1-rc.1 || 0.2.1-rc.2 || 0.2.1-rc.3");
-	for (const version of ["0.2.0-rc.1", "0.2.0-rc.2", "0.2.1-rc.1", "0.2.1-rc.2", "0.2.1-rc.3"]) {
-		assert.ok(semver.satisfies(version, dshPeerRanges[0], { includePrerelease: true }), `peer 范围必须接纳已验证宿主 ${version}`);
+	assert.equal(dshPeerRanges[0], ">=0.2.0-rc.1 <0.3.0-0");
+	for (const version of ["0.2.0-rc.1", "0.2.0-rc.2", "0.2.1-rc.1", "0.2.1-rc.2", "0.2.1-rc.3", "0.2.1-rc.4", "0.2.2-alpha.1", "0.2.2-rc.1", "0.2.9"]) {
+		assert.ok(semver.satisfies(version, dshPeerRanges[0], { includePrerelease: true }), `peer 范围必须接纳 0.2.x 代际版本 ${version}`);
 	}
-	for (const version of ["0.1.0-rc.8", "0.1.1-rc.2", "0.1.2-rc.1", "0.1.5-rc.1", "0.1.5-rc.2", "0.1.5-rc.3", "0.1.6-alpha.1", "0.1.6-alpha.2", "0.1.7-alpha.1", "0.1.7-rc.1", "0.1.7-rc.2", "0.2.0", "0.2.0-rc.3", "0.2.1", "0.2.1-alpha.1", "0.2.1-alpha.5", "0.2.1-rc.4"]) {
-		assert.equal(semver.satisfies(version, dshPeerRanges[0], { includePrerelease: true }), false, `不接纳未声明版本 ${version}`);
+	for (const version of ["0.1.0-rc.8", "0.1.1-rc.2", "0.1.2-rc.1", "0.1.5-rc.1", "0.1.5-rc.2", "0.1.5-rc.3", "0.1.6-alpha.1", "0.1.6-alpha.2", "0.1.7-alpha.1", "0.1.7-rc.1", "0.1.7-rc.2", "0.2.0-alpha.1", "0.3.0-alpha.1", "0.3.0-rc.1", "0.3.0", "1.0.0"]) {
+		assert.equal(semver.satisfies(version, dshPeerRanges[0], { includePrerelease: true }), false, `不接纳超出 0.2 代际版本 ${version}`);
 	}
 	assert.ok(dshDevelopmentVersions.length > 0);
-	assert.deepEqual([...new Set(dshDevelopmentVersions)], ["0.2.1-rc.2"]);
+	assert.deepEqual([...new Set(dshDevelopmentVersions)], ["0.2.1-rc.3"]);
 	assert.equal(PACKAGE_MANIFEST.peerDependenciesMeta?.["@deepseek-ai/dsh-client-store"], undefined);
 	assert.equal(PACKAGE_MANIFEST.peerDependenciesMeta?.["@deepseek-ai/dsh-client-runtime"], undefined);
 	assert.equal(PACKAGE_MANIFEST.peerDependencies?.["@deepseek-ai/dsh-client-runtime"], undefined);

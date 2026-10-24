@@ -4,6 +4,12 @@
 
 Published release notes are retained below; new versions are added without removing earlier entries.
 
+## 1.1.12 - 2026-10-24
+
+- Upgrade host admission policy: Declare `engines.dsh: ">=0.2.0-rc.1 <0.3.0-0"` to support the entire DeepSeek Harness `0.2.x` line (including `0.2.0-rc.1` onwards, future alphas, RCs, and stable releases) without requiring routine plugin version bumps.
+- Decouple peerDependencies locks: Broaden all `@deepseek-ai/dsh-*` peer dependencies to the `0.2.x` generation range.
+- Upgrade build-time development dependencies: Synchronize all 24 `@deepseek-ai/dsh-*` devDependencies to latest `0.2.1-rc.3`.
+
 ## 1.1.11 - 2026-10-24
 
 - Remove session turn counting and turn-based sorting: purged background batch uncompressed event reading logic for counting dialogue turns (sessionDetails / turnCount / countConversationTurns), removed turn indicators from session metadata rows, and removed "Most/Fewest turns" sort options, significantly reducing CPU and disk IO overhead during list navigation.

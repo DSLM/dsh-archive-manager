@@ -46,8 +46,8 @@ function run(command, args, cwd, env = process.env) {
 	});
 }
 
-if (manifest.devDependencies["@deepseek-ai/dsh-session"] !== "0.2.1-rc.2") {
-	throw new Error(`开发依赖基线必须钉为 0.2.1-rc.2，实际 ${manifest.devDependencies["@deepseek-ai/dsh-session"]}`);
+if (manifest.devDependencies["@deepseek-ai/dsh-session"] !== "0.2.1-rc.3") {
+	throw new Error(`开发依赖基线必须钉为 0.2.1-rc.3，实际 ${manifest.devDependencies["@deepseek-ai/dsh-session"]}`);
 }
 const failures = [];
 for (const profile of profiles) {
