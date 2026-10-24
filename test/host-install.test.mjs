@@ -163,6 +163,7 @@ test("归档能力经真实网关从官方 workspace 实例派发", async () => 
 	assert.deepEqual(await call("workspaceRegistry/archivedSessionMetadata", {}), { ok: true, value: { items: [] } });
 	assert.deepEqual(await call("workspaceRegistry/favoriteSessions", {}), { ok: true, value: { favoriteSessionIds: [] } });
 	assert.equal((await call("workspaceRegistry/diagnoseOrphanSubagents", {})).ok, true);
+	assert.deepEqual(await call("workspaceRegistry/cleanOrphanSubagents", {}), { ok: true, value: { cleanedSessionIds: [], skippedSessionIds: [], failures: [] } });
 	assert.equal(cache.table, officialTable);
 
 	await fiber.dispose();

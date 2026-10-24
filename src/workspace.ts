@@ -411,6 +411,7 @@ const ARCHIVE_MANAGER_INVOCATIONS = [
 				name: "target",
 				wire: "target",
 				source: "json",
+				acceptsUndefined: true,
 				codec: strictCodec("@michengai/dsh-archive-manager/types#CleanOrphanTarget", {
 					parse: (v: unknown) => v ?? {},
 				}),

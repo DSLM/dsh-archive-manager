@@ -276,6 +276,7 @@ export function startArchiveClient(require: HostRequire) {
 						name: "target",
 						wire: "target",
 						source: "json",
+						acceptsUndefined: true,
 						codec: strictCodec("@michengai/dsh-archive-manager/types#CleanOrphanTarget", {
 							parse(v: unknown) {
 								if (v === undefined || v === null) return {};
@@ -550,14 +551,15 @@ export function startArchiveClient(require: HostRequire) {
 				if (orphanCleaning || typeof cleanOrphanSubagents !== "function") return;
 				setOrphanCleaning(true); setError(null); setNotice(null);
 				try {
-					const res = await cleanOrphanSubagents();
-					if (res.cleanedSessionIds.length > 0) {
+					const res = await cleanOrphanSubagents({});
+					if (res.failures.length > 0) {
+						setNotice(null);
+						setError(formatBatchFailures(res.failures, t));
+					} else if (res.cleanedSessionIds.length > 0) {
+						setError(null);
 						setNotice(t("organizer.orphanCleanSuccess", { n: res.cleanedSessionIds.length }));
 						loadOrphans();
-					}
-					if (res.failures.length > 0) {
-						setError(formatBatchFailures(res.failures, t));
-					} else if (res.cleanedSessionIds.length === 0 && res.skippedSessionIds.length > 0) {
+					} else if (res.skippedSessionIds.length > 0) {
 						loadOrphans();
 					}
 				} catch (error) {
@@ -2723,7 +2725,7 @@ export function startArchiveClient(require: HostRequire) {
                 return result.value;
             };
             const diagnoseOrphanSubagents: RegistryCalls["diagnoseOrphanSubagents"] = () => registryCall("diagnoseOrphanSubagents");
-            const cleanOrphanSubagents: RegistryCalls["cleanOrphanSubagents"] = input => registryCall("cleanOrphanSubagents", input);
+            const cleanOrphanSubagents: RegistryCalls["cleanOrphanSubagents"] = (input = {}) => registryCall("cleanOrphanSubagents", input ?? {});
             const searchArchivedContent: RegistryCalls["searchArchivedContent"] = input => registryCall("searchArchivedContent", input);
             const searchSessionContent: RegistryCalls["searchSessionContent"] = input => registryCall("searchSessionContent", input);
             const previewArchivedSession: RegistryCalls["previewArchivedSession"] = input => registryCall("previewArchivedSession", input);

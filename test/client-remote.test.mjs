@@ -144,6 +144,9 @@ test("$mount registers the namespace; ctx.get resolves it and dispatches through
 			assert.equal(calls.at(-1).endpoint, `workspaceRegistry/${method}`);
 			assert.deepEqual(JSON.parse(JSON.stringify(calls.at(-1).payload)), { args: { [paramName]: input } });
 		}
+		const zeroArgClean = await registry.cleanOrphanSubagents({});
+		assert.equal(zeroArgClean.ok, true);
+		assert.ok(Object.hasOwn(zeroArgClean.value, "cleanedSessionIds"));
 	} finally {
 		await fiber.dispose();
 	}
