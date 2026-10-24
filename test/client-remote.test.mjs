@@ -85,7 +85,6 @@ root.provide("connection", {
 			calls.push({ channel, endpoint, payload, signal });
 			const value = endpoint === "workspaceRegistry/deleteSession" ? { deleted: true }
 				: /workspaceRegistry\/search(?:Session|Archived)Content$/.test(endpoint) ? { items: [{ sessionId: "s1", seq: 0, snippet: "正文" }], failures: [] }
-				: endpoint === "workspaceRegistry/sessionDetails" ? { items: [{ sessionId: "s1", turnCount: 1, path: null, error: "" }] }
 				: endpoint === "workspaceRegistry/previewArchivedSession" ? { sessionId: "s1", messages: [], hasEarlier: false, hasLater: false }
 				: endpoint === "workspaceRegistry/cleanOrphanSubagents" ? { cleanedSessionIds: ["s1"], skippedSessionIds: [], failures: [] }
 				: endpoint === "workspaceRegistry/favoriteSessions" || endpoint === "workspaceRegistry/setSessionFavorite" ? { favoriteSessionIds: ["s1"] }
@@ -136,7 +135,6 @@ test("$mount registers the namespace; ctx.get resolves it and dispatches through
 		for (const [method, input, expectedKey, paramName = "input"] of [
 			["searchSessionContent", { sessionIds: ["s1"], query: "正文" }, "items"],
 			["searchArchivedContent", { sessionIds: ["s1"], query: "正文" }, "items"],
-			["sessionDetails", { sessionIds: ["s1"] }, "items"],
 			["previewArchivedSession", { sessionId: "s1", query: "正文" }, "messages"],
 			["cleanOrphanSubagents", { sessionIds: ["s1"] }, "cleanedSessionIds", "target"],
 		]) {

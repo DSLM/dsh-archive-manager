@@ -756,7 +756,7 @@ test("sortArchivedGroups: 按最近归档顺序（archivedSessionIds 倒序）�
 	const archivedOrder = ["a", "c", "b"];
 	const translate = (key) => key;
 
-	const sorted = t.sortArchivedGroups(groups, "archived", {}, translate, {}, archivedOrder);
+	const sorted = t.sortArchivedGroups(groups, "archived", {}, translate, archivedOrder);
 	// b 是最新归档（索引最大），包含 b 的 w1 排在最前；组内 b 排在 a 前面
 	assert.deepEqual(sorted.map((group) => group.key), ["w1", "w2"]);
 	assert.deepEqual(sorted[0].sessions.map((session) => session.id), ["b", "a"]);
@@ -853,16 +853,4 @@ test("未归档列表排除已归档、子代理和空白占位，保留跨项�
 		summary("a"), summary("b"), summary("loose"), summary("old"), summary("child", {origin:"subagent"}), summary("blank", {blank:true})
 	].map(item => [item.id, item]));
 	assert.deepEqual(t.unarchivedSessionIds(byId, ["old"]), ["a", "b", "loose"]);
-});
-
-test("轮次排序覆盖组内与组间，零轮有效而未知置后", () => {
-  const groups = [{ key: "a", title: "甲", sessions: [summary("unknown", { updatedAt: 99 }), summary("zero", { updatedAt: 1 })] }, { key: "b", title: "乙", sessions: [summary("many", { updatedAt: 2 })] }];
-  const details = { zero: { turnCount: 0 }, many: { turnCount: 9 }, unknown: { turnCount: null } };
-  const asc = t.sortArchivedGroups(groups, "turnsAsc", {}, key => key, details);
-  assert.deepEqual(asc.map(group => group.key), ["a", "b"]);
-  assert.deepEqual(asc[0].sessions.map(row => row.id), ["zero", "unknown"]);
-  const desc = t.sortArchivedGroups(groups, "turnsDesc", {}, key => key, details);
-  assert.deepEqual(desc.map(group => group.key), ["b", "a"]);
-  assert.deepEqual(desc[1].sessions.map(row => row.id), ["zero", "unknown"]);
-  assert.equal(groups[0].sessions[0].id, "unknown");
 });

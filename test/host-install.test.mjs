@@ -25,7 +25,6 @@ const ARCHIVE_ENDPOINTS = [
 	"previewArchivedSession",
 	"searchArchivedContent",
 	"searchSessionContent",
-	"sessionDetails",
 	"setSessionFavorite",
 	"unarchiveSession",
 ];
@@ -155,7 +154,6 @@ test("归档能力经真实网关从官方 workspace 实例派发", async () => 
 	assert.equal(Reflect.get(binding, "serviceKey"), "workspaceRegistry");
 	assert.equal(Reflect.get(binding, "namespace"), "workspaceRegistry");
 	assert.equal(captured.matches("workspaceRegistry/archivedSessionMetadata"), true);
-	assert.equal(captured.matches("workspaceRegistry/sessionDetails"), true);
 	assert.equal(captured.matches("workspaceRegistry/diagnoseOrphanSubagents"), true);
 	// 暴露面必须与子类入口一致：只有归档方法，内部方法不得成为远程端点。
 	assert.deepEqual(remoteMethods(registry).map((marker) => marker.method).sort(), ARCHIVE_ENDPOINTS);

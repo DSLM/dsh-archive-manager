@@ -1,5 +1,5 @@
 import type * as React from "react";
-import type { SessionSummary, SessionDetail, BatchResult, BatchProgress, OrganizeKind, OrganizeOptions, Translate } from "./contracts.js";
+import type { SessionSummary, BatchResult, BatchProgress, OrganizeKind, OrganizeOptions, Translate } from "./contracts.js";
 import type { ArchivePreviewResult } from "./archive-discovery.js";
 
 /** 给预编译 JSX 调用补回属性与事件上下文，运行时仍使用宿主的 jsx-runtime。 */
@@ -52,7 +52,6 @@ export interface ArchiveProps {
   archivedSessionMetadata(): Promise<{ items: { sessionId: string; createdAt: number }[] }>;
   openConversation(id: string): unknown; focusSessionWorkspace?(id: string): Promise<unknown>;
   viewState?: { query?: string; project?: string; sortBy?: string }; close?(): void; t: Translate;
-  sessionDetails(input: {sessionIds: string[]}): Promise<{ items: SessionDetail[] }>;
   searchSessionContent?: (input: {sessionIds: string[]; query: string}) => Promise<unknown>;
   searchArchivedContent?: (input: {sessionIds: string[]; query: string}) => Promise<unknown>;
   previewArchivedSession: (input: {sessionId: string; query: string}) => Promise<ArchivePreviewResult>;
@@ -111,4 +110,4 @@ export interface DropOver { id: string; half: "before" | "after" }
 export interface SessionDrag { sessionId: string; accountKey: string; over: DropOver | null }
 export interface WorkspaceDrag { workspaceId: string; over: DropOver | null }
 export interface RowDrag { marker?: "before" | "after" | null; active: boolean; start(): void; end(): void; hover(half: "before" | "after"): void; drop(half: "before" | "after"): void }
-export type { Translate, BatchResult, BatchProgress, OrganizeKind, OrganizeOptions, SessionDetail };
+export type { Translate, BatchResult, BatchProgress, OrganizeKind, OrganizeOptions };

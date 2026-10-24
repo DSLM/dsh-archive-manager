@@ -1768,12 +1768,6 @@ test("typert gateway SRC: claims + dispatch single and batch archive methods end
     const previewed = await gatewayCall(captured.handler, "workspaceRegistry/previewArchivedSession", { input: { sessionId: s1 } });
     assert.equal(previewed.ok, true);
     assert.equal(previewed.value.messages[0].text, "检索测试正文");
-    const details = await gatewayCall(captured.handler, "workspaceRegistry/sessionDetails", { input: { sessionIds: [s1] } });
-    assert.equal(details.ok, true);
-    assert.equal(details.value.items[0].turnCount, 1);
-    assert.equal(details.value.items[0].path, env.located.get(s1));
-    const invalidDetails = await gatewayCall(captured.handler, "workspaceRegistry/sessionDetails", { input: { sessionIds: [] } });
-    assert.equal(invalidDetails.ok, false);
     const invalidSearch = await gatewayCall(captured.handler, "workspaceRegistry/searchArchivedContent", { input: { sessionIds: [s1], query: "" } });
     assert.equal(invalidSearch.ok, false);
     // SRC claims for the new endpoints
@@ -1920,46 +1914,6 @@ test("新版预览关闭只读句柄，失败也关闭，期间恢复的会话�
   env.persistence.open = async () => ({ header: header(s1), read: async () => { env.global.archivedSessionIds = []; return { events: [] }; }, close: async () => { closed++; } });
   await assert.rejects(registry.previewArchivedSession({ sessionId: s1 }), /归档/);
   assert.equal(closed, 2);
-});
-
-test("会话详情统计用户轮次，读取失败保留定位路径且不激活会话", async () => {
-  const env = buildRoot({ headers: [header(s1), header(s2)], archived: [s1] });
-  const registry = await mountWorkspaceRegistry(env);
-  env.persistence.open = async id => {
-    if (id === s2) throw new Error("旧日志无法转换");
-    return {
-      header: env.persistence.headers.find((item) => item.id === id),
-      inheritedEventCount: 0,
-      read: async () => ({ events: [
-        { seq: 0, type: "user/message", data: { source: { kind: "user" }, content: [{ type: "image" }] } },
-        { seq: 1, type: "user/message", data: { source: { kind: "plugin" }, content: "注入" } },
-        { seq: 2, type: "assistant/message", data: { message: { content: "回复" } } }
-      ] }),
-      close: async () => {},
-    };
-  };
-  const result = await registry.sessionDetails({ sessionIds: [s1, s2] });
-  assert.equal(result.items[0].turnCount, 1);
-  assert.equal(result.items[0].path, env.located.get(s1));
-  assert.equal(result.items[1].turnCount, null);
-  assert.equal(result.items[1].path, env.located.get(s2));
-  assert.match(result.items[1].error, /旧日志/);
-  assert.deepEqual(env.persistence.prepared, []);
-  assert.deepEqual(env.global.archivedSessionIds, [s1]);
-  await assert.rejects(registry.sessionDetails({ sessionIds: [] }));
-});
-
-test("会话路径定位旧代际目录，当前代际未生成时不复制虚假文件", async () => {
-  const env = buildRoot({ headers: [header(s1)], archived: [s1] });
-  const directory = installJsonlLayout(env, s1);
-  env.located.set(s1, join(directory, "session.v3.jsonl.zstd"));
-  const registry = await mountWorkspaceRegistry(env);
-  env.persistence.open = async () => { throw new Error("来源无法识别"); };
-  const result = await registry.sessionDetails({ sessionIds: [s1] });
-  assert.equal(result.items[0].path, directory);
-  assert.equal(result.items[0].turnCount, null);
-  assert.equal(existsSync(join(directory, "session.v3.jsonl.zstd")), false);
-  assert.equal(readFileSync(join(directory, "session.jsonl.zstd"), "utf8"), "stub");
 });
 
 test('未归档正文搜索读取已知会话且不改变归档状态', async()=>{

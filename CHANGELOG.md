@@ -6,6 +6,7 @@ Published release notes are retained below; new versions are added without remov
 
 ## Unreleased
 
+- Remove session turn counting and turn-based sorting: purged background batch uncompressed event reading logic for counting dialogue turns (sessionDetails / turnCount / countConversationTurns), removed turn indicators from session metadata rows, and removed "Most/Fewest turns" sort options, significantly reducing CPU and disk IO overhead during list navigation.
 - Remove obsolete session log mutation and repair logic: purged the defunct diagnoseSession and repairSession methods along with the session-repair module, removing the log error warning banner from the UI. Orphan subagent cleanup is now directly integrated into the Organizer panel for clean one-click reclamation.
 - Support detecting and cleaning up orphan subagents left behind by external deletions (#72): identify subagent sessions whose parents no longer exist, accurately excluding user fork branches and supporting one-click physical removal to reclaim disk space.
 - Support sorting by recently archived order (#75): added a "Recently archived" option to the sort menu in the archived sessions view, ordering sessions and projects based on the host's archive queue order so newly archived chats can be quickly found and restored.

@@ -4,10 +4,10 @@ import type { Domain, DomainGlobalSpec } from "@deepseek-ai/dsh-storage-domain";
 import type { TypertContribution } from "@deepseek-ai/dsh-typert-registry";
 import type { Header, HostContext, PersistenceCompat, SessionsCompat, WorkspaceConstructor } from "./host-compat.js";
 import { record, errorMessage, errorCode } from "./contracts.js";
-import type { Schema, SessionDetail } from "./contracts.js";
+import type { Schema } from "./contracts.js";
 import type { TypertGatewayBinding } from "@deepseek-ai/dsh-typert-protocol";
 type BatchTarget = { scope: "all" | "ungrouped" } | { scope: "workspace"; workspaceId: string } | { scope: "sessions"; sessionIds: string[] };
-import { detailsInputSchema, countConversationTurns, discoveryInvocations, searchInputSchema, previewInputSchema, extractConversation, findContentMatch, previewConversation } from "./archive-discovery.js";
+import { discoveryInvocations, searchInputSchema, previewInputSchema, extractConversation, findContentMatch, previewConversation } from "./archive-discovery.js";
 import { lstat, readdir, rm } from "node:fs/promises";
 import { basename, dirname, isAbsolute, join, resolve } from "node:path";
 import { WorkspaceRegistry } from "@deepseek-ai/dsh-workspace";
@@ -156,7 +156,6 @@ const ARCHIVE_REMOTE_METHODS = [
 	"searchArchivedContent",
 	"searchSessionContent",
 	"previewArchivedSession",
-	"sessionDetails",
 	"diagnoseOrphanSubagents",
 	"cleanOrphanSubagents",
 ] as const;
@@ -493,32 +492,6 @@ var ArchiveWorkspaceRegistry = class extends (WorkspaceRegistry as unknown as Re
         const persistence = this.ctx.get("sessionPersistence");
         if (!persistence || typeof persistence.open !== "function") throw new Error("当前宿主不支持只读会话，请打开完整会话查看");
         return (await this.readStoredProjectionSource(persistence, sessionId)).events;
-    }
-    /** 只读取当前宿主已知会话；路径由宿主定位，不根据错误文本或 ID 拼接。 */
-    async sessionDetails(input: unknown) {
-        const { sessionIds } = detailsInputSchema.parse(input);
-        const items = [];
-        for (const sessionId of sessionIds) {
-            const item: SessionDetail = { sessionId, turnCount: null, path: null, error: "" };
-            try {
-                if (!(await this.sessionKnown(sessionId))) throw new Error("会话不存在，请刷新列表");
-                const header = await this.readSessionHeader(sessionId);
-                if (Number.isSafeInteger(header.createdAt) && header.createdAt >= 0) item.createdAt = header.createdAt;
-                const persistence = this.ctx.get("sessionPersistence");
-                try {
-                    const location = typeof persistence?.locate === "function" ? await persistence.locate(header) : undefined;
-                    if (typeof location?.path === "string") {
-                        // 新版 locate 指向当前代际目标，旧日志可能尚未生成该文件；官方布局复制会话目录。
-                        const path = jsonlSessionDirectory(persistence, header, location) ?? location.path;
-                        await lstat(path);
-                        item.path = path;
-                    }
-                } catch (error) { item.error = "路径不可用：" + errorMessage(error).slice(0, 350); }
-                item.turnCount = countConversationTurns(await this.readConversationEvents(sessionId));
-            } catch (error) { item.error = errorMessage(error).slice(0, 500); }
-            items.push(item);
-        }
-        return { items };
     }
     /** 已归档与未归档共用正文检索；只读已知会话，不激活或改变归档状态。 */
     async searchSessionContent(input: unknown) {
