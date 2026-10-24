@@ -4,6 +4,10 @@
 
 Published release notes are retained below; new versions are added without removing earlier entries.
 
+## 1.1.10 - 2026-10-24
+
+- Support DeepSeek Harness `0.2.1-rc.3` while retaining all existing supported versions.
+
 ## 1.1.9 - 2026-10-24
 
 - Redesigned the filter toolbar with a single-line adaptive layout (#74): the search input now uses the host's native `Input` primitive with an `IconSearchOutlineMedium` search icon and glowing green focus border; rearranged control order to search input, view filter/sort menu, project filter, and date range, with the input flexibly expanding to fill remaining width.
