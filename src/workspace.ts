@@ -287,7 +287,7 @@ const archivedSessionMetadataSchema = {
 const orphanDiagnosisSchema = {
 	parse(value: unknown) {
 		const val = record(value);
-		if (typeof val.count !== "number" || !Array.isArray(val.items) || typeof val.totalSizeBytes !== "number") {
+		if (!val || typeof val.count !== "number" || !Array.isArray(val.items) || typeof val.totalSizeBytes !== "number") {
 			throw new TypeError("invalid orphan subagent diagnosis");
 		}
 		return val;
@@ -296,7 +296,7 @@ const orphanDiagnosisSchema = {
 const orphanCleanResultSchema = {
 	parse(value: unknown) {
 		const val = record(value);
-		if (!Array.isArray(val.cleanedSessionIds) || !Array.isArray(val.skippedSessionIds) || !Array.isArray(val.failures)) {
+		if (!val || !Array.isArray(val.cleanedSessionIds) || !Array.isArray(val.skippedSessionIds) || !Array.isArray(val.failures)) {
 			throw new TypeError("invalid orphan subagent clean result");
 		}
 		return val;

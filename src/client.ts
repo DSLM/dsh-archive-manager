@@ -256,7 +256,13 @@ export function startArchiveClient(require: HostRequire) {
 					invocation: { kind: "direct" },
 					parameters: [],
 					result: strictCodec("@michengai/dsh-archive-manager/types#OrphanSubagentDiagnosis", {
-						parse: (v: unknown) => v
+						parse(value: unknown) {
+							const val = record(value);
+							if (!val || typeof val.count !== "number" || !Array.isArray(val.items) || typeof val.totalSizeBytes !== "number") {
+								throw new TypeError("invalid orphan subagent diagnosis");
+							}
+							return val;
+						}
 					}),
 					sourceLocation: { file: "@michengai/dsh-archive-manager/lib/workspace.js", line: 1, column: 1 }
 				},
@@ -271,11 +277,25 @@ export function startArchiveClient(require: HostRequire) {
 						wire: "target",
 						source: "json",
 						codec: strictCodec("@michengai/dsh-archive-manager/types#CleanOrphanTarget", {
-							parse: (v: unknown) => v ?? {}
+							parse(v: unknown) {
+								if (v === undefined || v === null) return {};
+								const val = record(v);
+								if (!val) throw new TypeError("target must be an object");
+								if (val.sessionIds !== undefined && (!Array.isArray(val.sessionIds) || val.sessionIds.some(id => typeof id !== "string"))) {
+									throw new TypeError("sessionIds must be an array of strings");
+								}
+								return val;
+							}
 						})
 					}],
 					result: strictCodec("@michengai/dsh-archive-manager/types#CleanOrphanResult", {
-						parse: (v: unknown) => v
+						parse(value: unknown) {
+							const val = record(value);
+							if (!val || !Array.isArray(val.cleanedSessionIds) || !Array.isArray(val.skippedSessionIds) || !Array.isArray(val.failures)) {
+								throw new TypeError("invalid orphan subagent clean result");
+							}
+							return val;
+						}
 					}),
 					sourceLocation: { file: "@michengai/dsh-archive-manager/lib/workspace.js", line: 1, column: 1 }
 				},
@@ -517,7 +537,9 @@ export function startArchiveClient(require: HostRequire) {
 			const [orphanCleaning, setOrphanCleaning] = (0, react.useState)(false);
 			const loadOrphans = () => {
 				if (typeof diagnoseOrphanSubagents === "function") {
-					diagnoseOrphanSubagents().then(setOrphanInfo).catch(() => {});
+					diagnoseOrphanSubagents().then(setOrphanInfo).catch((err) => {
+						console.warn("archive-manager: diagnose orphan subagents failed", err);
+					});
 				}
 			};
 			(0, react.useEffect)(() => {
@@ -526,11 +548,16 @@ export function startArchiveClient(require: HostRequire) {
 
 			const cleanOrphans = async () => {
 				if (orphanCleaning || typeof cleanOrphanSubagents !== "function") return;
-				setOrphanCleaning(true);
+				setOrphanCleaning(true); setError(null); setNotice(null);
 				try {
 					const res = await cleanOrphanSubagents();
 					if (res.cleanedSessionIds.length > 0) {
 						setNotice(t("organizer.orphanCleanSuccess", { n: res.cleanedSessionIds.length }));
+						loadOrphans();
+					}
+					if (res.failures.length > 0) {
+						setError(formatBatchFailures(res.failures, t));
+					} else if (res.cleanedSessionIds.length === 0 && res.skippedSessionIds.length > 0) {
 						loadOrphans();
 					}
 				} catch (error) {
@@ -578,7 +605,7 @@ export function startArchiveClient(require: HostRequire) {
 				if (busy || unarchivingSessionIdsRef.current.size > 0) return;
 				preview.close();
 				setArchiveTab(tab); setSelectedSessionIds([]); setArchiveTarget(null); setArchiveGroup(null); setError(null); setNotice(null); setProject("all"); setQuery("");
-
+				if (tab !== "archived" && sortBy === "archived") setSortBy("updated");
 			};
 			const performArchive = async (ids: string[] | null, idle = false) => {
 				if (archiveBusy.current || busy || !ids?.length) return;
@@ -876,7 +903,7 @@ export function startArchiveClient(require: HostRequire) {
 								favoritesOnly,
 								setFavoritesOnly,
 								favoriteBusy: busy || favoriteBusy || !favoritesReady,
-								sortBy,
+								sortBy: (!isArchived && sortBy === "archived") ? "updated" : sortBy,
 								setSortBy,
 								options: [...(isArchived ? [{ value: "archived", label: t("archives.sortArchived") }] : []), { value: "updated", label: t("archives.sortUpdated") }, { value: "created", label: t("archives.sortCreated") }, { value: "alphabetical", label: t("archives.sortAlphabetical") }]
 							}),
