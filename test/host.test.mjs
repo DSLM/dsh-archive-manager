@@ -1634,6 +1634,11 @@ test("diagnoseOrphanSubagents 识别外部删除导致的孤儿子代理并由 c
 		],
 		workspaces: { [A]: workspace("D:\\\\proj-a", [s5, s2]) },
 	});
+	env.persistence.stat = async (id) => {
+		if (id === s4) return undefined;
+		const path = env.located.get(id);
+		return path && existsSync(path) ? { mtimeMs: 1 } : undefined;
+	};
 	const registry = await mountWorkspaceRegistry(env);
 
 	const diagnosis = await registry.diagnoseOrphanSubagents();
@@ -1649,6 +1654,52 @@ test("diagnoseOrphanSubagents 识别外部删除导致的孤儿子代理并由 c
 
 	const after = await registry.diagnoseOrphanSubagents();
 	assert.equal(after.count, 0, "清理后孤儿计数清零");
+});
+
+test("diagnoseOrphanSubagents 防误删、支持播种型子代理且显式清理校验母会话", async () => {
+	// s1: 活着且在 headers 里的普通母会话
+	// s2: s1 的子代理（母会话活着，绝不能判定为孤儿）
+	// s4: 外部已删除的母会话（headers 中缺失且磁盘工件也缺失）
+	// s5: s4 的普通子代理（origin: "subagent"，孤儿）
+	// s6: s4 的播种型子代理（origin: "subagent", isSeeded: true，孤儿，不可漏检）
+	// s7: s8 的子代理；s8 不在 headers 里（模拟读头失败），但磁盘上 s8 工件存在（绝不能误删 s7）
+	const s7 = "session-7-child-of-unlisted";
+	const s8 = "session-8-unlisted-parent";
+	const s6 = "session-6-seeded-subagent";
+	const env = buildRoot({
+		headers: [
+			header(s1, cwdA),
+			header(s2, cwdA, { parentSession: s1, origin: "subagent" }),
+			header(s5, cwdA, { parentSession: s4, origin: "subagent" }),
+			header(s6, cwdA, { parentSession: s4, origin: "subagent", isSeeded: true }),
+			header(s7, cwdA, { parentSession: s8, origin: "subagent" }),
+		],
+		workspaces: { [A]: workspace("D:\\\\proj-a", [s1, s2, s5, s6, s7]) },
+	});
+	// 模拟 s8 磁盘工件依然存在，而 s4 磁盘工件彻底不存在
+	env.located.set(s8, join(env.root, "s8-directory"));
+	env.located.set(s6, join(env.root, "s6-directory"));
+	env.located.set(s7, join(env.root, "s7-directory"));
+	mkdirSync(env.located.get(s8), { recursive: true });
+	mkdirSync(env.located.get(s6), { recursive: true });
+	mkdirSync(env.located.get(s7), { recursive: true });
+	env.persistence.stat = async (id) => {
+		if (id === s4) return undefined;
+		const path = env.located.get(id);
+		return path && existsSync(path) ? { mtimeMs: 1 } : undefined;
+	};
+
+	const registry = await mountWorkspaceRegistry(env);
+
+	const diagnosis = await registry.diagnoseOrphanSubagents();
+	const orphanIds = diagnosis.items.map((i) => i.sessionId).sort();
+	assert.deepEqual(orphanIds, [s5, s6].sort(), "包含普通子代理与播种型子代理，排除母会话工件尚存的 s7 和活着的 s2");
+
+	// 显式传入存活子代理 s2，必须被安全跳过，不能删除
+	const explicitClean = await registry.cleanOrphanSubagents({ sessionIds: [s2, s5] });
+	assert.deepEqual(explicitClean.skippedSessionIds, [s2], "母会话尚存的子代理必须被跳过");
+	assert.deepEqual(explicitClean.cleanedSessionIds, [s5], "真孤儿被清理");
+	assert.equal(existsSync(env.located.get(s2)), true, "活着母会话的子代理未被删除");
 });
 
 test("deleteSession removes current index entries without blocking later host re-indexing", async () => {

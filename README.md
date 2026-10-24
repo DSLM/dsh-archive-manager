@@ -33,12 +33,12 @@ Put inactive conversations away and find them again when needed, keeping everyda
 - **Automated idle session cleanup**: Specify an idle threshold in days to discover inactive chats, automatically protecting running tasks, interactive prompts, and starred items, with instant undo support.
 - **Native workspace menu integration**: Securely injects an **Archive session** action into the sidebar workspace `...` menu, anchoring an in-place frosted glass confirmation modal following the "what you see is what you archive" principle.
 - **Permanent deletion**: Thoroughly purge unwanted transcripts, cache rows, and indexes with per-item retry reporting.
-- **Diagnostic & repair center**: Diagnose corrupted single-frame Zstandard transcripts and legacy format anomalies with in-place verified repair.
+- **Orphan subagent detection & cleanup**: Automatically detect residue subagents whose parent sessions were externally deleted, displaying disk usage and enabling safe one-click reclamation.
 - **Controlled online updates & reverse proxy ready**: Features a toggleable online update switch, enterprise host-level configuration locking, and native baseURI dynamic endpoint resolution for prefix-stripping reverse proxies.
 
-## Session diagnosis and repair
+## Orphan subagent cleanup
 
-The archive page collects read failures, including archived IDs with missing summaries. Expand **Diagnosis and repair**, choose **Diagnose session**, then **Confirm repair** only when eligible. Repair converts supported legacy sources, including automation and early hint sources, while retaining the original log and conversation text. Sessions must be archived and closed in every DSH process. Missing files, permission failures, and unsupported corruption are reported; messages are never truncated or deleted to force recovery. Eligibility is verified from artifacts and the host format, not solely from error wording.
+When parent sessions are deleted externally or via the host, orphaned subagents may remain on disk. The Archive Manager detects these orphan sessions in the Organizer panel, calculates disk space usage, and provides one-click physical deletion.
 
 ## Search and preview
 
@@ -48,13 +48,6 @@ The archive page collects read failures, including archived IDs with missing sum
 - Preview renders Markdown tables, quotes, and code blocks with role labels; switch to source text for highlights. It shows up to eight recent messages, or context around the first match. Each message is limited to 2,000 UTF-16 code units without splitting Unicode characters.
 - Search accepts up to 200 query characters and reads batches of at most 20 sessions, sequentially within each batch. Tools, attachments, reasoning, system messages, and plugin injections are excluded. Read failures remain visible and can be retried. Stored text is not the model's current context.
 - There is no persistent full-text index. Large or long conversations can be slow; narrow project, dates, or favorites first. No session-count or latency guarantee has been established. Changing filters prevents later batches and stale results, but cannot interrupt the batch already reading.
-
-## Turn counts and location
-
-- Both tabs show user submission counts, including image submissions; assistant replies, tool calls, and injected messages do not count as turns.
-- Sort by most or fewest turns; unknown counts remain last. Failed details can be retried.
-- **More** provides separate ID/path copying. Official JSONL storage returns the session directory; other backends use a valid host-provided path. Clipboard operations require browser permission and HTTPS or localhost; failures are reported.
-- Details are read in batches of up to 20 without activating or restoring sessions. Counts include inherited user messages, have no persistent index, and may take time for long logs.
 
 ## Screenshots
 
@@ -132,13 +125,13 @@ Two native switches are available:
 | **Search & filter** | Open **Settings → Archived sessions** or click **Archive** in the sidebar; search bar automatically covers titles and body messages; use the Codex-style view menu to filter (all / favorites only) and sort; select projects from dropdown; pick dates with the single-field capsule |
 | **Custom calendar & keyboard nav** | Click the date capsule to open the lightweight calendar popover; supports all time and quick presets; provides complete WAI-ARIA keyboard navigation (arrows, Home/End, PageUp/Down, Enter/Space) and real-time range stretch preview |
 | **Quick preview** | Click a match snippet or **More → Quick preview** to inspect context with highlights without restoring |
-| **Adjust ordering** | Sort by update time, creation time, title, or most/fewest turns in the view menu |
+| **Adjust ordering** | Sort by recently archived, update time, creation time, or title in the view menu |
 | **Restore a chat** | Click the restore icon on any row; use **More → Restore and open** to resume the chat directly |
 | **Archive entire group** | On **Unarchived**, click the **…** menu next to a group and confirm archiving all chats in that project |
 | **Favorite chats** | Click the star icon on any row; use the view menu to filter starred chats |
 | **Clean up idle chats** | On **Unarchived**, set an idle day threshold, automatically protecting running and starred chats, preview candidates, and confirm |
-| **Locate session files** | Select **Copy session ID** or **Copy session path** from the **More** menu |
-| **Repair damaged logs** | Expand **Diagnosis and repair** to diagnose and repair corrupted single-frame Zstandard files or legacy anomalies |
+| **Copy session ID** | Select **Copy session ID** from the **More** menu |
+| **Clean up orphan subagents** | Detect and physically delete orphan subagents in the Organizer panel |
 | **Archive across projects** | Switch to **Unarchived**, select sessions across projects, then click **Archive** and confirm |
 | **Restore or delete in bulk** | Select chats and use the bulk actions, or use the project menu; there are no separate Restore all / Delete all buttons |
 
