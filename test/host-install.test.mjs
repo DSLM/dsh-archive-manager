@@ -17,8 +17,10 @@ const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
 /** 归档入口对网关暴露的全部方法；内部删除与索引清理方法不得成为 RPC。 */
 const ARCHIVE_ENDPOINTS = [
 	"archivedSessionMetadata",
+	"cleanOrphanSubagents",
 	"deleteArchivedSessions",
 	"deleteSession",
+	"diagnoseOrphanSubagents",
 	"diagnoseSession",
 	"favoriteSessions",
 	"previewArchivedSession",

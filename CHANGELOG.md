@@ -6,6 +6,7 @@ Published release notes are retained below; new versions are added without remov
 
 ## Unreleased
 
+- Support detecting and cleaning up orphan subagents left behind by external deletions (#72): added an orphan probe and cleanup section in the Session Health panel to identify subagent sessions whose parents no longer exist, accurately excluding user fork branches and supporting one-click physical removal to reclaim disk space.
 - Support sorting by recently archived order (#75): added a "Recently archived" option to the sort menu in the archived sessions view, ordering sessions and projects based on the host's archive queue order so newly archived chats can be quickly found and restored.
 - Remove all historical projection-cache scanning, identity checks, and handoff logic (#76), so activation no longer waits for per-record session-log reads. Cache rebuilding is host-owned and on demand; permanent deletion directly removes the cache row without suppressing later official writes.
 - Remove automatic full-log reads and official projection-cache write-backs when opening the archive list, along with the follow-up list refresh. Archive metadata only returns header creation times; preview, search, and explicit diagnosis/repair remain available.

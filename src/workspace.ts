@@ -10,7 +10,7 @@ type BatchTarget = { scope: "all" | "ungrouped" } | { scope: "workspace"; worksp
 import * as SessionRuntime from "@deepseek-ai/dsh-session";
 import { childCatalogFact, prepareAutomationRepair, type RepairFormat } from "./session-repair.js";
 import { repairInputSchema, classifySessionError, detailsInputSchema, countConversationTurns, discoveryInvocations, searchInputSchema, previewInputSchema, extractConversation, findContentMatch, previewConversation } from "./archive-discovery.js";
-import { lstat, rm } from "node:fs/promises";
+import { lstat, readdir, rm } from "node:fs/promises";
 import { basename, dirname, isAbsolute, join, resolve } from "node:path";
 import { WorkspaceRegistry } from "@deepseek-ai/dsh-workspace";
 import { bindTypertRemote, Remote } from "@deepseek-ai/dsh-typert-protocol";
@@ -102,6 +102,29 @@ async function pathExists(path: string) {
 	}
 }
 
+async function estimatePathSize(path: string): Promise<number> {
+	try {
+		const s = await lstat(path);
+		if (s.isFile()) return s.size;
+		if (s.isDirectory()) {
+			const entries = await readdir(path, { withFileTypes: true });
+			let total = 0;
+			for (const entry of entries) {
+				if (entry.isFile()) {
+					try {
+						const fileStat = await lstat(join(path, entry.name));
+						total += fileStat.size;
+					} catch {}
+				}
+			}
+			return total;
+		}
+	} catch {
+		return 0;
+	}
+	return 0;
+}
+
 class PersistenceStillPresentError extends Error {
 	constructor(sessionId: string) {
 		super(`session "${sessionId}" is still present in persistence after artifact removal`);
@@ -138,6 +161,8 @@ const ARCHIVE_REMOTE_METHODS = [
 	"sessionDetails",
 	"diagnoseSession",
 	"repairSession",
+	"diagnoseOrphanSubagents",
+	"cleanOrphanSubagents",
 ] as const;
 function markRemoteMethod(instance: object, method: string) {
 	// 模拟 TS 装饰器管线 `@Remote(method)`：`Remote` 返回标准方法装饰器，
@@ -264,6 +289,24 @@ const archivedSessionMetadataSchema = {
 		return value;
 	},
 };
+const orphanDiagnosisSchema = {
+	parse(value: unknown) {
+		const val = record(value);
+		if (typeof val.count !== "number" || !Array.isArray(val.items) || typeof val.totalSizeBytes !== "number") {
+			throw new TypeError("invalid orphan subagent diagnosis");
+		}
+		return val;
+	},
+};
+const orphanCleanResultSchema = {
+	parse(value: unknown) {
+		const val = record(value);
+		if (!Array.isArray(val.cleanedSessionIds) || !Array.isArray(val.skippedSessionIds) || !Array.isArray(val.failures)) {
+			throw new TypeError("invalid orphan subagent clean result");
+		}
+		return val;
+	},
+};
 /**
  * Host 严格描述符。网关优先读 typert.local，避免 SRC 扫描缓存
  * 或协议包双份导致 /api/workspaceRegistry/deleteSession 在生产环境 404。
@@ -342,6 +385,43 @@ const ARCHIVE_MANAGER_INVOCATIONS = [
 		invocation: { kind: "direct" },
 		parameters: [],
 		result: strictCodec("@michengai/dsh-archive-manager/types#ArchivedSessionMetadata", archivedSessionMetadataSchema),
+		sourceLocation: {
+			file: "@michengai/dsh-archive-manager/lib/workspace.js",
+			line: 1,
+			column: 1,
+		},
+	},
+	{
+		id: "@michengai/dsh-archive-manager#workspaceRegistry/diagnoseOrphanSubagents",
+		service: "workspaceRegistry",
+		namespace: "workspaceRegistry",
+		method: "diagnoseOrphanSubagents",
+		invocation: { kind: "direct" },
+		parameters: [],
+		result: strictCodec("@michengai/dsh-archive-manager/types#OrphanSubagentDiagnosis", orphanDiagnosisSchema),
+		sourceLocation: {
+			file: "@michengai/dsh-archive-manager/lib/workspace.js",
+			line: 1,
+			column: 1,
+		},
+	},
+	{
+		id: "@michengai/dsh-archive-manager#workspaceRegistry/cleanOrphanSubagents",
+		service: "workspaceRegistry",
+		namespace: "workspaceRegistry",
+		method: "cleanOrphanSubagents",
+		invocation: { kind: "direct" },
+		parameters: [
+			{
+				name: "target",
+				wire: "target",
+				source: "json",
+				codec: strictCodec("@michengai/dsh-archive-manager/types#CleanOrphanTarget", {
+					parse: (v: unknown) => v ?? {},
+				}),
+			},
+		],
+		result: strictCodec("@michengai/dsh-archive-manager/types#CleanOrphanResult", orphanCleanResultSchema),
 		sourceLocation: {
 			file: "@michengai/dsh-archive-manager/lib/workspace.js",
 			line: 1,
@@ -1034,6 +1114,109 @@ var ArchiveWorkspaceRegistry = class extends (WorkspaceRegistry as unknown as Re
 				`archive-manager: spill cleanup for deleted session "${sessionId}" failed: ${String(error)}`,
 			);
 		}
+	}
+
+	/**
+	 * 扫描存储中所有母会话已被外部删除的孤儿子代理会话。
+	 * 必须同时满足 origin === "subagent"、未被播种（排除 fork）、拥有 parentSession，
+	 * 且该 parentSession 在存储和实时会话中均已不存在。
+	 */
+	async diagnoseOrphanSubagents(): Promise<{
+		count: number;
+		items: { sessionId: string; parentSessionId: string; createdAt: number; sizeBytes: number }[];
+		totalSizeBytes: number;
+	}> {
+		const persistence = this.ctx.get("sessionPersistence");
+		if (persistence === void 0 || typeof persistence.list !== "function") {
+			return { count: 0, items: [], totalSizeBytes: 0 };
+		}
+		const storedHeaders = await this.listStoredHeaders();
+		const liveSessions = this.ctx.get("sessions")?.list?.() ?? [];
+		const knownIds = new Set<string>();
+		for (const s of liveSessions) knownIds.add(s.id);
+		for (const h of storedHeaders) knownIds.add(h.id);
+
+		const orphans: { sessionId: string; parentSessionId: string; createdAt: number; sizeBytes: number }[] = [];
+		let totalSizeBytes = 0;
+
+		for (const header of storedHeaders) {
+			if (
+				header.origin === "subagent" &&
+				header.isSeeded !== true &&
+				typeof header.parentSession === "string" &&
+				header.parentSession.length > 0 &&
+				!knownIds.has(header.parentSession) &&
+				this.ctx.get("sessions")?.get?.(header.id) === undefined
+			) {
+				if (await this.sessionArtifactMissing(header.id)) continue;
+				let sizeBytes = 0;
+				try {
+					if (typeof persistence.locate === "function") {
+						const location = persistence.locate(header);
+						if (location !== undefined && typeof location.path === "string") {
+							const directory = jsonlSessionDirectory(persistence, header, location);
+							const targetPath = directory ?? location.path;
+							sizeBytes = await estimatePathSize(targetPath);
+						}
+					}
+				} catch {
+					sizeBytes = 0;
+				}
+				totalSizeBytes += sizeBytes;
+				orphans.push({
+					sessionId: header.id,
+					parentSessionId: header.parentSession,
+					createdAt: typeof header.createdAt === "number" ? header.createdAt : 0,
+					sizeBytes,
+				});
+			}
+		}
+
+		return {
+			count: orphans.length,
+			items: orphans,
+			totalSizeBytes,
+		};
+	}
+
+	/**
+	 * 物理清理孤儿子代理会话。
+	 * 支持传入指定的 sessionIds，若未传则清理当前诊断出的全部孤儿子代理。
+	 */
+	async cleanOrphanSubagents(target?: { sessionIds?: string[] }): Promise<{
+		cleanedSessionIds: string[];
+		skippedSessionIds: string[];
+		failures: { sessionId: string; message: string }[];
+	}> {
+		return this.enqueueOperation(async () => {
+			const candidateIds = target?.sessionIds ?? (await this.diagnoseOrphanSubagents()).items.map((item) => item.sessionId);
+			const cleanedSessionIds: string[] = [];
+			const skippedSessionIds: string[] = [];
+			const failures: { sessionId: string; message: string }[] = [];
+
+			const storedHeaders = await this.listStoredHeaders();
+
+			for (const sessionId of candidateIds) {
+				try {
+					const header = this.headers?.get(sessionId) ?? storedHeaders.find((h) => h.id === sessionId);
+					if (!header || header.origin !== "subagent" || header.isSeeded === true) {
+						skippedSessionIds.push(sessionId);
+						continue;
+					}
+					if (this.ctx.get("sessions")?.get?.(sessionId) !== undefined) {
+						skippedSessionIds.push(sessionId);
+						continue;
+					}
+
+					await this.deleteSessionCore(sessionId, storedHeaders);
+					cleanedSessionIds.push(sessionId);
+				} catch (error) {
+					failures.push({ sessionId, message: errorMessage(error) });
+				}
+			}
+
+			return { cleanedSessionIds, skippedSessionIds, failures };
+		});
 	}
 };
 //#endregion

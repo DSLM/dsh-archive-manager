@@ -180,6 +180,54 @@ test("异常默认折叠，先诊断再确认修复，修复后刷新详情", as
   assert.equal(repairs, 1);
   assert.equal(retries, 1);
 });
+test("SessionHealthPanel: 渲染孤儿子代理卡片并支持一键清理", async () => {
+  const slots = [];
+  let cursor = 0, cleaned = 0, retries = 0;
+  const React = {
+    useState(value) {
+      const i = cursor++;
+      slots[i] ??= value;
+      return [slots[i], (next) => slots[i] = typeof next === "function" ? next(slots[i]) : next];
+    },
+    useEffect(effect) {
+      effect();
+    },
+    createElement: (type, props2, ...children) => ({ type, props: props2 ?? {}, children })
+  };
+  const Panel = createSessionHealthPanel(React);
+  let orphanCount = 1;
+  const props = {
+    items: [],
+    sessions: [],
+    diagnoseOrphanSubagents: async () => ({
+      count: orphanCount,
+      items: [{ sessionId: "sub-1", parentSessionId: "p-1", createdAt: 100, sizeBytes: 2048 }],
+      totalSizeBytes: 2048,
+    }),
+    cleanOrphanSubagents: async () => {
+      cleaned++;
+      orphanCount = 0;
+      return { cleanedSessionIds: ["sub-1"], skippedSessionIds: [], failures: [] };
+    },
+    retry: () => retries++,
+  };
+  const render = () => {
+    cursor = 0;
+    return Panel(props);
+  };
+  const flat = (n) => !n || typeof n !== "object" ? [] : [n, ...(n.children ?? []).flat(Infinity).flatMap(flat)];
+  let tree = render();
+  await new Promise((resolve) => setTimeout(resolve, 10));
+  tree = render();
+
+  const button = (tree2, label) => flat(tree2).find((n) => (n.children ?? []).flat(Infinity).includes(label));
+  const cleanBtn = button(tree, "清理全部孤儿");
+  assert.ok(cleanBtn, "应显示'清理全部孤儿'按钮");
+
+  await cleanBtn.props.onClick();
+  assert.equal(cleaned, 1, "点击后调用 cleanOrphanSubagents");
+  assert.equal(retries, 1, "清理成功后触发 retry 刷新状态");
+});
 test("发布权限限制为私有，硬链接失败不替换目标并清理临时文件", async (t) => {
   const fs = (await import("node:fs/promises")).default;
   const { syncBuiltinESMExports } = await import("node:module");

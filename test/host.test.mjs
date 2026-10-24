@@ -1633,6 +1633,34 @@ test("deleteSession cascades to SUBAGENT children (origin = subagent) but never 
 	assert.equal(registry.headers.has(s2), true);
 });
 
+test("diagnoseOrphanSubagents 识别外部删除导致的孤儿子代理并由 cleanOrphanSubagents 清理", async () => {
+	// s4 母会话未在存储中列出（模拟外部已删除）
+	// s5 是 s4 的子代理（origin: subagent，成为孤儿）
+	// s2 是 s4 的 fork 会话（isSeeded: true，属于独立用户会话，非孤儿）
+	const env = buildRoot({
+		headers: [
+			header(s5, cwdA, { parentSession: s4, origin: "subagent" }),
+			header(s2, cwdA, { parentSession: s4, isSeeded: true }),
+		],
+		workspaces: { [A]: workspace("D:\\\\proj-a", [s5, s2]) },
+	});
+	const registry = await mountWorkspaceRegistry(env);
+
+	const diagnosis = await registry.diagnoseOrphanSubagents();
+	assert.equal(diagnosis.count, 1, "准确识别母会话已被删除的孤儿子代理");
+	assert.equal(diagnosis.items[0].sessionId, s5);
+	assert.equal(diagnosis.items[0].parentSessionId, s4);
+
+	const cleanResult = await registry.cleanOrphanSubagents();
+	assert.deepEqual(cleanResult.cleanedSessionIds, [s5]);
+	assert.equal(existsSync(env.located.get(s5)), false, "孤儿子代理转录目录已被物理清理");
+	assert.equal(existsSync(env.located.get(s2)), true, "fork 分支会话被完整保留");
+	env.persistence.headers = env.persistence.headers.filter((item) => item.id !== s5);
+
+	const after = await registry.diagnoseOrphanSubagents();
+	assert.equal(after.count, 0, "清理后孤儿计数清零");
+});
+
 test("deleteSession removes current index entries without blocking later host re-indexing", async () => {
 	const env = buildRoot({
 		headers: [header(s1, cwdA), header(s2, cwdA)],

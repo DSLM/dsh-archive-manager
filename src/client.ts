@@ -250,6 +250,37 @@ export function startArchiveClient(require: HostRequire) {
 					result: strictCodec("@michengai/dsh-archive-manager/types#ArchivedSessionMetadata", archivedSessionMetadataSchema),
 					sourceLocation: { file: "@michengai/dsh-archive-manager/lib/workspace.js", line: 1, column: 1 }
 				},
+				{
+					id: "@michengai/dsh-archive-manager#workspaceRegistry/diagnoseOrphanSubagents",
+					service: "workspaceRegistry",
+					namespace: "workspaceRegistry",
+					method: "diagnoseOrphanSubagents",
+					invocation: { kind: "direct" },
+					parameters: [],
+					result: strictCodec("@michengai/dsh-archive-manager/types#OrphanSubagentDiagnosis", {
+						parse: (v: unknown) => v
+					}),
+					sourceLocation: { file: "@michengai/dsh-archive-manager/lib/workspace.js", line: 1, column: 1 }
+				},
+				{
+					id: "@michengai/dsh-archive-manager#workspaceRegistry/cleanOrphanSubagents",
+					service: "workspaceRegistry",
+					namespace: "workspaceRegistry",
+					method: "cleanOrphanSubagents",
+					invocation: { kind: "direct" },
+					parameters: [{
+						name: "target",
+						wire: "target",
+						source: "json",
+						codec: strictCodec("@michengai/dsh-archive-manager/types#CleanOrphanTarget", {
+							parse: (v: unknown) => v ?? {}
+						})
+					}],
+					result: strictCodec("@michengai/dsh-archive-manager/types#CleanOrphanResult", {
+						parse: (v: unknown) => v
+					}),
+					sourceLocation: { file: "@michengai/dsh-archive-manager/lib/workspace.js", line: 1, column: 1 }
+				},
 			]
 		};
 		/** 危险操作确认按钮统一红色描边。宿主哈希类名随版本变，不再引用。 */
@@ -403,7 +434,7 @@ export function startArchiveClient(require: HostRequire) {
 		/**
 		* 归档管理设置页：集中处理筛选、多选、恢复、删除和原生会话导航。
 		*/
-		function ArchivedSessionsSection({ archiveSessions, archiveSession, sessionStore, workspaceStore, unarchiveSession, deleteSession, unarchiveSessions, deleteArchivedSessions, archivedSessionMetadata, openConversation, focusSessionWorkspace, viewState, close, t, diagnoseSession, repairSession, sessionDetails, searchSessionContent, searchArchivedContent, previewArchivedSession, favoriteSessions, setSessionFavorite, organizeBatch, useSessionPendingInteraction, useSessionStatus }: ArchiveProps) {
+		function ArchivedSessionsSection({ archiveSessions, archiveSession, sessionStore, workspaceStore, unarchiveSession, deleteSession, unarchiveSessions, deleteArchivedSessions, archivedSessionMetadata, openConversation, focusSessionWorkspace, viewState, close, t, diagnoseSession, repairSession, diagnoseOrphanSubagents, cleanOrphanSubagents, sessionDetails, searchSessionContent, searchArchivedContent, previewArchivedSession, favoriteSessions, setSessionFavorite, organizeBatch, useSessionPendingInteraction, useSessionStatus }: ArchiveProps) {
 			const sessions = (0, react.useSyncExternalStore)(sessionStore.subscribe, sessionStore.getSnapshot);
 			const workspaceState = (0, react.useSyncExternalStore)(workspaceStore.subscribe, workspaceStore.getSnapshot);
 			const [archiveTab, setArchiveTab] = (0, react.useState)("archived");
@@ -857,7 +888,7 @@ export function startArchiveClient(require: HostRequire) {
 							})
 						]
 					})
-				}), react.createElement("style", null, discoveryCss), react.createElement(SearchStatus, { state: contentSearch, t }), react.createElement(SessionHealthPanel, { key: archiveTab, t, isArchived, items: details.items, sessions: groups.flatMap(group => group.sessions), diagnoseSession, repairSession, retry: details.retry, pending: details.pending }), organizeBatch && (0, react_jsx_runtime.jsx)(OrganizerPanel, {
+				}), react.createElement("style", null, discoveryCss), react.createElement(SearchStatus, { state: contentSearch, t }), react.createElement(SessionHealthPanel, { key: archiveTab, t, isArchived, items: details.items, sessions: groups.flatMap(group => group.sessions), diagnoseSession, repairSession, diagnoseOrphanSubagents, cleanOrphanSubagents, retry: details.retry, pending: details.pending }), organizeBatch && (0, react_jsx_runtime.jsx)(OrganizerPanel, {
 					t, archived: isArchived, busy: busy || favoriteBusy || unarchivingSessionIds.size > 0, ready: favoritesReady,
 					days: idleDays, onDays: setIdleDays, count: idleCandidates.length,
 					onPreview: () => { requestArchive(idleCandidates); setIdleRequest(true); },
@@ -2660,6 +2691,8 @@ export function startArchiveClient(require: HostRequire) {
             const sessionDetails: RegistryCalls["sessionDetails"] = input => registryCall("sessionDetails", input);
             const diagnoseSession: RegistryCalls["diagnoseSession"] = input => registryCall("diagnoseSession", input);
             const repairSession: RegistryCalls["repairSession"] = input => registryCall("repairSession", input);
+            const diagnoseOrphanSubagents: RegistryCalls["diagnoseOrphanSubagents"] = () => registryCall("diagnoseOrphanSubagents");
+            const cleanOrphanSubagents: RegistryCalls["cleanOrphanSubagents"] = input => registryCall("cleanOrphanSubagents", input);
             const searchArchivedContent: RegistryCalls["searchArchivedContent"] = input => registryCall("searchArchivedContent", input);
             const searchSessionContent: RegistryCalls["searchSessionContent"] = input => registryCall("searchSessionContent", input);
             const previewArchivedSession: RegistryCalls["previewArchivedSession"] = input => registryCall("previewArchivedSession", input);
@@ -3469,7 +3502,7 @@ export function startArchiveClient(require: HostRequire) {
 				unarchiveSessions,
 				deleteArchivedSessions,
 				archivedSessionMetadata, openConversation, focusSessionWorkspace, viewState: archiveViewState,
-				favoriteSessions, setSessionFavorite, organizeBatch, diagnoseSession, repairSession, sessionDetails, searchSessionContent, searchArchivedContent, previewArchivedSession,
+				favoriteSessions, setSessionFavorite, organizeBatch, diagnoseSession, repairSession, diagnoseOrphanSubagents, cleanOrphanSubagents, sessionDetails, searchSessionContent, searchArchivedContent, previewArchivedSession,
 				t: ctx.locale.bind(NS)
 			});
 

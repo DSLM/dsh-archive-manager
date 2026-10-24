@@ -60,6 +60,8 @@ export interface ArchiveProps {
   previewArchivedSession: (input: {sessionId: string; query: string}) => Promise<ArchivePreviewResult>;
   favoriteSessions(): Promise<{ favoriteSessionIds: string[] }>;
   setSessionFavorite(input: {sessionId: string; favorite: boolean}): Promise<{favoriteSessionIds: string[]}>;
+  diagnoseOrphanSubagents?(): Promise<{ count: number; items: { sessionId: string; parentSessionId: string; createdAt: number; sizeBytes: number }[]; totalSizeBytes: number }>;
+  cleanOrphanSubagents?(target?: { sessionIds?: string[] }): Promise<{ cleanedSessionIds: string[]; skippedSessionIds: string[]; failures: { sessionId: string; message: string }[] }>;
   organizeBatch?: (kind: OrganizeKind, ids: readonly string[], options?: OrganizeOptions) => Promise<BatchResult>;
   useSessionPendingInteraction?: PendingHook; useSessionStatus?: StatusHook;
 }

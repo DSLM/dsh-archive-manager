@@ -36,7 +36,14 @@ export const healthZh = {
   'health.published-unreadable.reason': '新版日志已生成，但宿主复读未通过',
   'health.published-unreadable.advice': '旧日志仍保留，请重启 DSH 后重新诊断；不要反复修复或删除日志。',
   'health.failed.reason': '操作未完成',
-  'health.failed.advice': '请展开技术详情查看错误，处理后重新诊断。'
+  'health.failed.advice': '请展开技术详情查看错误，处理后重新诊断。',
+  'health.orphanSubagentsTitle': '残留子代理（孤儿会话）',
+  'health.orphanSubagentsHint': '母会话已被外部删除，占用约 {size}',
+  'health.orphanSubagentsDesc': '这些子代理会话的母会话已不存在，它们在日常聊天列表中不可见，可安全清理释放空间。',
+  'health.cleanOrphans': '清理全部孤儿',
+  'health.cleaning': '清理中…',
+  'health.orphanCleanSuccess': '已成功清理 {n} 个无主子代理会话。',
+  'health.orphanParentMissing': '母会话已丢失（ID：{parentId}）',
 };
 export const healthEn = {
   'health.archived': 'Archived sessions need attention',
@@ -75,7 +82,14 @@ export const healthEn = {
   'health.published-unreadable.reason': 'A new log was generated, but the host could not read it back',
   'health.published-unreadable.advice': 'The original log is preserved. Restart DSH and diagnose again. Do not repeatedly repair or delete logs.',
   'health.failed.reason': 'The operation did not complete',
-  'health.failed.advice': 'Expand technical details to inspect the error. Resolve it before diagnosing again.'
+  'health.failed.advice': 'Expand technical details to inspect the error. Resolve it before diagnosing again.',
+  'health.orphanSubagentsTitle': 'Orphan subagents',
+  'health.orphanSubagentsHint': 'Parent session deleted externally, occupying ~{size}',
+  'health.orphanSubagentsDesc': 'The parent sessions for these subagent chats no longer exist. They are hidden from standard chat lists and can be safely cleaned up.',
+  'health.cleanOrphans': 'Clean up all orphans',
+  'health.cleaning': 'Cleaning up…',
+  'health.orphanCleanSuccess': 'Successfully cleaned up {n} orphan subagent sessions.',
+  'health.orphanParentMissing': 'Parent session missing (ID: {parentId})',
 };
 export const healthRu = {
   'health.archived': 'Заархивированные сессии требуют внимания',
@@ -114,5 +128,12 @@ export const healthRu = {
   'health.published-unreadable.reason': 'Новый журнал создан, но хост не смог его прочитать',
   'health.published-unreadable.advice': 'Исходный журнал сохранён. Перезапустите DSH и проведите диагностику снова. Не повторяйте ремонт и не удаляйте журналы.',
   'health.failed.reason': 'Операция не завершена',
-  'health.failed.advice': 'Раскройте технические подробности, чтобы изучить ошибку. Устраните её перед повторной диагностикой.'
+  'health.failed.advice': 'Раскройте технические подробности для просмотра ошибки. Устраните её перед повторной диагностикой.',
+  'health.orphanSubagentsTitle': 'Осиротевшие подагенты',
+  'health.orphanSubagentsHint': 'Родительская сессия удалена извне, занято ~{size}',
+  'health.orphanSubagentsDesc': 'Родительские сессии для этих чатов подагентов больше не существуют. Они скрыты из стандартных списков чатов и могут быть безопасно удалены.',
+  'health.cleanOrphans': 'Очистить всех сирот',
+  'health.cleaning': 'Очистка…',
+  'health.orphanCleanSuccess': 'Успешно очищено сессий подагентов: {n}.',
+  'health.orphanParentMissing': 'Родительская сессия отсутствует (ID: {parentId})',
 };

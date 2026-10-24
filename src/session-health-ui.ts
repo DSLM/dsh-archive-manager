@@ -6,6 +6,8 @@ interface HealthProps {
  items: SessionDetail[]; sessions: (SessionSummary & { displayTitle?: string })[]; t?: Translate; isArchived?: boolean;
  diagnoseSession?: (input: {sessionId: string}) => Promise<HealthResult>;
  repairSession?: (input: {sessionId: string; token?: string}) => Promise<HealthResult>;
+ diagnoseOrphanSubagents?: () => Promise<{ count: number; items: { sessionId: string; parentSessionId: string; createdAt: number; sizeBytes: number }[]; totalSizeBytes: number }>;
+ cleanOrphanSubagents?: (target?: { sessionIds?: string[] }) => Promise<{ cleanedSessionIds: string[]; skippedSessionIds: string[]; failures: { sessionId: string; message: string }[] }>;
  retry(): void; pending: boolean;
 }
 import { healthZh, healthEn, healthRu } from "./session-health-locales.js";
@@ -48,10 +50,51 @@ export function createSessionHealthPanel(React: typeof import("react"), icons: R
     const [open, setOpen] = React.useState(false);
     return h(Disclosure, { className: "dsham_healthTech", title: h(React.Fragment, null, glyph, title), open, onToggle: () => setOpen(value => !value) }, children);
   }
-  return function SessionHealthPanel({ items, sessions, t = defaultT, isArchived = true, diagnoseSession, repairSession, retry, pending }: HealthProps) {
+  function formatBytes(bytes: number): string {
+    if (!bytes || bytes <= 0) return "0 B";
+    if (bytes < 1024) return bytes + " B";
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
+    return (bytes / (1024 * 1024)).toFixed(1) + " MB";
+  }
+  return function SessionHealthPanel({ items, sessions, t = defaultT, isArchived = true, diagnoseSession, repairSession, diagnoseOrphanSubagents, cleanOrphanSubagents, retry, pending }: HealthProps) {
     const [results, setResults] = React.useState<Record<string, HealthResult>>({});
     const [busyId, setBusyId] = React.useState('');
     const [notice, setNotice] = React.useState<string | boolean>("");
+    const [orphanInfo, setOrphanInfo] = React.useState<{ count: number; items: { sessionId: string; parentSessionId: string; createdAt: number; sizeBytes: number }[]; totalSizeBytes: number } | null>(null);
+    const [orphanCleaning, setOrphanCleaning] = React.useState(false);
+    const [orphanNotice, setOrphanNotice] = React.useState('');
+
+    React.useEffect?.(() => {
+      let active = true;
+      if (typeof diagnoseOrphanSubagents === "function") {
+        diagnoseOrphanSubagents()
+          .then((info) => { if (active) setOrphanInfo(info); })
+          .catch(() => {});
+      }
+      return () => { active = false; };
+    }, [diagnoseOrphanSubagents, pending]);
+
+    const handleCleanOrphans = async () => {
+      if (orphanCleaning || !cleanOrphanSubagents) return;
+      setOrphanCleaning(true);
+      setOrphanNotice('');
+      try {
+        const res = await cleanOrphanSubagents();
+        if (res.cleanedSessionIds.length > 0) {
+          setOrphanNotice(t('health.orphanCleanSuccess', { n: res.cleanedSessionIds.length }));
+          if (typeof diagnoseOrphanSubagents === "function") {
+            const next = await diagnoseOrphanSubagents();
+            setOrphanInfo(next);
+          }
+          retry();
+        }
+      } catch (err) {
+        setOrphanNotice(errorMessage(err));
+      } finally {
+        setOrphanCleaning(false);
+      }
+    };
+
     const errors = items.filter(row => row.error);
     const run = async (row: SessionDetail, repair: boolean) => {
       if (busyId) return;
@@ -89,6 +132,25 @@ export function createSessionHealthPanel(React: typeof import("react"), icons: R
               !result && diagnostic.code !== 'legacy-source' && h('p', { className: 'dsham_healthAdvice' }, t('health.' + code + '.advice')),
               h(TechnicalDetails, { title: t('health.technical'), glyph: icon('chevron', 'dsham_healthChevron') },
                 h('div', { className: 'dsham_healthLog' }, h('p', null, row.sessionId), h('p', null, row.error), result?.reason && h('p', null, result.reason), result?.advice && h('p', null, result.advice))));
-          }))));
+          }))),
+      orphanInfo && orphanInfo.count > 0 && h('details', { className: 'dsham_healthPanel', style: { marginTop: errors.length > 0 ? 12 : 0 } },
+        h('summary', { className: 'dsham_healthSummary' }, icon('warning', 'dsham_healthIcon'),
+          h('span', { className: 'dsham_healthSummaryText' }, t('health.orphanSubagentsTitle'), h('span', { className: 'dsham_healthCount' }, orphanInfo.count)),
+          h('span', { className: 'dsham_healthSummaryHint' }, t('health.orphanSubagentsHint', { size: formatBytes(orphanInfo.totalSizeBytes) })),
+          icon('chevron', 'dsham_healthChevron')),
+        h('div', { className: 'dsham_healthBody' },
+          h('div', { className: 'dsham_healthIntro' },
+            h('span', null, t('health.orphanSubagentsDesc')),
+            cleanOrphanSubagents && actionButton(t(orphanCleaning ? 'health.cleaning' : 'health.cleanOrphans'), { primary: true, disabled: orphanCleaning || Boolean(busyId), onClick: handleCleanOrphans }, icon(orphanCleaning ? 'refresh' : 'check'))),
+          orphanNotice && h('p', { role: 'status', className: 'dsham_healthNotice' }, icon('check'), orphanNotice),
+          orphanInfo.items.map(item =>
+            h('section', { key: item.sessionId, className: 'dsham_healthItem' },
+              h('div', { className: 'dsham_healthRow' },
+                h('div', { className: 'dsham_healthCopy' },
+                  h('strong', { className: 'dsham_healthTitle' }, item.sessionId),
+                  h('div', { className: 'dsham_healthState' },
+                    icon('info'),
+                    t('health.orphanParentMissing', { parentId: item.parentSessionId }))),
+                item.sizeBytes > 0 && h('span', { className: 'dsham_healthCount' }, formatBytes(item.sizeBytes))))))));
   };
 }
