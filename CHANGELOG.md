@@ -4,6 +4,11 @@
 
 Published release notes are retained below; new versions are added without removing earlier entries.
 
+## Unreleased
+
+- Add a sidebar session star: a star sits left of each session title in its own container right after the host's leading slot — always visible once favourited, hover-only otherwise — and reads/writes the plugin's existing favourite set; the session "…" menu gains a matching Favourite / Unfavourite row for keyboard use.
+- Add a "Favourites only" filter: View options → Filter sessions gains a switch that narrows the sidebar to favourited sessions (empty workspaces and "Expand the remaining N" collapse too, and folded groups are expanded before filtering); the state lives in `localStorage` and no session or archive data is touched.
+
 ## 1.1.12 - 2026-10-24
 
 - Upgrade host admission policy: Declare `engines.dsh: ">=0.2.0-rc.1 <0.3.0-0"` to support the entire DeepSeek Harness `0.2.x` line (including `0.2.0-rc.1` onwards, future alphas, RCs, and stable releases) without requiring routine plugin version bumps.
